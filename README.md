@@ -95,17 +95,17 @@ curl -X GET http://localhost:3000/api/session/qr/minha-sessao \
 ```
 
 ### 3. Enviar Mensagem
+## 🔄 Enviar Mensagem
 
-```bash
-curl -X POST http://localhost:3000/api/chat/send-text \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: sua-api-key" \
-  -d '{
-    "sessionId": "minha-sessao",
-    "to": "5511999999999@s.whatsapp.net",
-    "text": "Olá! Esta é uma mensagem de teste."
-  }'
-```
+Requisição POST para:  
+`http://localhost:3000/api/chat/send-text`
+
+### Body (JSON)
+```json
+{
+  "to": "5599999999999",
+  "text": "Olá, tudo bem?"
+}
 
 ## WebSocket
 
