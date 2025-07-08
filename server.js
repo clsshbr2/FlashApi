@@ -41,6 +41,7 @@ const app = express();
 const server = http.createServer(app);
 const PORT = config.port;
 
+
 // Rate limiting
 const limiter = rateLimit({
   windowMs: config.rateLimitWindowMs,
@@ -52,6 +53,7 @@ const limiter = rateLimit({
 });
 
 // Middleware
+app.set('trust proxy', true);
 app.use(helmet());
 app.use(cors());
 app.use(limiter);
