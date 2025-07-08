@@ -4,9 +4,11 @@ require('dotenv').config();
 const config = {
   // Server
   port: process.env.PORT || 3000,
-  hostapi: process.env.HOST ||  'localhost',
+  hostapi: process.env.HOST || 'localhost',
   nodeEnv: process.env.NODE_ENV || 'development',
   logLevel: process.env.LOG_LEVEL || 'info',
+
+  origins: process.env.CORS_ORIGINS || '*',
 
   // Global API Key
   globalApiKey: process.env.GLOBAL_API_KEY || 'default-api-key-change-me',
