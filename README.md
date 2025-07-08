@@ -5,22 +5,29 @@
 
 # Multi-Session Whatsapp usando Baileys
 
-API completa para gerenciamento de múltiplas sessões WhatsApp usando Baileys.
+<p align="center">
+  API robusta para gerenciamento de múltiplas sessões do WhatsApp utilizando <b>Baileys</b>.
+</p>
 
-## Funcionalidades
 
-- ✅ **Multi-sessão**: Gerencie múltiplas instâncias WhatsApp
-- ✅ **Autenticação via API Key**: Sistema seguro de autenticação
-- ✅ **QR Code**: Conexão via QR Code
-- ✅ **Webhooks**: Receba eventos em tempo real
-- ✅ **WebSocket**: Conexão em tempo real bidirecional
-- ✅ **Mensagens**: Envie texto, imagem, vídeo, áudio, documento, localização e enquetes
-- ✅ **Contatos**: Gerencie e verifique contatos
-- ✅ **Grupos**: Criação e gerenciamento de grupos
-- ✅ **Banco de dados**: Persistência com Mysql 8+
-- ✅ **Documentação**: Swagger UI completa e Postman
+---
 
-## Instalação
+## ✨ Funcionalidades
+
+- ✅ **Multi-Sessão**: Controle diversas instâncias do WhatsApp simultaneamente  
+- ✅ **Autenticação com API Key**: Segurança integrada com chave de acesso  
+- ✅ **Conexão via QR Code**: Fácil autenticação de dispositivos  
+- ✅ **Webhooks**: Receba notificações em tempo real  
+- ✅ **WebSocket**: Comunicação bidirecional em tempo real  
+- ✅ **Envio de Mensagens**: Texto, imagem, vídeo, áudio, documento, localização e enquetes  
+- ✅ **Gestão de Contatos**: Consulta e gerenciamento de contatos  
+- ✅ **Gestão de Grupos**: Criação e administração de grupos  
+- ✅ **Persistência com MySQL 8+**: Banco de dados estruturado  
+- ✅ **Documentação Swagger e Postman**: Fácil integração com documentação interativa  
+
+---
+
+## ⚙️ Instalação
 
 ```bash
 # Clone o projeto
@@ -30,7 +37,7 @@ cd FlashApi
 # Renomeia o .env de exemplo
 cp .env.exemplo .env
 
-> **Atenção:** Antes de iniciar, é necessário configurar o arquivo `.env` com as variáveis de ambiente apropriadas para o funcionamento da aplicação.
+> ⚠️ **Atenção:** Antes de iniciar, é necessário configurar o arquivo `.env` com as variáveis de ambiente apropriadas para o funcionamento da aplicação.
 
 # Instala as dependências
 npm install
@@ -49,9 +56,11 @@ npm start
 
 ## Configuração
 
-### 1. Criar API Key
+### 🔐 Criar Sessão
 
-Primeiro, crie uma API Key para autenticação:
+### Geração e Recuperação de QR Code na criação da sessão
+
+Se os parâmetros `criar_sessao` e `gerar_qrcode` forem definidos como `true`, o QR Code será gerado automaticamente no formato **Base64** na resposta da requisição, pronto para ser exibido e escaneado.
 
 ```bash
 curl -X POST http://localhost:3000/api/session/create_sessao \
@@ -63,6 +72,15 @@ curl -X POST http://localhost:3000/api/session/create_sessao \
     "criar_sessao": true,
     "gerar_qrcode": true
   }'
+```
+
+📌 Importante:
+Se gerar_qrcode for false ou a sessão já existir e precisar ser reconectada, utilize o endpoint abaixo para gerar ou recuperar o QR Code novamente:
+
+```bash
+curl -X PUT http://localhost:3000/api/session/conectar_sessao \
+  -H "accept: */*" \
+  -H "apikey: sua-api-key"
 ```
 
 ### 2. Usar a API Key
@@ -106,6 +124,7 @@ Requisição POST para:
   "to": "5599999999999",
   "text": "Olá, tudo bem?"
 }
+```
 
 ## WebSocket
 
@@ -185,6 +204,7 @@ Configure uma URL de webhook ao criar a sessão para receber eventos:
 - `POST /api/chat/send-audio` - Enviar áudio
 - `POST /api/chat/send-document` - Enviar documento
 - `POST /api/chat/send-location` - Enviar localização
+- `POST /api/chat/send-location` - Enviar localização
 
 ### Contatos
 - `GET /api/contact/list` - Listar contatos
@@ -203,33 +223,16 @@ Configure uma URL de webhook ao criar a sessão para receber eventos:
 
 Acesse a documentação completa em: http://localhost:3000/api-docs
 
-## Estrutura do Projeto
-
-```
-baileys-multi-session-api/
-├── src/
-│   ├── config/          # Configurações (database, swagger)
-│   ├── controllers/     # Lógica de negócio
-│   ├── middleware/      # Middlewares (auth, etc)
-│   ├── models/          # Modelos de dados
-│   ├── routes/          # Definição das rotas
-│   ├── services/        # Serviços (Baileys, Webhook, WebSocket)
-│   └── utils/           # Utilitários (logger, etc)
-├── sessions/            # Dados das sessões (criado automaticamente)
-├── database.sqlite      # Banco de dados SQLite
-├── package.json
-├── server.js           # Arquivo principal
-└── README.md
-```
 
 ## Tecnologias
 
 - **Node.js** - Runtime JavaScript
 - **Express** - Framework web
 - **Baileys** - Biblioteca WhatsApp Web
-- **SQLite** - Banco de dados leve
+- **MYSQL** - Banco de dados leve
 - **WebSocket** - Comunicação em tempo real
 - **Swagger** - Documentação da API
+- **Postman** - Documentação da API
 - **Pino** - Logger estruturado
 
 ## Segurança
