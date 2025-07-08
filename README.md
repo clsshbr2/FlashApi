@@ -501,3 +501,18 @@ Obrigado por apoiar o software livre! 🚀
 Siga-me para mais projetos incríveis!
 
 ---
+
+## 💬 Grupo de Suporte
+
+Tem dúvidas, sugestões ou quer trocar ideias com outros usuários?  
+Entre no nosso **Grupo de Suporte no WhatsApp** e fique por dentro das novidades! 🚀
+
+<p align="center">
+  <a href="https://chat.whatsapp.com/Jr3lvW2tbg38MZEMpUNZMI" target="_blank">
+    <img src="https://img.shields.io/badge/Entrar%20no%20grupo%20de%20suporte-25D366?style=for-the-badge&logo=whatsapp&logoColor=white" alt="WhatsApp">
+  </a>
+</p>
+
+> 📣 **Link de acesso direto:** [`https://chat.whatsapp.com/Jr3lvW2tbg38MZEMpUNZMI`](https://chat.whatsapp.com/Jr3lvW2tbg38MZEMpUNZMI)
+
+---
