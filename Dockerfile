@@ -1,11 +1,23 @@
+# Usa a imagem base oficial do Node
+FROM node:latest
 
-FROM node
+# Cria o diretório de trabalho
+WORKDIR /app
 
-WORKDIR /serverjs
+# Copia os arquivos para o container
+COPY package*.json ./
 
-COPY server.js .
+# Remover node_modules
+RUN rm -rf node_modules
 
+# Instala dependências
+RUN npm install
+
+# Copia o restante do código
+COPY . .
+
+# Expõe a porta
 EXPOSE 3000
 
-CMD ["node", "server.js"]
-
+# Comando para iniciar o app
+CMD ["npm", "start"]
