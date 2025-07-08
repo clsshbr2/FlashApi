@@ -1,3 +1,21 @@
+<h1 align="center">Evolution Api</h1>
+
+<div align="center">
+
+[![Docker Image	(https://img.shields.io/badge/Docker-Image-blue)](https://hub.docker.com/r/evoapicloud/evolution-api)]
+[![Whatsapp Group](https://img.shields.io/badge/Group-WhatsApp-%2322BC18)](https://evolution-api.com/whatsapp)
+[![Discord Community](https://img.shields.io/badge/Discord-Community-blue)](https://evolution-api.com/discord)
+[![Postman Collection](https://img.shields.io/badge/Postman-Collection-orange)](https://evolution-api.com/postman) 
+[![Documentation](https://img.shields.io/badge/Documentation-Official-green)](https://doc.evolution-api.com)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](./LICENSE)
+[![Support](https://img.shields.io/badge/Donation-picpay-green)](https://app.picpay.com/user/davidsongomes1998)
+[![Sponsors](https://img.shields.io/badge/Github-sponsor-orange)](https://github.com/sponsors/EvolutionAPI)
+
+</div>
+  
+<div align="center"><img src="./public/images/cover.png"></div>
+
+
 # Baileys Multi-Session API
 
 API completa para gerenciamento de múltiplas sessões WhatsApp usando Baileys.
@@ -6,14 +24,14 @@ API completa para gerenciamento de múltiplas sessões WhatsApp usando Baileys.
 
 - ✅ **Multi-sessão**: Gerencie múltiplas instâncias WhatsApp
 - ✅ **Autenticação via API Key**: Sistema seguro de autenticação
-- ✅ **QR Code**: Conexão via QR Code ou código direto
+- ✅ **QR Code**: Conexão via QR Code
 - ✅ **Webhooks**: Receba eventos em tempo real
 - ✅ **WebSocket**: Conexão em tempo real bidirecional
-- ✅ **Mensagens**: Envie texto, imagem, vídeo, áudio, documento e localização
+- ✅ **Mensagens**: Envie texto, imagem, vídeo, áudio, documento, localização e enquetes
 - ✅ **Contatos**: Gerencie e verifique contatos
 - ✅ **Grupos**: Criação e gerenciamento de grupos
-- ✅ **Banco de dados**: Persistência com SQLite
-- ✅ **Documentação**: Swagger UI completa
+- ✅ **Banco de dados**: Persistência com Mysql 8+
+- ✅ **Documentação**: Swagger UI completa e Postman
 
 ## Instalação
 
