@@ -11,6 +11,8 @@ class Store {
   // ===== MENSAGENS =====
   static async saveMessage(sessionId, messageData) {
     try {
+      const MESSAGE_STATUSES = ['received', 'sent', 'delivered', 'read'];
+      const status = MESSAGE_STATUSES.includes(messageData.status) ? messageData.status : 'received';
       // Converter Long para número ou string
       const timestamp = messageData.messageTimestamp
         ? Long.isLong(messageData.messageTimestamp)
@@ -33,7 +35,7 @@ class Store {
         messageData.messageType || 'unknown',
         JSON.stringify(messageData.message || {}),
         timestamp,
-        messageData.status || 'received'
+        status
       ]);
       return true;
     } catch (error) {

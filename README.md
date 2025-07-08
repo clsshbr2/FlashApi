@@ -79,13 +79,14 @@ axios.post('http://localhost:3000/api/session/create_sessao', data, {
   }
 })
 .then(response => {
+ const res = response.data;
 
-  if(response.success){
+  if(res.success){
       console.log('✅ Sessão criada com sucesso!');
-      console.log('Name Sessão: ' response.dados.name)
-      console.log('Apikey: ' response.dados.apikey)
-      console.log('Qrcode: ' response.dados.qrcode)
-      console.log('Dados: ', response.dados)
+      console.log('Name Sessão: ' res.dados.name)
+      console.log('Apikey: ' res.dados.apikey)
+      console.log('Qrcode: ' res.dados.qrcode)
+      console.log('Dados: ', res.dados)
 
   }else{
          console.log('❌ Error ao criar Sessão!');
@@ -101,6 +102,7 @@ axios.post('http://localhost:3000/api/session/create_sessao', data, {
   ---
 
 ### 🔐 Recuperar QR Code
+
 📌 Importante:
 Se gerar_qrcode for false na criação ou a sessão já existir, utilize o endpoint abaixo para reconectar e gerar o QR Code novamente:
 
@@ -115,10 +117,10 @@ axios.put('http://localhost:3000/api/session/conectar_sessao', data, {
   }
 })
 .then(response => {
-
-  if(response.success){
+ const res = response.data;
+  if(res.success){
       console.log('✅ Qrcode gerado com sucesso!');
-      console.log('Qrcode: ' response.qrcode)
+      console.log('Qrcode: ' res.qrcode)
 
   }else{
     console.log('⚠️ Sessão já conectada ou QR Code não necessário.');
@@ -131,64 +133,240 @@ axios.put('http://localhost:3000/api/session/conectar_sessao', data, {
 
 ```
 
+  ---
 
-
-### 3. Enviar Mensagem
-## 🔄 Enviar Mensagem
-
-Requisição POST para:  
-`http://localhost:3000/api/chat/send-text`
-
-### Body (JSON)
-```json
-{
-  "to": "5599999999999",
-  "text": "Olá, tudo bem?"
-}
-```
-
-## WebSocket
-
-### Conectar ao WebSocket
+### 🔐 Reniciar sessão
 
 ```javascript
-const ws = new WebSocket('ws://localhost:3000');
+const axios = require('axios');
 
-// Autenticar
-ws.send(JSON.stringify({
-  type: 'auth',
-  apiKey: 'sua-api-key'
-}));
+axios.put('http://localhost:3000/api/session/restart', {
+  headers: {
+    'apikey': 'sua-api-key'
+  }
+})
+.then(response => {
+ const res = response.data;
 
-// Inscrever-se nos eventos de uma sessão
-ws.send(JSON.stringify({
-  type: 'subscribe',
-  sessionId: 'minha-sessao'
-}));
+  if(res.success){
+      console.log('✅ Sessão reniciada com sucesso');
 
-// Escutar eventos
-ws.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-  console.log('Evento recebido:', data);
-};
+  }else{
+    console.log('⚠️ Algo deu errado');
+  }
+})
+.catch(error => {
+  console.error('❌ Erro ao reniciar sessão:');
+  console.error(error.response?.data || error.message);
+});
 ```
 
-## Webhooks
+  ---
 
-Configure uma URL de webhook ao criar a sessão para receber eventos:
+### 🔍 Verificar Status da Sessão
 
-### Eventos Disponíveis
+```javascript
+const axios = require('axios');
 
-- `qr_updated`: Novo QR Code gerado
-- `session_connected`: Sessão conectada com sucesso
-- `session_disconnected`: Sessão desconectada
-- `message_received`: Nova mensagem recebida
-- `presence_update`: Atualização de presença
-- `chats_update`: Atualização de chats
-- `contacts_update`: Atualização de contatos
-- `groups_update`: Atualização de grupos
+axios.get('http://localhost:3000/api/session/status', {
+  headers: {
+    'apikey': 'sua-api-key'
+  }
+})
+.then(response => {
+ const res = response.data;
 
-### Formato do Webhook
+  if(res.success){
+    console.log('Status sessão: ', res);
+  }else{
+    console.log('⚠️ Sessão Deve ta conectada');
+  }
+})
+.catch(error => {
+  console.error('❌ Erro ao Reniciar sessão:');
+  console.error(error.response?.data || error.message);
+});
+```
+
+  ---
+
+### 🔄 Enviar Mensagem
+
+```javascript
+const axios = require('axios');
+const data = {
+  "to": "5599999999999",
+  "text": "Olá! 😄 Tudo bem? 🚀",
+  "linkPreview": false,
+  "mentions": [
+    "string"
+  ],
+  "delay": 1200,
+  "useQueue": false
+}
+axios.post('http://localhost:3000/api/chat/send-text', data, {
+  headers: {
+    'Content-Type': 'application/json',
+    'apikey': 'sua-api-key'
+  }
+})
+.then(response => {
+ const res = response.data;
+
+  if(res.success){
+    console.log('Mensagem enviada dados: ', res);
+  }else{
+    console.log('⚠️ Erro ao enviar mensagem');
+  }
+})
+.catch(error => {
+  console.error('❌ Erro ao enviar mensagem:');
+  console.error(error.response?.data || error.message);
+});
+```
+
+  ---
+
+### 🌐 WebSocket
+```javascript
+/**
+ * Autenticação de segurança para o WebSocket da Flash API.
+ * O cliente deve autenticar em até 1 minuto (ou o tempo definido em AUTH_TIMEOUT no .env) enviando uma mensagem { type: "auth", secret: string, modo: string }.
+ * A não autenticação dentro do prazo resulta na desconexão automática do WebSocket.
+ */
+
+const WebSocket = require('ws');
+require('dotenv').config();
+
+const Websocket = 'ws://localhost:3000'
+const modo = 'client' // global/client
+const secret = 'e857f4a4-0ec1-4343-9faf-25c4187a5674' //GLOBAL_WEBSOCKET_SECRET ou apikey da instacia
+
+/*
+ * Define o secret para autenticação WebSocket com base no modo:
+ * - 'global': Usa o GLOBAL_WEBSOCKET_SECRET do arquivo .env.
+ * - 'client': Usa a apiKey da instância do cliente.
+ */
+
+function connectWebSocket() {
+    const ws = new WebSocket(Websocket);
+
+
+    ws.onopen = () => {
+        console.log('Conectado ao WebSocket');
+
+        // Implementar autenticação segura via WebSocket
+        ws.send(JSON.stringify({
+            type: 'auth',
+            secret,
+            modo,
+            events: [
+                "presence_update",
+                "qr_updated",
+                "session_disconnected",
+                "session_connected",
+                "message_received",
+                "message_update",
+                "presence_update"
+            ]
+        }));
+
+
+        // Inicia o intervalo de ping
+        setInterval(() => {
+            ws.send(JSON.stringify({
+                type: 'ping'
+            }));
+        }, 60000);
+    };
+
+    ws.onmessage = (event) => {
+
+        const data = JSON.parse(event.data)
+        if (data.type) {
+            switch (data.type) {
+
+                //evento de error
+                case "error":
+                    console.log('Mensagem de erro do websocket: ')
+                    console.log(data.message)
+                    break;
+
+                //Boas vindas do websocket
+                case "welcome":
+                    console.log('Você está conectado no websocket da Flash Api:')
+                    console.log('   Mensagem: ', data.message)
+                    console.log('   Cliente ID: ', data.clientId)
+                    break;
+
+                //Autenticação com o websocket com sucesso
+                case "auth_success":
+                    console.log(`${data.message}: `)
+                    console.log('   Cliente ID: ', data.clientId)
+                    console.log('   Eventos: ', data.events)
+                    break;
+
+                //Verificação de ping
+                case "pong":
+                    console.log('Verificação de conexão')
+                    console.log('   timestamp: ', data.timestamp)
+                    console.log('   Cliente ID: ', data.clientId)
+                    break;
+
+                //Verificação de ping
+                case "event":
+                    if(data.event == 'message_received'){
+                        console.log('mensagem recebida: ', data)
+                    }
+                   break;
+            }
+        }
+
+        
+    }
+
+    ws.onclose = (event) => {
+        console.log(`Conexão fechada. Código: ${event.code}, Motivo: ${event.reason}`);
+    }
+
+}
+connectWebSocket();
+```
+
+---
+
+### 📡 Webhooks
+
+---
+
+Você pode configurar uma **URL de Webhook** ao criar uma sessão para receber notificações automáticas em tempo real sobre eventos do sistema. Isso permite que você integre e reaja a atividades importantes de forma dinâmica e eficiente! ⚙️📲
+
+---
+
+### 📥 Eventos Disponíveis
+
+---
+
+| Evento                  | Descrição                              | Emoji |
+|-------------------------|------------------------------------------|:-----:|
+| `presence_update`       | Atualização de presença (ex: online)     | 🟢    |
+| `qr_updated`            | Novo QR Code gerado                     | 📷    |
+| `session_disconnected`  | Sessão foi desconectada                 | ❌    |
+| `session_connected`     | Sessão conectada com sucesso            | ✅    |
+| `message_received`      | Nova mensagem recebida                  | 📩    |
+| `message_update`        | Mensagem foi editada ou atualizada      | ✏️    |
+
+> 🔔 **Dica:** Os eventos são enviados como **POST** com payload em formato JSON. Certifique-se de que seu endpoint esteja acessível e pronto para lidar com essas requisições!
+
+---
+
+### 📦 Formato do Webhook
+
+---
+
+Os webhooks são enviados como requisições **POST** com conteúdo em **JSON**, contendo os dados do evento que ocorreu.
+
+#### 🧾 Exemplo de Payload:
 
 ```json
 {
@@ -203,58 +381,83 @@ Configure uma URL de webhook ao criar a sessão para receber eventos:
   }
 }
 ```
+---
 
-## Endpoints Principais
+## 🚀 Endpoints Principais
 
-### Autenticação
-- `POST /api/auth/create-key` - Criar API Key
-- `GET /api/auth/keys` - Listar API Keys
-- `PATCH /api/auth/deactivate-key/:id` - Desativar API Key
+---
 
-### Sessões
-- `POST /api/session/create` - Criar sessão
-- `GET /api/session/qr/:sessionId` - Obter QR Code
-- `GET /api/session/status/:sessionId` - Status da sessão
-- `GET /api/session/list` - Listar sessões
-- `DELETE /api/session/delete/:sessionId` - Deletar sessão
+### 🔐 Sessões
 
-### Chat
-- `POST /api/chat/send-text` - Enviar texto
-- `POST /api/chat/send-image` - Enviar imagem
-- `POST /api/chat/send-video` - Enviar vídeo
-- `POST /api/chat/send-audio` - Enviar áudio
-- `POST /api/chat/send-document` - Enviar documento
-- `POST /api/chat/send-location` - Enviar localização
-- `POST /api/chat/send-location` - Enviar localização
+| Método | Endpoint                              | Descrição                              |
+|--------|----------------------------------------|----------------------------------------|
+| POST   | `/api/session/create_sessao`           | Criar nova sessão                      |
+| PUT    | `/api/session/conectar_sessao`         | Conectar uma sessão existente          |
+| PUT    | `/api/session/restart`                 | Reiniciar uma sessão conectada         |
+| GET    | `/api/session/status/`                 | Verificar status da sessão             |
+| GET    | `/api/session/list`                    | Listar todas as sessões                |
+| POST   | `/api/session/reconnect`               | Forçar reconexão da sessão             |
+| DELETE | `/api/session/delete/{sessionId}`      | Deletar uma sessão                     |
 
-### Contatos
-- `GET /api/contact/list` - Listar contatos
-- `GET /api/contact/profile` - Perfil do contato
-- `POST /api/contact/check` - Verificar números
+---
 
-### Grupos
-- `GET /api/group/list` - Listar grupos
-- `GET /api/group/info` - Info do grupo
-- `POST /api/group/create` - Criar grupo
-- `POST /api/group/add-participant` - Adicionar participante
-- `POST /api/group/remove-participant` - Remover participante
-- `POST /api/group/leave` - Sair do grupo
+### 💬 Chat
 
-## Documentação
+| Método | Endpoint                         | Descrição           |
+|--------|----------------------------------|---------------------|
+| POST   | `/api/chat/send-text`           | Enviar mensagem de texto    |
+| POST   | `/api/chat/send-image`          | Enviar imagem       |
+| POST   | `/api/chat/send-video`          | Enviar vídeo        |
+| POST   | `/api/chat/send-audio`          | Enviar áudio        |
+| POST   | `/api/chat/send-document`       | Enviar documento    |
+| POST   | `/api/chat/send-location`       | Enviar localização  |
+| POST   | `/api/chat/send-poll`           | Enviar enquete      |
 
-Acesse a documentação completa em: http://localhost:3000/api-docs
+---
 
+### 📇 Contatos
+
+| Método | Endpoint                    | Descrição              |
+|--------|-----------------------------|------------------------|
+| GET    | `/api/contact/list`         | Listar contatos        |
+| GET    | `/api/contact/profile`      | Obter perfil do contato|
+| POST   | `/api/contact/check`        | Verificar número       |
+
+---
+
+### 👥 Grupos
+
+| Método | Endpoint                            | Descrição                 |
+|--------|-------------------------------------|---------------------------|
+| GET    | `/api/group/list`                   | Listar grupos             |
+| GET    | `/api/group/info`                   | Obter informações do grupo|
+| POST   | `/api/group/create`                 | Criar novo grupo          |
+| POST   | `/api/group/add-participant`        | Adicionar participante    |
+| POST   | `/api/group/remove-participant`     | Remover participante      |
+| POST   | `/api/group/leave`                  | Sair do grupo             |
+
+---
+
+## 📚 Documentação
+
+Acesse a documentação interativa via Swagger:
+
+🔗 [`http://localhost:3000/api-docs`](http://localhost:3000/api-docs)
+
+---
 
 ## Tecnologias
 
 - **Node.js** - Runtime JavaScript
 - **Express** - Framework web
 - **Baileys** - Biblioteca WhatsApp Web
-- **MYSQL** - Banco de dados leve
+- **MYSQL** - Banco de dados
 - **WebSocket** - Comunicação em tempo real
 - **Swagger** - Documentação da API
 - **Postman** - Documentação da API
 - **Pino** - Logger estruturado
+
+---
 
 ## Segurança
 
@@ -264,6 +467,8 @@ Acesse a documentação completa em: http://localhost:3000/api-docs
 - Validação de dados
 - Logs estruturados
 
+---
+
 ## Suporte
 
 Para dúvidas ou problemas:
@@ -272,6 +477,22 @@ Para dúvidas ou problemas:
 3. Verifique a conectividade da sessão
 4. Confirme se a API Key está ativa
 
-## Licença
+---
 
-MIT License
+## ☕ Apoie este Projeto
+
+Este projeto é **open source** e feito com 💚 para a comunidade.
+
+Se ele te ajudou de alguma forma, considere fazer uma contribuição voluntária.  
+Assim você me ajuda a continuar mantendo e evoluindo este trabalho!
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Chave%20PIX-cleiton.gomes%40email.com-9647FF?style=for-the-badge&logo=pix&logoColor=white" alt="PIX">
+</p>
+
+> 📲 **Chave PIX:** `cleiton.gomes@email.com`
+
+Obrigado por apoiar o software livre! 🚀  
+Siga-me para mais projetos incríveis!
+
+---

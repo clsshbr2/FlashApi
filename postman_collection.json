@@ -9,7 +9,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "8f1ad909-5b11-4506-b40b-fb30b54be08c",
+                            "id": "929dd813-17fe-4a22-af2e-b809747102ac",
                             "name": "Enviar mensagem de texto",
                             "request": {
                                 "name": "Enviar mensagem de texto",
@@ -66,7 +66,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "1ce3116e-139e-4f28-a2ea-3f5916398018",
+                                    "id": "edb556a9-23db-431e-a409-0a7bb5a454c4",
                                     "name": "Mensagem enviada com sucesso",
                                     "originalRequest": {
                                         "url": {
@@ -135,7 +135,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "54cf6ce4-5ff8-486e-b3e5-93d9a77c6c0a",
+                            "id": "311b5c9c-587c-4fe2-912a-d36a3da939ab",
                             "name": "Enviar imagem",
                             "request": {
                                 "name": "Enviar imagem",
@@ -192,7 +192,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "c92c6616-c296-4055-a679-d30cc47c5fb1",
+                                    "id": "76e9d766-82e6-4e3c-a99f-7a335cec9092",
                                     "name": "imagem enviada com sucesso",
                                     "originalRequest": {
                                         "url": {
@@ -261,7 +261,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "d8d18599-f589-46c0-a021-7df134d5d97f",
+                            "id": "350bff3c-7b21-407b-85da-60e6a4cc4766",
                             "name": "Enviar Video",
                             "request": {
                                 "name": "Enviar Video",
@@ -318,7 +318,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "2f4d3c2c-cd21-43ba-b33b-6d9d9ad547cc",
+                                    "id": "3cd3249d-2e06-45a1-a0fc-ff1f496b444c",
                                     "name": "Mensagem enviada com sucesso",
                                     "originalRequest": {
                                         "url": {
@@ -387,7 +387,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "7fd74b00-f688-4bb6-87fb-22787ef1a502",
+                            "id": "210bf8ba-2f18-4040-80a2-0169e169f666",
                             "name": "Enviar áudio",
                             "request": {
                                 "name": "Enviar áudio",
@@ -440,7 +440,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "0677c026-4794-4ddf-ab8c-94c6d7e9dc3d",
+                                    "id": "64388bbb-31f4-415c-9680-68d1e3ef958c",
                                     "name": "Áudio enviado com sucesso",
                                     "originalRequest": {
                                         "url": {
@@ -499,7 +499,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "e507802c-dc8f-45ee-b5fe-9972a51f5a53",
+                            "id": "a92556a5-2158-4769-bf4d-b938b273038e",
                             "name": "Enviar documento",
                             "request": {
                                 "name": "Enviar documento",
@@ -552,7 +552,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "7c6d61cf-61bd-4b38-9a3e-87b0f094c32b",
+                                    "id": "dee4d514-2aeb-47d8-b70e-81b6f7077326",
                                     "name": "Documento enviado com sucesso",
                                     "originalRequest": {
                                         "url": {
@@ -611,7 +611,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "bd327092-e114-4612-a293-40334c42282f",
+                            "id": "e03ab3e8-6a57-4caf-9db5-873381af1e48",
                             "name": "Enviar localização",
                             "request": {
                                 "name": "Enviar localização",
@@ -664,7 +664,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "172c2758-43b3-4333-819f-f8c05d8649dd",
+                                    "id": "3110eda2-9b3b-4db8-9efa-f865d07225e8",
                                     "name": "Localização enviada com sucesso",
                                     "originalRequest": {
                                         "url": {
@@ -723,7 +723,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "41bc2b38-dcf5-4b6b-b647-ecd83026bcc3",
+                            "id": "3ea05e10-b557-49fa-b2a3-31c81486f476",
                             "name": "Enviar contato",
                             "request": {
                                 "name": "Enviar contato",
@@ -776,7 +776,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "877d6947-81d7-4339-9dc5-c7eeec3e0d5d",
+                                    "id": "27e42f85-bc5b-4f45-ba65-fe27e8c8c9cd",
                                     "name": "Contato enviado com sucesso",
                                     "originalRequest": {
                                         "url": {
@@ -835,7 +835,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "12697f23-af25-4499-b3be-262a6cec7b58",
+                            "id": "4c7769d0-3e28-4f9f-afeb-8e1858fe3903",
                             "name": "Enviar sticker",
                             "request": {
                                 "name": "Enviar sticker",
@@ -888,7 +888,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "623c12e0-39b0-41c1-9000-df79d21b4372",
+                                    "id": "72c773f3-0d55-49ce-b0cc-da59f9162378",
                                     "name": "Sticker enviado com sucesso",
                                     "originalRequest": {
                                         "url": {
@@ -947,7 +947,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "763e7da2-22a0-4105-88db-c612bb26a5df",
+                            "id": "08b05c4c-4c34-4202-a6a7-f28101a7cdfd",
                             "name": "Enviar reação a uma mensagem",
                             "request": {
                                 "name": "Enviar reação a uma mensagem",
@@ -1000,7 +1000,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "a0fadf4d-9246-47ce-a6a4-5a6b16ac8a74",
+                                    "id": "e72fccce-784a-442c-b083-348a7fe126f8",
                                     "name": "Reação enviada com sucesso",
                                     "originalRequest": {
                                         "url": {
@@ -1059,7 +1059,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "c23f1085-1d47-4e32-abf4-534050966278",
+                            "id": "5f674b47-7c21-4a0a-9c8f-85b76a09fdd1",
                             "name": "Enviar enquete",
                             "request": {
                                 "name": "Enviar enquete",
@@ -1112,7 +1112,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "f7ffd099-f663-4a7c-a319-fda32489caf6",
+                                    "id": "11e2198c-a3d2-45d3-be62-5f707a66a24c",
                                     "name": "Enquete enviada com sucesso",
                                     "originalRequest": {
                                         "url": {
@@ -1171,7 +1171,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "c29144ef-3ff4-40b5-b580-85ce1f55ac17",
+                            "id": "96018d73-5ada-4469-bbca-31ef022adaf1",
                             "name": "Enviar status de digitação",
                             "request": {
                                 "name": "Enviar status de digitação",
@@ -1224,7 +1224,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "44c79fea-ac85-4d57-b500-8de9f21641ae",
+                                    "id": "67785e32-2789-4122-8c63-81c7881cd9e2",
                                     "name": "Status de digitação enviado com sucesso",
                                     "originalRequest": {
                                         "url": {
@@ -1283,7 +1283,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "737f5af1-01dc-4055-a0fc-1286c432b57c",
+                            "id": "bc4ac836-447b-4589-ba28-172d64d051aa",
                             "name": "Marcar mensagem como lida",
                             "request": {
                                 "name": "Marcar mensagem como lida",
@@ -1336,7 +1336,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "6b217e87-dcd3-4c67-80dc-5397635d4e45",
+                                    "id": "2efb4bfb-be82-4c66-8228-37f74a555868",
                                     "name": "Mensagem marcada como lida com sucesso",
                                     "originalRequest": {
                                         "url": {
@@ -1395,7 +1395,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "ef2270bd-7d5a-4527-848d-1f52a672e5c9",
+                            "id": "fa964758-046f-44de-b46d-b377b927523f",
                             "name": "Obter mensagens do chat",
                             "request": {
                                 "name": "Obter mensagens do chat",
@@ -1461,7 +1461,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "db28a88a-8767-4205-9499-8734d1723e1b",
+                                    "id": "8d5690cc-6f6d-4587-881a-deaa0e4f4df1",
                                     "name": "Lista de mensagens",
                                     "originalRequest": {
                                         "url": {
@@ -1535,7 +1535,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "0c23210a-888b-41e8-b409-c9fe8c8f44bb",
+                            "id": "e7cc3bb4-9ac7-4251-8b95-fba9205d73b2",
                             "name": "Obter lista de chats",
                             "request": {
                                 "name": "Obter lista de chats",
@@ -1573,7 +1573,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "bdd21fc7-0ea4-452d-8959-788f3ee692ed",
+                                    "id": "6701505c-9868-40b3-a8b0-f6154fa37294",
                                     "name": "Lista de chats",
                                     "originalRequest": {
                                         "url": {
@@ -1623,7 +1623,7 @@
                             "description": "",
                             "item": [
                                 {
-                                    "id": "77fd15fd-ef61-4900-acbd-6c95ba8b2242",
+                                    "id": "79c43a33-618b-40e9-b313-b111a40565ed",
                                     "name": "Obter status da fila de mensagens",
                                     "request": {
                                         "name": "Obter status da fila de mensagens",
@@ -1662,7 +1662,7 @@
                                     },
                                     "response": [
                                         {
-                                            "id": "8a88a8ad-d220-4898-b5dd-b01bb4010813",
+                                            "id": "d8cab48e-dc01-4209-a3f6-08d6551af513",
                                             "name": "Status da fila",
                                             "originalRequest": {
                                                 "url": {
@@ -1709,7 +1709,7 @@
                             "description": "",
                             "item": [
                                 {
-                                    "id": "4c6e15c9-fed6-4d8a-acf4-efa8b143b755",
+                                    "id": "67c28f3f-6fde-4d70-b477-bbd925a0ef59",
                                     "name": "Limpar fila de mensagens",
                                     "request": {
                                         "name": "Limpar fila de mensagens",
@@ -1748,7 +1748,7 @@
                                     },
                                     "response": [
                                         {
-                                            "id": "cc2d77b8-d6f6-4fcb-85f7-ec9c529e413a",
+                                            "id": "4d7142bc-b167-4fa6-bbe2-830fa663b853",
                                             "name": "Fila limpa com sucesso",
                                             "originalRequest": {
                                                 "url": {
@@ -1801,7 +1801,7 @@
                             "description": "",
                             "item": [
                                 {
-                                    "id": "e4924fea-ed66-48f4-8194-bddb26d6ea46",
+                                    "id": "710f52f5-7392-4fa7-a1ee-7f396c95c637",
                                     "name": "Deleta uma mensagem específica com base no ID fornecido",
                                     "request": {
                                         "name": "Deleta uma mensagem específica com base no ID fornecido",
@@ -1857,7 +1857,7 @@
                                     },
                                     "response": [
                                         {
-                                            "id": "2b0df334-1398-4820-9dd0-8fb49daded77",
+                                            "id": "4d9e0644-644d-4f39-b59d-29ff6bed12da",
                                             "name": "Mensagem deletada com sucesso",
                                             "originalRequest": {
                                                 "url": {
@@ -1922,7 +1922,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "573d4553-c087-47c5-830e-6e08e7325810",
+                            "id": "2c842a03-3318-487c-85d2-b6fe7bce70d7",
                             "name": "Atualizar configurações da sessão",
                             "request": {
                                 "name": "Atualizar configurações da sessão",
@@ -1975,7 +1975,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "d8521808-327c-4cb1-9f09-03e7ea8c48aa",
+                                    "id": "4e37fbc1-45ed-4e16-9c6b-cfa59c72ff33",
                                     "name": "Configurações atualizadas com sucesso",
                                     "originalRequest": {
                                         "url": {
@@ -2034,7 +2034,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "17ae1fe6-04c8-46bf-993b-b797811ab983",
+                            "id": "2f5aa341-758a-4d5c-a9bd-6ad78c04d3c8",
                             "name": "Obter configurações da sessão",
                             "request": {
                                 "name": "Obter configurações da sessão",
@@ -2072,7 +2072,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "3c000984-445a-413a-8ae6-31fb61b5984a",
+                                    "id": "d8cc9789-ff2a-4ad8-b22e-c0ac741769a5",
                                     "name": "Configurações da sessão",
                                     "originalRequest": {
                                         "url": {
@@ -2118,7 +2118,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "2e734275-5c24-4e71-8dd8-f619ae8d15d6",
+                            "id": "ceaabb15-2900-47f3-9238-f5ac5dfe1e67",
                             "name": "Configurar webhook da sessão",
                             "request": {
                                 "name": "Configurar webhook da sessão",
@@ -2175,7 +2175,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "3e73251a-5e2f-4d07-853e-2a0d97cc8760",
+                                    "id": "13d6f343-b9d7-4f6e-b265-b3deac9f1ac6",
                                     "name": "Webhook adicionado com sucesso",
                                     "originalRequest": {
                                         "url": {
@@ -2244,7 +2244,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "01682096-67c6-453d-9758-70c38bdf2400",
+                            "id": "dea20f5a-9312-42b5-9d66-3db025cd6694",
                             "name": "Obter estatísticas da sessão",
                             "request": {
                                 "name": "Obter estatísticas da sessão",
@@ -2282,7 +2282,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "36746ec5-5544-44b4-97cf-fccd91256737",
+                                    "id": "c22b1553-117f-40a2-83ae-720dc01c346f",
                                     "name": "Estatísticas da sessão",
                                     "originalRequest": {
                                         "url": {
@@ -2334,7 +2334,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "65416638-b0cd-4442-b42f-7eb615cbcf2e",
+                            "id": "97ec6810-12f7-4090-a36a-7400314f986a",
                             "name": "Listar contatos da sessão",
                             "request": {
                                 "name": "Listar contatos da sessão",
@@ -2372,7 +2372,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "437498ba-e993-4e4b-b8a4-7b425a86fe68",
+                                    "id": "309e3c58-4ab0-4f3a-8a5a-97a4dd9b141d",
                                     "name": "Lista de contatos",
                                     "originalRequest": {
                                         "url": {
@@ -2418,7 +2418,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "7f1151af-a50f-4ad9-a528-5230c742e256",
+                            "id": "be5c8d26-e41b-4cf6-a8ca-0e1553ff12a6",
                             "name": "Sincronizar contatos manualmente",
                             "request": {
                                 "name": "Sincronizar contatos manualmente",
@@ -2456,7 +2456,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "75ce18f2-725b-4a8c-a1cf-ecdcafe06620",
+                                    "id": "3a5b468e-4851-4cd4-bca7-cb0d5ad5de43",
                                     "name": "Contatos sincronizados com sucesso",
                                     "originalRequest": {
                                         "url": {
@@ -2502,7 +2502,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "724a9140-3b79-465a-9a91-5cc213208cf6",
+                            "id": "b33acb17-a41b-4bd1-9151-cdf19c4bb482",
                             "name": "Forçar sincronização completa (contatos, chats, grupos)",
                             "request": {
                                 "name": "Forçar sincronização completa (contatos, chats, grupos)",
@@ -2540,7 +2540,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "0b0a37a3-4912-4303-9969-a20b0abeb4b1",
+                                    "id": "1d5e7def-b9ef-4358-bb28-501f30fe228d",
                                     "name": "Sincronização completa iniciada",
                                     "originalRequest": {
                                         "url": {
@@ -2586,7 +2586,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "2f61a69f-9182-4fea-8d7b-4b246144193d",
+                            "id": "5f2f7803-0895-4bd3-94a3-36a70a5a6c17",
                             "name": "Obter perfil de um contato",
                             "request": {
                                 "name": "Obter perfil de um contato",
@@ -2639,7 +2639,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "126acaf6-1da5-4e4d-b3cb-35b7a7b86bb0",
+                                    "id": "e21e70c3-50b4-44cc-9c5c-5872a1906117",
                                     "name": "Perfil do contato",
                                     "originalRequest": {
                                         "url": {
@@ -2698,7 +2698,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "ea932d72-7b19-4420-9f81-21095aa19e73",
+                            "id": "86eb3fbe-7e8f-4356-b9d8-f07d6087495d",
                             "name": "Verificar se números estão no WhatsApp",
                             "request": {
                                 "name": "Verificar se números estão no WhatsApp",
@@ -2751,7 +2751,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "b9e51c18-ff10-46ff-ab39-641c8ca1e08e",
+                                    "id": "668fdca2-adc1-48bd-89b9-e5c8bc7ef962",
                                     "name": "Resultado da verificação",
                                     "originalRequest": {
                                         "url": {
@@ -2810,7 +2810,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "8e93ed0f-eb24-4e92-a86b-bf01c1fcc7ed",
+                            "id": "c38ea661-88a8-4c9d-87de-2d9c88c92d58",
                             "name": "Bloquear contato",
                             "request": {
                                 "name": "Bloquear contato",
@@ -2863,7 +2863,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "4101f037-471d-4372-9aec-6956f99283c2",
+                                    "id": "3694fe1e-f02d-47e2-be65-5ead8fbc2484",
                                     "name": "Contato bloqueado com sucesso",
                                     "originalRequest": {
                                         "url": {
@@ -2922,7 +2922,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "11d94abe-272e-4b5e-8a19-cfc08e537406",
+                            "id": "d17d89f0-bf0e-43a7-ab59-38bb2785c85d",
                             "name": "Desbloquear contato",
                             "request": {
                                 "name": "Desbloquear contato",
@@ -2975,7 +2975,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "73a31dec-17e6-4da5-a2c5-5badc8e4a2f0",
+                                    "id": "daf4ed50-a314-4106-ae74-9a5361d77888",
                                     "name": "Contato desbloqueado com sucesso",
                                     "originalRequest": {
                                         "url": {
@@ -3040,7 +3040,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "4385528c-63a2-40a1-8ac9-fb3631490d10",
+                            "id": "14ce0435-04eb-4d9a-81fd-769b3a019a60",
                             "name": "Criar Sessao",
                             "request": {
                                 "name": "Criar Sessao",
@@ -3093,7 +3093,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "ba46c3d1-1d9a-471d-9eaf-3f2aa7d21252",
+                                    "id": "4c80d77b-3402-498d-a041-fc8407479979",
                                     "name": "Sessão criada com sucesso",
                                     "originalRequest": {
                                         "url": {
@@ -3152,7 +3152,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "d8d06e85-dc21-4785-b6b9-b9c2a927bdb1",
+                            "id": "44f6ea91-600d-4249-ab72-ee0c80bed932",
                             "name": "Conectar a uma sessão WhatsApp existente",
                             "request": {
                                 "name": "Conectar a uma sessão WhatsApp existente",
@@ -3190,7 +3190,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "9b2c6100-f4b5-4130-b1b6-5c84082cd928",
+                                    "id": "a12a8ced-3b7e-4f5a-b751-ec1baf2e24f3",
                                     "name": "Você recebe um base64 com qrcode",
                                     "originalRequest": {
                                         "url": {
@@ -3236,7 +3236,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "0bdc8797-b818-4434-8705-892dc9760b40",
+                            "id": "538cae03-e6d0-4b55-98c1-c56a983ad544",
                             "name": "Reniciar uma sessão conectada",
                             "request": {
                                 "name": "Reniciar uma sessão conectada",
@@ -3274,7 +3274,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "1ff40f8f-29c9-4e6b-9056-1ac6ce14d604",
+                                    "id": "e6e4b7d7-4a48-4bbc-ba49-4194645c9777",
                                     "name": "Você recebe uma mensagem de sucesso",
                                     "originalRequest": {
                                         "url": {
@@ -3320,7 +3320,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "d6c70e31-61aa-4ae1-8126-08c38244dab7",
+                            "id": "3dcb13fd-70e2-4cf5-98b8-6c3cacecb441",
                             "name": "Obter status da sessão",
                             "request": {
                                 "name": "Obter status da sessão",
@@ -3359,7 +3359,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "aed28faf-d06b-4017-95d9-bb693efc22eb",
+                                    "id": "a3aae29f-5258-404d-a683-8ffcaf6e3429",
                                     "name": "Status obtido com sucesso",
                                     "originalRequest": {
                                         "url": {
@@ -3406,7 +3406,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "e1738706-ee58-43df-89af-c7601044556b",
+                            "id": "f18dcc66-3688-40ea-a181-3ee8265b3c7f",
                             "name": "Listar todas as sessões",
                             "request": {
                                 "name": "Listar todas as sessões",
@@ -3444,7 +3444,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "1c329f04-b878-4872-a435-a79e9244a11d",
+                                    "id": "3fd8cd06-6ade-44f3-a64d-44044dc5b66b",
                                     "name": "Lista de sessões",
                                     "originalRequest": {
                                         "url": {
@@ -3490,7 +3490,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "72ff6f78-0d15-40b8-8fc0-1b27fed25ca8",
+                            "id": "7de2931d-2c83-4a91-9420-0b86337f46ea",
                             "name": "Forçar reconexão da sessão",
                             "request": {
                                 "name": "Forçar reconexão da sessão",
@@ -3528,7 +3528,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "dc055127-12b0-4c3b-965f-61b1c46b2235",
+                                    "id": "aede5d10-a5da-4866-8624-14c40bcdd953",
                                     "name": "Reconexão iniciada com sucesso",
                                     "originalRequest": {
                                         "url": {
@@ -3574,7 +3574,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "4f466132-685b-469d-9a5f-fcb570317a43",
+                            "id": "202260b4-dc69-4817-850d-01596ff0f49e",
                             "name": "Verificar saúde do sistema de sessões",
                             "request": {
                                 "name": "Verificar saúde do sistema de sessões",
@@ -3612,7 +3612,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "90634903-7a88-4856-ab76-0eb707b0db5b",
+                                    "id": "ef6a464d-13a8-4053-a053-6ebcc56a5f86",
                                     "name": "Status de saúde do sistema",
                                     "originalRequest": {
                                         "url": {
@@ -3662,7 +3662,7 @@
                             "description": "",
                             "item": [
                                 {
-                                    "id": "595da73b-b609-4063-a220-5f7b719aa82c",
+                                    "id": "f2a7d1f3-955d-4aee-875c-367a6dcba562",
                                     "name": "Deletar sessão",
                                     "request": {
                                         "name": "Deletar sessão",
@@ -3712,7 +3712,7 @@
                                     },
                                     "response": [
                                         {
-                                            "id": "82358e08-7aca-4787-b310-ee8a80c41887",
+                                            "id": "5aca707b-1a00-41e7-b3d6-1af914244951",
                                             "name": "Sessão deletada com sucesso",
                                             "originalRequest": {
                                                 "url": {
@@ -3767,7 +3767,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "98a05648-6b80-4e0c-9b91-d1b7111d3d27",
+                            "id": "167da7c0-ce17-45de-a4ef-d3b2e5a68e1d",
                             "name": "Listar grupos da sessão",
                             "request": {
                                 "name": "Listar grupos da sessão",
@@ -3805,7 +3805,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "96a2adf3-3dff-4077-8c8d-7cc6d0b94593",
+                                    "id": "6e5396ca-f756-435e-b4c5-9a05a159ef2b",
                                     "name": "Lista de grupos",
                                     "originalRequest": {
                                         "url": {
@@ -3851,7 +3851,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "1875e163-4da6-42ef-b49f-24b3676a38aa",
+                            "id": "0af8585e-f5ca-4f10-bbf6-fdbb4a071ffc",
                             "name": "Obter informações de um grupo",
                             "request": {
                                 "name": "Obter informações de um grupo",
@@ -3904,7 +3904,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "78074129-13d9-4a53-820c-068354139988",
+                                    "id": "f112c47c-3c06-47f7-901b-461f6bfa0388",
                                     "name": "Informações do grupo",
                                     "originalRequest": {
                                         "url": {
@@ -3963,7 +3963,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "45dc24f7-0fd4-49e9-a24f-3a73a6e40218",
+                            "id": "2c2cca9a-bbfc-4c1a-8bca-cfde5ff48c1a",
                             "name": "Criar novo grupo",
                             "request": {
                                 "name": "Criar novo grupo",
@@ -4016,7 +4016,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "adc38035-bffc-4f88-9b0a-81b415b8c010",
+                                    "id": "9300cb49-9105-446b-97c5-b9fe0d4817fc",
                                     "name": "Grupo criado com sucesso",
                                     "originalRequest": {
                                         "url": {
@@ -4075,7 +4075,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "12de495b-9076-4101-86d4-64d89f6280eb",
+                            "id": "bfc848ae-355a-4024-b11b-52a8e8c9bf5c",
                             "name": "Adicionar participante ao grupo",
                             "request": {
                                 "name": "Adicionar participante ao grupo",
@@ -4128,7 +4128,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "72e801ae-8243-4742-a704-7011705c5862",
+                                    "id": "b99b1567-446b-4eaf-850c-e4beab0b78f0",
                                     "name": "Participantes adicionados com sucesso",
                                     "originalRequest": {
                                         "url": {
@@ -4187,7 +4187,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "d6de6672-2911-4c60-954b-4402e2adba5f",
+                            "id": "d138b0e0-2628-4600-b61f-e4c84f4e860e",
                             "name": "Remover participante do grupo",
                             "request": {
                                 "name": "Remover participante do grupo",
@@ -4240,7 +4240,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "44be66ad-a75b-41bb-a2f5-7116d971eea5",
+                                    "id": "898147c5-1dda-4086-b8b4-4ceb7993d620",
                                     "name": "Participantes removidos com sucesso",
                                     "originalRequest": {
                                         "url": {
@@ -4299,7 +4299,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "08dec81f-1d81-473e-8665-2bfd6423a83c",
+                            "id": "8f1f7420-af0f-41cd-8646-b60e5c6258b6",
                             "name": "Promover participante a admin",
                             "request": {
                                 "name": "Promover participante a admin",
@@ -4352,7 +4352,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "9316a35d-2472-4ba5-b111-00627c5e930f",
+                                    "id": "643c0678-2f91-4b27-9ccf-cf250f45ec5b",
                                     "name": "Participantes promovidos com sucesso",
                                     "originalRequest": {
                                         "url": {
@@ -4411,7 +4411,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "4f99502c-b49e-48b9-bc79-023caef52c89",
+                            "id": "7e45a84b-328b-42ac-8474-8b47c4b6c58f",
                             "name": "Rebaixar admin a participante",
                             "request": {
                                 "name": "Rebaixar admin a participante",
@@ -4464,7 +4464,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "77f4695a-ae39-461b-983a-b91517edf282",
+                                    "id": "f596615f-a70d-4e2c-9ec9-ecaa9f4c7428",
                                     "name": "Participantes rebaixados com sucesso",
                                     "originalRequest": {
                                         "url": {
@@ -4523,7 +4523,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "15600a54-5934-44e0-a933-86aae0d6fd08",
+                            "id": "23bb7c53-d212-4093-a82f-5d1b4ce46c11",
                             "name": "Sair do grupo",
                             "request": {
                                 "name": "Sair do grupo",
@@ -4576,7 +4576,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "6debb3db-5524-4272-a329-ef917726d0da",
+                                    "id": "8e7a2c9f-c193-4847-a987-6416af6a8292",
                                     "name": "Saiu do grupo com sucesso",
                                     "originalRequest": {
                                         "url": {
@@ -4635,7 +4635,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "18a2d209-e5d0-4826-8d53-60d5fc648e5e",
+                            "id": "2f9bed0c-285c-497d-8972-74c3968f2c78",
                             "name": "Atualizar nome do grupo",
                             "request": {
                                 "name": "Atualizar nome do grupo",
@@ -4688,7 +4688,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "0a04d566-3f36-4877-87d1-8d51724d6b1d",
+                                    "id": "bbb3441e-d28f-436f-8b2a-e68237ebe7e4",
                                     "name": "Nome do grupo atualizado com sucesso",
                                     "originalRequest": {
                                         "url": {
@@ -4747,7 +4747,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "166b20f6-a039-4371-a29b-b254942336db",
+                            "id": "6907548c-3745-481e-b982-0f93fa202b27",
                             "name": "Atualizar descrição do grupo",
                             "request": {
                                 "name": "Atualizar descrição do grupo",
@@ -4800,7 +4800,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "7638344f-1a04-4c91-8ec1-47bdab88e41f",
+                                    "id": "b4833004-8d35-420e-80b5-db86cbd79535",
                                     "name": "Descrição do grupo atualizada com sucesso",
                                     "originalRequest": {
                                         "url": {
@@ -4865,7 +4865,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "ac1fab61-34a8-49fd-a7de-4bd32df903ec",
+                            "id": "328f5a40-ffcc-4233-b3da-4954746aba2e",
                             "name": "Status geral do sistema",
                             "request": {
                                 "name": "Status geral do sistema",
@@ -4903,7 +4903,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "91b98805-dc2f-41df-bb83-cec94b5d0a36",
+                                    "id": "71ca5671-5df6-44fd-8b35-8c37253579ab",
                                     "name": "Status do sistema",
                                     "originalRequest": {
                                         "url": {
@@ -4949,7 +4949,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "16d449eb-c419-42a0-8e13-f9f74d912de3",
+                            "id": "ada9abf7-ee2b-48ed-b7a1-0e43ac4f7304",
                             "name": "Configurações do sistema",
                             "request": {
                                 "name": "Configurações do sistema",
@@ -4987,7 +4987,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "df47bfa7-8928-437c-9c4a-3bfafa1187f3",
+                                    "id": "b6c12c23-29f8-4a78-9eed-92baa99efaeb",
                                     "name": "Configurações do sistema",
                                     "originalRequest": {
                                         "url": {
@@ -5033,7 +5033,7 @@
                     "description": "",
                     "item": [
                         {
-                            "id": "af7f2890-4e83-434a-9a1e-91e2bfad9399",
+                            "id": "c7d77164-0461-45b5-88b7-c15b3a1a22f8",
                             "name": "Limpar sessões desconectadas",
                             "request": {
                                 "name": "Limpar sessões desconectadas",
@@ -5071,7 +5071,7 @@
                             },
                             "response": [
                                 {
-                                    "id": "6f2eed1a-cd8b-4aa8-bf8f-1496de0ff2fb",
+                                    "id": "0ac9d907-5ffe-4707-9bd3-2077c0d15244",
                                     "name": "Limpeza realizada com sucesso",
                                     "originalRequest": {
                                         "url": {
@@ -5143,7 +5143,7 @@
         }
     ],
     "info": {
-        "_postman_id": "7bbfc818-930d-4728-aabd-0bb02b9c33b3",
+        "_postman_id": "ae724598-8fe1-4d0c-86bb-d111950404e1",
         "name": "Flash API",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
         "description": {

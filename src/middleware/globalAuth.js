@@ -1,4 +1,5 @@
 const config = require('../config/env');
+const Session = require('../models/Session');
 const logger = require('../utils/logger');
 
 const authenticateGlobalApiKey = (req, res, next) => {
@@ -69,17 +70,24 @@ const authenticateWebhookSecret = (req, res, next) => {
   }
 };
 
-const authenticateWebSocketSecret = (secret) => {
+const authenticateWebSocketSecret = async (secret, modo) => {
   if (!config.enableGlobalWebsocket) {
-    return { success: false, message: 'WebSocket global não está habilitado' };
+    return { success: false, message: 'WebSocket não está habilitado' };
   }
 
   if (!secret) {
     return { success: false, message: 'WebSocket secret é obrigatório' };
   }
 
-  if (secret !== config.globalWebsocketSecret) {
+  if (modo == 'global' && secret !== config.globalWebsocketSecret) {
     return { success: false, message: 'WebSocket secret inválido' };
+  }
+
+   if (modo == 'client') {
+    const getsessao = await Session.findById(secret)
+    if(!getsessao){
+      return { success: false, message: 'WebSocket secret inválido' };
+    }
   }
 
   return { success: true };

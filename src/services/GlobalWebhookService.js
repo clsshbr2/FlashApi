@@ -26,9 +26,6 @@ class GlobalWebhookService {
           timeout: 10000,
           headers: {
             'Content-Type': 'application/json',
-            'User-Agent': 'Baileys-Multi-Session-API/1.0',
-            'X-Webhook-Secret': this.secret,
-            'X-Webhook-Signature': this.generateSignature(payload)
           }
         });
 

@@ -70,51 +70,6 @@ app.use('/api/group', groupRoutes);
 app.use('/api/config', configRoutes);
 app.use('/api/system', systemRoutes);
 
-// Health check
-// app.get('/health', (req, res) => {
-//   res.json({ 
-//     status: 'OK', 
-//     timestamp: new Date().toISOString(),
-//     version: '1.0.0',
-//     environment: config.nodeEnv,
-//     sessions: BaileysService.getSessionsStats()
-//   });
-// });
-
-// API Info
-// app.get('/api/info', (req, res) => {
-//   res.json({
-//     success: true,
-//     data: {
-//       name: 'Flash API - WhatsApp Multi-Session',
-//       version: '1.0.0',
-//       environment: config.nodeEnv,
-//       features: {
-//         globalWebhook: config.enableGlobalWebhook,
-//         globalWebsocket: config.enableGlobalWebsocket,
-//         messageQueue: true,
-//         autoReply: true,
-//         autoRead: true,
-//         groupManagement: true,
-//         contactManagement: true,
-//         mediaMessages: true
-//       },
-//       endpoints: {
-//         documentation: '/api-docs',
-//         health: '/health',
-//         websocket: config.enableGlobalWebsocket ? 'ws://localhost:' + PORT : 'disabled',
-//         sessions: '/api/session/*',
-//         chat: '/api/chat/*',
-//         contacts: '/api/contact/*',
-//         groups: '/api/group/*',
-//         config: '/api/config/*',
-//         system: '/api/system/*'
-//       },
-//       sessions: BaileysService.getSessionsStats()
-//     }
-//   });
-// });
-
 // WebSocket server
 const wss = new WebSocket.Server({ server });
 const globalWebSocketService = new GlobalWebSocketService(wss);

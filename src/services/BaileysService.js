@@ -758,6 +758,7 @@ class BaileysService {
 
   async emitEvent(sessionId, event, data) {
     try {
+
       // Global WebSocket
       if (this.globalWebSocketService) {
         this.globalWebSocketService.broadcast(sessionId, event, data);
@@ -780,6 +781,7 @@ class BaileysService {
           timestamp: moment().tz(configenv.timeZone).toISOString()
         });
       }
+      
     } catch (error) {
       console.log(error)
       logger.error(`Erro ao emitir evento ${event}:`, error);

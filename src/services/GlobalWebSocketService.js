@@ -3,7 +3,7 @@ const config = require('../config/env');
 const { authenticateWebSocketSecret } = require('../middleware/globalAuth');
 const logger = require('../utils/logger');
 const BaileysService = require('./BaileysService');
-const MessageQueueService = require('./MessageQueueService');
+const moment = require('moment-timezone');
 
 class GlobalWebSocketService {
   constructor(wss) {
@@ -22,6 +22,7 @@ class GlobalWebSocketService {
   }
 
   handleConnection(ws, req) {
+
     if (!this.isEnabled) {
       ws.close(1000, 'WebSocket global desabilitado');
       return;
@@ -30,6 +31,22 @@ class GlobalWebSocketService {
     logger.info('Nova conexão WebSocket global recebida');
 
     const clientId = this.generateClientId();
+    this.clients.set(clientId, {
+      ws,
+      authenticated: false,
+      events: [],
+      sessionId: null,
+      connectedAt: moment().tz(config.timeZone).format('YYYY-MM-DD HH:mm:ss')
+    });
+
+    const authTimeout = setTimeout(() => {
+      if (!this.clients.get(clientId)?.authenticated) {
+        console.log(`Authentication timeout for session ID: ${clientId}`);
+        ws.close(4001, 'Authentication timeout');
+        this.clients.delete(clientId);
+      }
+    }, parseInt(config.auth_timeout) * 60_000);
+
     ws.on('message', (message) => {
       try {
         const data = JSON.parse(message.toString());
@@ -53,10 +70,11 @@ class GlobalWebSocketService {
       this.clients.delete(clientId);
     });
 
+
     // Send welcome message
     ws.send(JSON.stringify({
       type: 'welcome',
-      message: 'Conectado ao WebSocket global. Envie {"type":"auth","secret":"seu-secret"} para autenticar.',
+      message: `Conectado ao WebSocket. Envie {"type":"auth","secret":"seu-secret", events: ['Eventos'] } para autenticar. Você tem ${parseInt(config.auth_timeout)} minuto pra se conectar`,
       clientId
     }));
   }
@@ -64,206 +82,103 @@ class GlobalWebSocketService {
   async handleMessage(ws, data, clientId) {
     switch (data.type) {
       case 'auth':
-        await this.handleAuth(ws, data, clientId);
+        await this.autenticacao(ws, data, clientId);
         break;
-      case 'subscribe':
-        await this.handleSubscribe(ws, data, clientId);
-        break;
-      case 'unsubscribe':
-        await this.handleUnsubscribe(ws, data, clientId);
-        break;
+
       case 'ping':
         ws.send(JSON.stringify({
           type: 'pong',
-          timestamp: Date.now(),
+          timestamp: moment().tz(config.timeZone).format('YYYY-MM-DD HH:mm:ss'),
           clientId
         }));
         break;
-      case 'get_sessions':
-        await this.handleGetSessions(ws, clientId);
+
+      case 'set_events':
+        await this.setEvents(ws, data, clientId);
         break;
 
       default:
         ws.send(JSON.stringify({
           type: 'error',
           message: 'Tipo de mensagem não reconhecido',
-          availableTypes: ['auth', 'subscribe', 'unsubscribe', 'ping', 'get_sessions', 'sendmsg']
+          availableTypes: ['auth', 'ping']
         }));
     }
   }
 
-  async handleAuth(ws, data, clientId) {
+  async autenticacao(ws, data, clientId) {
     try {
 
-      const authResult = authenticateWebSocketSecret(data.secret);
-
-      if (!authResult.success) {
+      const { secret = null, modo = null, events = [] } = data
+      if (!secret) {
         ws.send(JSON.stringify({
-          type: 'auth_error',
-          message: authResult.message
+          type: 'error',
+          message: 'paramentro secret e obrigatorio'
         }));
         return;
       }
 
-      this.clients.set(clientId, {
-        ws,
-        authenticated: true,
-        subscriptions: [],
-        connectedAt: new Date()
-      });
+      if (!modo || (modo != 'global' && modo != 'client')) {
+        ws.send(JSON.stringify({
+          type: 'error',
+          message: 'paramentro modo e obrigatorio e deve ser global ou client'
+        }));
+        return;
+      }
+      if (!Array.isArray(events)) {
+        ws.send(JSON.stringify({
+          type: 'error',
+          message: 'paramentro events deve ser um array valido'
+        }));
+        return;
+      }
+
+      const authResult = await authenticateWebSocketSecret(secret, modo);
+
+      if (!authResult.success) {
+        ws.send(JSON.stringify({
+          type: 'error',
+          message: authResult.message
+        }));
+        return;
+      }
+      const client = this.clients.get(clientId);
+      client.authenticated = true;
+      client.events = events;
+      client.connectedAt = moment().tz(config.timeZone).format('YYYY-MM-DD HH:mm:ss');
+      client.sessionId = modo == 'global' ? 'global' : secret;
 
       ws.send(JSON.stringify({
         type: 'auth_success',
-        message: 'Autenticado com sucesso no WebSocket global',
+        message: 'Autenticado com sucesso no WebSocket',
         clientId,
-        features: ['subscribe', 'unsubscribe', 'get_sessions', 'ping']
+        events: events
       }));
 
       logger.info(`Cliente WebSocket global autenticado: ${clientId}`);
     } catch (error) {
       logger.error('Erro na autenticação WebSocket global:', error);
       ws.send(JSON.stringify({
-        type: 'auth_error',
+        type: 'error',
         message: 'Erro na autenticação'
       }));
     }
   }
 
-  async handleSubscribe(ws, data, clientId) {
+  async setEvents(ws, data, clientId) {
     try {
-      const client = this.clients.get(clientId);
 
-      if (!client || !client.authenticated) {
-        ws.send(JSON.stringify({
-          type: 'subscribe_error',
-          message: 'Cliente não autenticado'
-        }));
-        return;
-      }
-
-      const { sessionId, events } = data;
-
-      if (!sessionId) {
-        ws.send(JSON.stringify({
-          type: 'subscribe_error',
-          message: 'sessionId é obrigatório'
-        }));
-        return;
-      }
-
-      // Se não especificar eventos, inscreve em todos
-      const eventsToSubscribe = events || [
-        'qr_updated',
-        'session_connected',
-        'session_disconnected',
-        'message_received',
-        'presence_update',
-        'chats_update',
-        'contacts_update',
-        'groups_update'
-      ];
-
-      // Adiciona ou atualiza inscrição
-      const existingSubscription = client.subscriptions.find(sub => sub.sessionId === sessionId);
-      if (existingSubscription) {
-        existingSubscription.events = [...new Set([...existingSubscription.events, ...eventsToSubscribe])];
-      } else {
-        client.subscriptions.push({
-          sessionId,
-          events: eventsToSubscribe,
-          subscribedAt: new Date()
-        });
-      }
-
-      ws.send(JSON.stringify({
-        type: 'subscribe_success',
-        sessionId,
-        events: eventsToSubscribe,
-        message: `Inscrito nos eventos da sessão ${sessionId}`
-      }));
-
-      logger.info(`Cliente ${clientId} inscrito na sessão ${sessionId} para eventos: ${eventsToSubscribe.join(', ')}`);
+      const { events = [] } = data
+      const getClient = this.clients.get(clientId)
+      console.log(getClient)
     } catch (error) {
-      logger.error('Erro na inscrição WebSocket global:', error);
+      logger.error('Erro na autenticação WebSocket global:', error);
       ws.send(JSON.stringify({
-        type: 'subscribe_error',
-        message: 'Erro ao inscrever na sessão'
+        type: 'error',
+        message: 'Erro na autenticação'
       }));
     }
   }
-
-  async handleUnsubscribe(ws, data, clientId) {
-    try {
-      const client = this.clients.get(clientId);
-
-      if (!client || !client.authenticated) {
-        ws.send(JSON.stringify({
-          type: 'unsubscribe_error',
-          message: 'Cliente não autenticado'
-        }));
-        return;
-      }
-
-      const { sessionId } = data;
-
-      if (!sessionId) {
-        ws.send(JSON.stringify({
-          type: 'unsubscribe_error',
-          message: 'sessionId é obrigatório'
-        }));
-        return;
-      }
-
-      // Remove inscrição
-      client.subscriptions = client.subscriptions.filter(sub => sub.sessionId !== sessionId);
-
-      ws.send(JSON.stringify({
-        type: 'unsubscribe_success',
-        sessionId,
-        message: `Desinscrito da sessão ${sessionId}`
-      }));
-
-      logger.info(`Cliente ${clientId} desinscrito da sessão ${sessionId}`);
-    } catch (error) {
-      logger.error('Erro ao desinscrever WebSocket global:', error);
-      ws.send(JSON.stringify({
-        type: 'unsubscribe_error',
-        message: 'Erro ao desinscrever da sessão'
-      }));
-    }
-  }
-
-  async handleGetSessions(ws, clientId) {
-    try {
-      const client = this.clients.get(clientId);
-
-      if (!client || !client.authenticated) {
-        ws.send(JSON.stringify({
-          type: 'get_sessions_error',
-          message: 'Cliente não autenticado'
-        }));
-        return;
-      }
-
-      const BaileysService = require('./BaileysService');
-      const stats = BaileysService.getSessionsStats();
-
-      ws.send(JSON.stringify({
-        type: 'sessions_info',
-        data: {
-          stats,
-          subscriptions: client.subscriptions
-        }
-      }));
-    } catch (error) {
-      logger.error('Erro ao obter informações das sessões:', error);
-      ws.send(JSON.stringify({
-        type: 'get_sessions_error',
-        message: 'Erro ao obter informações das sessões'
-      }));
-    }
-  }
-
 
   broadcast(sessionId, event, data) {
     if (!this.isEnabled) return;
@@ -272,7 +187,7 @@ class GlobalWebSocketService {
       sessionId,
       event,
       data,
-      timestamp: new Date().toISOString()
+      timestamp: moment().tz(config.timeZone).format('YYYY-MM-DD HH:mm:ss')
     });
 
     let sentCount = 0;
@@ -280,14 +195,32 @@ class GlobalWebSocketService {
     for (const [clientId, client] of this.clients.entries()) {
       if (client.authenticated && client.ws.readyState == WebSocket.OPEN) {
         // Verifica se o cliente está inscrito nesta sessão e evento
-        try {
-          client.ws.send(message);
-          sentCount++;
-        } catch (error) {
-          logger.error(`Erro ao enviar mensagem WebSocket global para ${clientId}:`, error);
-          // Remove cliente com erro
-          this.clients.delete(clientId);
+        if (client == 'global') {
+          try {
+            const foundEvent = client.events.find(e => e === event);
+            if (!foundEvent) continue;
+            client.ws.send(message);
+            sentCount++;
+          } catch (error) {
+            logger.error(`Erro ao enviar mensagem WebSocket global para ${clientId}:`, error);
+            // Remove cliente com erro
+            this.clients.delete(clientId);
+          }
+        } else {
+          if (client.sessionId && client.sessionId === sessionId) {
+            try {
+              const foundEvent = client.events.find(e => e === event);
+              if (!foundEvent) continue;
+              client.ws.send(message);
+              sentCount++;
+            } catch (error) {
+              logger.error(`Erro ao enviar mensagem WebSocket global para ${clientId}:`, error);
+              // Remove cliente com erro
+              this.clients.delete(clientId);
+            }
+          }
         }
+
       }
     }
 
@@ -300,24 +233,6 @@ class GlobalWebSocketService {
     return `client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
-  getConnectedClients() {
-    return Array.from(this.clients.entries()).map(([clientId, client]) => ({
-      clientId,
-      authenticated: client.authenticated,
-      subscriptions: client.subscriptions,
-      connectedAt: client.connectedAt
-    }));
-  }
-
-  getStats() {
-    const clients = this.getConnectedClients();
-    return {
-      enabled: this.isEnabled,
-      totalClients: clients.length,
-      authenticatedClients: clients.filter(c => c.authenticated).length,
-      totalSubscriptions: clients.reduce((sum, c) => sum + c.subscriptions.length, 0)
-    };
-  }
 }
 
 module.exports = GlobalWebSocketService;
