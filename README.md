@@ -487,10 +487,15 @@ Se ele te ajudou de alguma forma, considere fazer uma contribuição voluntária
 Assim você me ajuda a continuar mantendo e evoluindo este trabalho!
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Chave%20PIX-cleiton.gomes%40email.com-9647FF?style=for-the-badge&logo=pix&logoColor=white" alt="PIX">
+  <img src="https://img.shields.io/badge/Chave%20PIX-ba189cff--4540--49cb--a087--5a60231e9e77-9647FF?style=for-the-badge&logo=pix&logoColor=white" alt="PIX">
 </p>
 
-> 📲 **Chave PIX:** `cleiton.gomes@email.com`
+<p align="center">
+  📲 <strong>Chave PIX Aleatória:</strong><br>
+  <code>ba189cff-4540-49cb-a087-5a60231e9e77</code>
+</p>
+
+---
 
 Obrigado por apoiar o software livre! 🚀  
 Siga-me para mais projetos incríveis!
