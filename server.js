@@ -65,7 +65,6 @@ const corsOptions = {
 };
 
 // Middleware
-app.set('trust proxy', true);
 app.use(helmet());
 app.use(cors(corsOptions));
 app.use(limiter);

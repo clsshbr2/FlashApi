@@ -32,14 +32,26 @@ router.post('/create_sessao', authenticateGlobalApiKey, async (req, res) => {
     }
 
     //Verificar se sessão existe
-    const getsessao = await Session.findById(uuid);
-    if (getsessao) {
+    const getsessao = await Session.findByApiKey();
+    const apikeyExist = getsessao.find(a => a.apikey === uuid)
+    if (apikeyExist) {
       logger.warn(`A apikey: ${uuid} gerada já existe tente novamente`);
       return res.status(409).json({
         success: false,
         message: 'A apikey gerada já existe tente novamente'
       });
     }
+
+    const nameExist = getsessao.find(a => a.nome_sessao === nome_sessao)
+
+    if (nameExist) {
+      logger.warn(`Name Sessão: ${nameExist} Ja existe`);
+      return res.status(409).json({
+        success: false,
+        message: `Name Sessão: ${nameExist.nome_sessao} Ja existe tente outro`
+      });
+    }
+
 
     //Adicionar sessão
     const addapikey = await Session.addsessao({ uuid, numero, finalNomeSessao });
