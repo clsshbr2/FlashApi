@@ -52,6 +52,9 @@ pm2 start npm --name flashapi -- start
 # Inicia sem pm2
 npm start
 
+# Atualizar repositorio
+git pull origin main
+
 ```
 
   ---
