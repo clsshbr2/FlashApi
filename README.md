@@ -54,7 +54,7 @@ npm start
 
 ```
 
-## Configuração
+  ---
 
 ### 🔐 Criar Sessão
 
@@ -99,7 +99,7 @@ axios.post('http://localhost:3000/api/session/create_sessao', data, {
 ```
 
   ---
-  
+
 ### 🔐 Recuperar QR Code
 📌 Importante:
 Se gerar_qrcode for false na criação ou a sessão já existir, utilize o endpoint abaixo para reconectar e gerar o QR Code novamente:
