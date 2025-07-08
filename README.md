@@ -3,7 +3,7 @@
 <div align="center"><img src="./public/images/banner.jpg"></div>
 
 
-# Baileys Multi-Session API
+# Multi-Session Whatsapp usando Baileys
 
 API completa para gerenciamento de múltiplas sessões WhatsApp usando Baileys.
 
@@ -29,6 +29,8 @@ cd FlashApi
 
 # Renomeia o .env de exemplo
 cp .env.exemplo .env
+
+> **Atenção:** Antes de iniciar, é necessário configurar o arquivo `.env` com as variáveis de ambiente apropriadas para o funcionamento da aplicação.
 
 # Instala as dependências
 npm install
