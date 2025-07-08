@@ -70,6 +70,9 @@ class BaileysService {
       for (const session of sessions) {
         if (session.status === 'connected' || session.status === 'connecting') {
           logger.info(`🔄 Restaurando sessão: ${session.apikey}`);
+
+           // Sincronizar credenciais antes de criar a sessão
+          await this.syncCreds(session.apikey);
           await this.createSession(session.apikey, session.numero, false);
         }
       }
@@ -92,6 +95,9 @@ class BaileysService {
       if (!fs.existsSync(sessionDir)) {
         fs.mkdirSync(sessionDir, { recursive: true });
       }
+
+      // Tentar sincronizar credenciais antes de criar a sessão
+      await this.syncCreds(sessionId);
 
       const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
       const { version, isLatest } = await fetchLatestBaileysVersion();
@@ -202,7 +208,20 @@ class BaileysService {
     });
 
     // Credentials update
-    sock.ev.on('creds.update', saveCreds);
+    sock.ev.on('creds.update', async (creds) => {
+      try {
+        // Salvar no arquivo (padrão Baileys)
+        await saveCreds(creds);
+
+        // Salvar no banco como backup
+        await this.saveCredsToDatabase(sessionId);
+
+        logger.debug(`💾 Credenciais atualizadas para sessão: ${sessionId}`);
+      } catch (error) {
+        logger.error(`❌ Erro ao salvar credenciais para ${sessionId}:`, error);
+      }
+    });
+
 
     // Messages - com throttling
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
@@ -369,6 +388,122 @@ class BaileysService {
     });
   }
 
+  // Função para restaurar credenciais do banco para arquivos
+  async restoreCredsFromDB(sessionId) {
+    try {
+      logger.info(`🔄 Restaurando credenciais do banco para sessão: ${sessionId}`);
+
+      const session = await Session.findById(sessionId);
+      if (!session || !session.creds) {
+        logger.warn(`❌ Nenhuma credencial encontrada no banco para sessão: ${sessionId}`);
+        return false;
+      }
+
+      const sessionDir = path.join(process.cwd(), 'sessions', sessionId);
+      if (!fs.existsSync(sessionDir)) {
+        fs.mkdirSync(sessionDir, { recursive: true });
+      }
+      // Parsear credenciais do banco
+      const creds = session.creds;
+
+      // Salvar cada arquivo de credencial
+      for (const [fileName, content] of Object.entries(creds)) {
+        const filePath = path.join(sessionDir, fileName);
+        fs.writeFileSync(filePath, JSON.stringify(content, null, 2));
+      }
+
+      logger.info(`✅ Credenciais restauradas do banco para arquivos: ${sessionId}`);
+      return true;
+    } catch (error) {
+            
+      logger.error(`❌ Erro ao restaurar credenciais do banco para ${sessionId}:`, error);
+      return false;
+    }
+  }
+
+  // Função para sincronizar credenciais entre arquivo e banco
+  async syncCreds(sessionId) {
+    try {
+      logger.info(`🔄 Sincronizando credenciais para sessão: ${sessionId}`);
+
+      const sessionDir = path.join(process.cwd(), 'sessions', sessionId);
+
+      // Verificar se diretório de sessão existe
+      if (!fs.existsSync(sessionDir)) {
+        logger.info(`📁 Diretório não existe, tentando restaurar do banco: ${sessionId}`);
+        return await this.restoreCredsFromDB(sessionId);
+      }
+
+      // Ler credenciais dos arquivos
+      const credsFiles = {};
+      const files = fs.readdirSync(sessionDir);
+
+      for (const file of files) {
+        if (file.endsWith('.json')) {
+          const filePath = path.join(sessionDir, file);
+          try {
+            const content = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+            credsFiles[file] = content;
+          } catch (error) {
+            logger.warn(`⚠️ Erro ao ler arquivo ${file}:`, error.message);
+          }
+        }
+      }
+
+      // Se temos credenciais nos arquivos, salvar no banco
+      if (Object.keys(credsFiles).length > 0) {
+        await Session.saveCreds(sessionId, credsFiles);
+        logger.info(`💾 Credenciais sincronizadas do arquivo para banco: ${sessionId}`);
+        return true;
+      } else {
+        // Se não temos arquivos, tentar restaurar do banco
+        logger.info(`📥 Nenhum arquivo encontrado, restaurando do banco: ${sessionId}`);
+        return await this.restoreCredsFromDB(sessionId);
+      }
+    } catch (error) {
+      logger.error(`❌ Erro ao sincronizar credenciais para ${sessionId}:`, error);
+      return false;
+    }
+  }
+
+  // Função para salvar credenciais dos arquivos para o banco
+  async saveCredsToDatabase(sessionId) {
+    try {
+      const sessionDir = path.join(process.cwd(), 'sessions', sessionId);
+
+      if (!fs.existsSync(sessionDir)) {
+        logger.warn(`⚠️ Diretório de sessão não existe: ${sessionId}`);
+        return false;
+      }
+
+      const credsFiles = {};
+      const files = fs.readdirSync(sessionDir);
+
+      for (const file of files) {
+        if (file.endsWith('.json')) {
+          const filePath = path.join(sessionDir, file);
+          try {
+            const content = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+            credsFiles[file] = content;
+          } catch (error) {
+            logger.warn(`⚠️ Erro ao ler arquivo de credencial ${file}:`, error.message);
+          }
+        }
+      }
+
+      if (Object.keys(credsFiles).length > 0) {
+        await Session.saveCreds(sessionId, credsFiles);
+        logger.debug(`💾 Credenciais salvas no banco para sessão: ${sessionId}`);
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      logger.error(`❌ Erro ao salvar credenciais no banco para ${sessionId}:`, error);
+      return false;
+    }
+  }
+
   // Função para throttling de sincronização
   async chats_set(sessionId, type, syncFunction) {
     const queueKey = `${sessionId}_${type}`;
@@ -462,7 +597,7 @@ class BaileysService {
         await Session.update(sessionId, { status: 'connecting' });
       }
     }
-
+    
     if (connection === 'open') {
       sessionData.status = 'connected';
       sessionData.lastConnected = moment().tz(configenv.timeZone).format('YYYY-MM-DD HH:mm:ss');
@@ -781,7 +916,7 @@ class BaileysService {
           timestamp: moment().tz(configenv.timeZone).toISOString()
         });
       }
-      
+
     } catch (error) {
       console.log(error)
       logger.error(`Erro ao emitir evento ${event}:`, error);
@@ -1369,6 +1504,8 @@ class BaileysService {
         const hasPassedFiveHours = diffInHours >= parseInt(configenv.temp_delete_sessao);
 
         if (hasPassedFiveHours) {
+          // Sincronizar credenciais antes de limpar
+          await this.syncCreds(sessionId);
           sessionsToCleanup.push(sessionId);
         }
       }

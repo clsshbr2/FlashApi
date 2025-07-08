@@ -52,6 +52,22 @@ class Session {
     return upsessao.affectedRows > 0
   }
 
+  static async saveCreds(id, creds) {
+    try {
+      const [columns] = await db.execute(`SHOW COLUMNS FROM sessao LIKE 'creds'`);
+      if (!columns) {
+        await db.execute(`ALTER TABLE sessao ADD COLUMN creds JSON`);
+        console.log('✅ Coluna "creds" criada como JSON.');
+      }
+      const saveCreds = await db.execute('UPDATE sessao SET creds = ?, updated_at = CURRENT_TIMESTAMP WHERE apikey = ?', [creds, id]);
+      return saveCreds.affectedRows > 0;
+    } catch (error) {
+      console.log(error)
+      console.error('Erro ao salvar credenciais:', error);
+      return false;
+    }
+  }
+
   static async delete(id) {
     const deletesessao = await db.execute(`DELETE FROM sessao WHERE apikey = ?`, [id])
     return deletesessao
