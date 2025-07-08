@@ -1,19 +1,6 @@
-<h1 align="center">Evolution Api</h1>
-
-<div align="center">
-
-[![Docker Image	(https://img.shields.io/badge/Docker-Image-blue)](https://hub.docker.com/r/evoapicloud/evolution-api)]
-[![Whatsapp Group](https://img.shields.io/badge/Group-WhatsApp-%2322BC18)](https://evolution-api.com/whatsapp)
-[![Discord Community](https://img.shields.io/badge/Discord-Community-blue)](https://evolution-api.com/discord)
-[![Postman Collection](https://img.shields.io/badge/Postman-Collection-orange)](https://evolution-api.com/postman) 
-[![Documentation](https://img.shields.io/badge/Documentation-Official-green)](https://doc.evolution-api.com)
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](./LICENSE)
-[![Support](https://img.shields.io/badge/Donation-picpay-green)](https://app.picpay.com/user/davidsongomes1998)
-[![Sponsors](https://img.shields.io/badge/Github-sponsor-orange)](https://github.com/sponsors/EvolutionAPI)
-
-</div>
+<h1 align="center">Flash Api</h1>
   
-<div align="center"><img src="./public/images/cover.png"></div>
+<div align="center"><img src="./public/images/banner.jpg"></div>
 
 
 # Baileys Multi-Session API
