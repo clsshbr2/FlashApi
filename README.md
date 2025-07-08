@@ -62,16 +62,25 @@ npm start
 
 Se os parâmetros `criar_sessao` e `gerar_qrcode` forem definidos como `true`, o QR Code será gerado automaticamente no formato **Base64** na resposta da requisição, pronto para ser exibido e escaneado.
 
+### Endpoint:
 ```bash
-curl -X POST http://localhost:3000/api/session/create_sessao \
-  -H "Content-Type: application/json" \
-  -H "apikey: sua-api-key" \
-  -d '{
-    "nome_sessao": "minha-sessao",
-    "numero": "5521999999999",
-    "criar_sessao": true,
-    "gerar_qrcode": true
-  }'
+POST /api/session/create_sessao
+```
+
+### Headers:
+```bash
+Content-Type: application/json  
+apikey: sua-api-key
+```
+
+### Body:
+```json
+{
+  "nome_sessao": "minha-sessao",
+  "numero": "5521999999999",
+  "criar_sessao": true,
+  "gerar_qrcode": true
+}
 ```
 
 📌 Importante:
