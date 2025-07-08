@@ -15,12 +15,7 @@ class Database {
             database: config.database || 'FlashApi',
             waitForConnections: true,
             connectionLimit: config.connectionLimit || 10, // Reduzido para 10
-            queueLimit: config.queuelimit || 0,
-            acquireTimeout: 60000,
-            timeout: 60000,
-            reconnect: true,
-            idleTimeout: 300000, // 5 minutos
-            maxIdle: 5 // Máximo de 5 conexões idle
+            queueLimit: config.queuelimit || 0
         });
 
         // Log de eventos do pool

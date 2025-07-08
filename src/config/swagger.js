@@ -25,7 +25,7 @@ const swaggerOptions = {
     },
     servers: [
       {
-        url: `http://localhost:${PORT}/api`,
+        url: `${config.hostapi}/api`,
         description: 'Servidor de Beta'
       }
     ],
