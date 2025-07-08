@@ -62,7 +62,6 @@ npm start
 
 Se os parâmetros `criar_sessao` e `gerar_qrcode` forem definidos como `true`, o QR Code será gerado automaticamente no formato **Base64** na resposta da requisição, pronto para ser exibido e escaneado.
 
-
 ```javascript
 const axios = require('axios');
 
@@ -83,7 +82,10 @@ axios.post('http://localhost:3000/api/session/create_sessao', data, {
 
   if(response.success){
       console.log('✅ Sessão criada com sucesso!');
-      console.log('dados: ', response.dados)
+      console.log('Name Sessão: ' response.dados.name)
+      console.log('Apikey: ' response.dados.apikey)
+      console.log('Qrcode: ' response.dados.qrcode)
+      console.log('Dados: ', response.dados)
 
   }else{
          console.log('❌ Error ao criar Sessão!');
@@ -96,56 +98,37 @@ axios.post('http://localhost:3000/api/session/create_sessao', data, {
 
 ```
 
-
-
-
-### Body:
-```json
-{
-  "nome_sessao": "minha-sessao",
-  "numero": "5521999999999",
-  "criar_sessao": true,
-  "gerar_qrcode": true
-}
-```
-
 📌 Importante:
 Se gerar_qrcode for false ou a sessão já existir e precisar ser reconectada, utilize o endpoint abaixo para gerar ou recuperar o QR Code novamente:
 
-```bash
-curl -X PUT http://localhost:3000/api/session/conectar_sessao \
-  -H "accept: */*" \
-  -H "apikey: sua-api-key"
+```javascript
+const axios = require('axios');
+
+const data = {};
+
+axios.put('http://localhost:3000/api/session/conectar_sessao', data, {
+  headers: {
+    'apikey': 'sua-api-key'
+  }
+})
+.then(response => {
+
+  if(response.success){
+      console.log('✅ Qrcode gerado com sucesso!');
+      console.log('Qrcode: ' response.qrcode)
+
+  }else{
+         console.log('❌ Error ao Gerar qrcode!');
+  }
+})
+.catch(error => {
+  console.error('❌ Erro ao Gerar qrcode:');
+  console.error(error.response?.data || error.message);
+});
+
 ```
 
-### 2. Usar a API Key
 
-Inclua a API Key no header de todas as requisições:
-
-```
-X-API-Key: sua-api-key-aqui
-```
-
-## Uso Básico
-
-### 1. Criar Sessão
-
-```bash
-curl -X POST http://localhost:3000/api/session/create \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: sua-api-key" \
-  -d '{
-    "sessionId": "minha-sessao",
-    "webhookUrl": "https://seu-webhook.com/webhook"
-  }'
-```
-
-### 2. Obter QR Code
-
-```bash
-curl -X GET http://localhost:3000/api/session/qr/minha-sessao \
-  -H "X-API-Key: sua-api-key"
-```
 
 ### 3. Enviar Mensagem
 ## 🔄 Enviar Mensagem
