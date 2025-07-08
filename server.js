@@ -130,7 +130,7 @@ async function startServer() {
     await BaileysService.initialize();
     logger.info('✅ BaileysService inicializado');
     
-    server.listen(PORT, () => {
+    server.listen(PORT, '0.0.0.0', () => {
       logger.info(`🚀 Flash API rodando na porta ${PORT}`);
       logger.info(`📚 Documentação: http://localhost:${PORT}/api-docs`);
       logger.info(`ℹ️  Informações da API: http://localhost:${PORT}/api/info`);
