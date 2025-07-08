@@ -98,8 +98,11 @@ axios.post('http://localhost:3000/api/session/create_sessao', data, {
 
 ```
 
+  ---
+  
+### 🔐 Recuperar QR Code
 📌 Importante:
-Se gerar_qrcode for false ou a sessão já existir e precisar ser reconectada, utilize o endpoint abaixo para gerar ou recuperar o QR Code novamente:
+Se gerar_qrcode for false na criação ou a sessão já existir, utilize o endpoint abaixo para reconectar e gerar o QR Code novamente:
 
 ```javascript
 const axios = require('axios');
@@ -118,7 +121,7 @@ axios.put('http://localhost:3000/api/session/conectar_sessao', data, {
       console.log('Qrcode: ' response.qrcode)
 
   }else{
-         console.log('❌ Error ao Gerar qrcode!');
+    console.log('⚠️ Sessão já conectada ou QR Code não necessário.');
   }
 })
 .catch(error => {
