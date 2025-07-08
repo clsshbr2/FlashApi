@@ -62,16 +62,42 @@ npm start
 
 Se os parâmetros `criar_sessao` e `gerar_qrcode` forem definidos como `true`, o QR Code será gerado automaticamente no formato **Base64** na resposta da requisição, pronto para ser exibido e escaneado.
 
-### Endpoint:
-```bash
-POST /api/session/create_sessao
+
+```javascript
+const axios = require('axios');
+
+const data = {
+  nome_sessao: 'minha-sessao',
+  numero: '5521999999999',
+  criar_sessao: true,
+  gerar_qrcode: true
+};
+
+axios.post('http://localhost:3000/api/session/create_sessao', data, {
+  headers: {
+    'Content-Type': 'application/json',
+    'apikey': 'sua-api-key'
+  }
+})
+.then(response => {
+
+  if(response.success){
+      console.log('✅ Sessão criada com sucesso!');
+      console.log('dados: ', response.dados)
+
+  }else{
+         console.log('❌ Error ao criar Sessão!');
+  }
+})
+.catch(error => {
+  console.error('❌ Erro ao criar sessão:');
+  console.error(error.response?.data || error.message);
+});
+
 ```
 
-### Headers:
-```bash
-Content-Type: application/json  
-apikey: sua-api-key
-```
+
+
 
 ### Body:
 ```json
