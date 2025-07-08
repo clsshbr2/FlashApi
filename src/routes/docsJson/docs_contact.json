@@ -1,0 +1,185 @@
+{
+    "/contact/list": {
+      "get": {
+        "summary": "Listar contatos da sessão",
+        "tags": ["Contatos"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de contatos"
+          }
+        }
+      }
+    },
+    "/contact/sync": {
+      "post": {
+        "summary": "Sincronizar contatos manualmente",
+        "tags": ["Contatos"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contatos sincronizados com sucesso"
+          }
+        }
+      }
+    },
+    "/contact/force-sync-all": {
+      "post": {
+        "summary": "Forçar sincronização completa (contatos, chats, grupos)",
+        "tags": ["Contatos"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sincronização completa iniciada"
+          }
+        }
+      }
+    },
+    "/contact/profile": {
+      "post": {
+        "summary": "Obter perfil de um contato",
+        "tags": ["Contatos"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["jid"],
+                "properties": {
+                  "jid": {
+                    "type": "string",
+                    "description": "JID do contato"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Perfil do contato"
+          }
+        }
+      }
+    },
+    "/contact/check": {
+      "post": {
+        "summary": "Verificar se números estão no WhatsApp",
+        "tags": ["Contatos"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["numbers"],
+                "properties": {
+                  "numbers": {
+                    "type": "array",
+                    "description": "Lista de números para verificar",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Resultado da verificação"
+          }
+        }
+      }
+    },
+    "/contact/block": {
+      "post": {
+        "summary": "Bloquear contato",
+        "tags": ["Contatos"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["jid"],
+                "properties": {
+                  "jid": {
+                    "type": "string",
+                    "description": "JID do contato para bloquear"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Contato bloqueado com sucesso"
+          }
+        }
+      }
+    },
+    "/contact/unblock": {
+      "post": {
+        "summary": "Desbloquear contato",
+        "tags": ["Contatos"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["jid"],
+                "properties": {
+                  "jid": {
+                    "type": "string",
+                    "description": "JID do contato para desbloquear"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Contato desbloqueado com sucesso"
+          }
+        }
+      }
+    }
+}

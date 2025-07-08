@@ -1,0 +1,171 @@
+{
+    "/session/create_sessao": {
+      "post": {
+        "summary": "Criar Sessao",
+        "tags": ["Sessões"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["sessionId"],
+                "properties": {
+                  "nome_sessao": {
+                    "type": "string",
+                    "description": "Nome da sessão (obrigatório, mínimo 5 caracteres)"
+                  },
+                  "numero": {
+                    "type": "string",
+                    "description": "Numero para contato"
+                  },
+                  "criar_sessao": {
+                    "type": "boolean",
+                    "description": "Se true, Criar a conexão com whatsapp",
+                    "default": true
+                  },
+                  "gerar_qrcode": {
+                    "type": "boolean",
+                    "description": "Se true, Gerar qrcode Base64",
+                    "default": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sessão criada com sucesso"
+          }
+        }
+      }
+    },
+    "/session/conectar_sessao": {
+      "put": {
+        "summary": "Conectar a uma sessão WhatsApp existente",
+        "tags": ["Sessões"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Você recebe um base64 com qrcode"
+          }
+        }
+      }
+    },
+    "/session/restart": {
+      "put": {
+        "summary": "Reniciar uma sessão conectada",
+        "tags": ["Sessões"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Você recebe uma mensagem de sucesso"
+          }
+        }
+      }
+    },
+    "/session/status/": {
+      "get": {
+        "summary": "Obter status da sessão",
+        "tags": ["Sessões"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Status obtido com sucesso"
+          }
+        }
+      }
+    },
+    "/session/list": {
+      "get": {
+        "summary": "Listar todas as sessões",
+        "tags": ["Sessões"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de sessões"
+          }
+        }
+      }
+    },
+    "/session/reconnect": {
+      "post": {
+        "summary": "Forçar reconexão da sessão",
+        "tags": ["Sessões"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reconexão iniciada com sucesso"
+          }
+        }
+      }
+    },
+    "/session/health": {
+      "get": {
+        "summary": "Verificar saúde do sistema de sessões",
+        "tags": ["Sessões"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Status de saúde do sistema"
+          }
+        }
+      }
+    },
+    "/session/delete/{sessionId}": {
+      "delete": {
+        "summary": "Deletar sessão",
+        "tags": ["Sessões"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sessionId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sessão deletada com sucesso"
+          }
+        }
+      }
+    }
+}

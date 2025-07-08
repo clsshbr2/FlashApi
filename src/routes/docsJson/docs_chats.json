@@ -1,0 +1,898 @@
+{
+    "/chat/send-text": {
+        "post": {
+            "summary": "Enviar mensagem de texto",
+            "tags": [
+                "Chats"
+            ],
+            "security": [
+                {
+                    "ApiKeyAuth": []
+                }
+            ],
+            "requestBody": {
+                "required": true,
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "required": [
+                                "to",
+                                "text"
+                            ],
+                            "properties": {
+                                "to": {
+                                    "type": "string",
+                                    "description": "Numero de quem vai receber a mensagem",
+                                    "default": "5599999999999"
+                                },
+                                "text": {
+                                    "type": "string",
+                                    "description": "Texto a ser enviado",
+                                    "default": "Olá mundo"
+                                },
+                                "linkPreview": {
+                                    "type": "boolean",
+                                    "description": "false ou true",
+                                    "default": "false"
+                                },
+                                "mentions": {
+                                    "type": "array",
+                                    "description": "[ '5599999999999']",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                "delay": {
+                                    "type": "number",
+                                    "description": "Delay de mensagem",
+                                    "default": "1200"
+                                },
+                                "useQueue": {
+                                    "type": "boolean",
+                                    "description": "Adicionar mensagem em fila",
+                                    "default": "false"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "responses": {
+                "200": {
+                    "description": "Mensagem enviada com sucesso",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "success": {
+                                        "type": "boolean",
+                                        "example": "true"
+                                    },
+                                    "message": {
+                                        "type": "string",
+                                        "example": "Mensagem de texto enviada com sucesso"
+                                    },
+                                    "data": {
+                                        "type": "array",
+                                        "example": "['key[]', 'message[]', 'messageTimestamp', 'status']"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "/chat/send-image": {
+        "post": {
+            "summary": "Enviar imagem",
+            "tags": [
+                "Chats"
+            ],
+            "security": [
+                {
+                    "ApiKeyAuth": []
+                }
+            ],
+            "requestBody": {
+                "required": true,
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "required": [
+                                "to",
+                                "caption",
+                                "image"
+                            ],
+                            "properties": {
+                                "to": {
+                                    "type": "string",
+                                    "description": "Numero de quem vai receber a mensagem",
+                                    "default": "5599999999999"
+                                },
+                                "caption": {
+                                    "type": "string",
+                                    "description": "Texto a ser enviado",
+                                    "default": "Olá mundo"
+                                },
+                                "image": {
+                                    "type": "string",
+                                    "description": "Link ou base64",
+                                    "default": "https://exemplo.com.br/imagem.png"
+                                },
+                                "mentions": {
+                                    "type": "array",
+                                    "description": "[ '5599999999999']",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                "delay": {
+                                    "type": "number",
+                                    "description": "Delay de mensagem",
+                                    "default": "1200"
+                                },
+                                "useQueue": {
+                                    "type": "boolean",
+                                    "description": "Adicionar mensagem em fila",
+                                    "default": false
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "responses": {
+                "200": {
+                    "description": "imagem enviada com sucesso",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "success": {
+                                        "type": "boolean",
+                                        "example": "true"
+                                    },
+                                    "message": {
+                                        "type": "string",
+                                        "example": "imagem com imagem enviada com sucesso"
+                                    },
+                                    "data": {
+                                        "type": "array",
+                                        "example": "['key[]', 'message[]', 'messageTimestamp', 'status']"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "/chat/send-video": {
+        "post": {
+            "summary": "Enviar Video",
+            "tags": [
+                "Chats"
+            ],
+            "security": [
+                {
+                    "ApiKeyAuth": []
+                }
+            ],
+            "requestBody": {
+                "required": true,
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "required": [
+                                "to",
+                                "caption",
+                                "video"
+                            ],
+                            "properties": {
+                                "to": {
+                                    "type": "string",
+                                    "description": "Numero de quem vai receber a mensagem",
+                                    "default": "5599999999999"
+                                },
+                                "caption": {
+                                    "type": "string",
+                                    "description": "Texto a ser enviado",
+                                    "default": "Olá mundo"
+                                },
+                                "video": {
+                                    "type": "string",
+                                    "description": "Link ou base64",
+                                    "default": "https://exemplo.com.br/video.mp4"
+                                },
+                                "gifPlayback": {
+                                    "type": "boolean",
+                                    "description": "Enviar em modo gif",
+                                    "default": false
+                                },
+                                "delay": {
+                                    "type": "number",
+                                    "description": "Delay de mensagem",
+                                    "default": "1200"
+                                },
+                                "useQueue": {
+                                    "type": "boolean",
+                                    "description": "Adicionar mensagem em fila",
+                                    "default": false
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "responses": {
+                "200": {
+                    "description": "Mensagem enviada com sucesso",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "success": {
+                                        "type": "boolean",
+                                        "example": "true"
+                                    },
+                                    "message": {
+                                        "type": "string",
+                                        "example": "Mensagem com imagem enviada com sucesso"
+                                    },
+                                    "data": {
+                                        "type": "array",
+                                        "example": "['key[]', 'message[]', 'messageTimestamp', 'status']"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "/chat/send-audio": {
+        "post": {
+            "summary": "Enviar áudio",
+            "tags": [
+                "Chats"
+            ],
+            "security": [
+                {
+                    "ApiKeyAuth": []
+                }
+            ],
+            "requestBody": {
+                "required": true,
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "required": [
+                                "to",
+                                "audio"
+                            ],
+                            "properties": {
+                                "to": {
+                                    "type": "string",
+                                    "description": "Número do destinatário",
+                                    "default": "5599999999999"
+                                },
+                                "audio": {
+                                    "type": "string",
+                                    "description": "URL do áudio ou base64",
+                                    "default": "https://exemplo.com.br/video.mp3"
+                                },
+                                "ptt": {
+                                    "type": "boolean",
+                                    "description": "Enviar como nota de voz",
+                                    "default": false
+                                },
+                                "delay": {
+                                    "type": "number",
+                                    "description": "Delay em milissegundos",
+                                    "default": 1200
+                                },
+                                "useQueue": {
+                                    "type": "boolean",
+                                    "description": "Usar fila de mensagens",
+                                    "default": false
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "responses": {
+                "200": {
+                    "description": "Áudio enviado com sucesso"
+                }
+            }
+        }
+    },
+    "/chat/send-document": {
+      "post": {
+        "summary": "Enviar documento",
+        "tags": ["Chats"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["to", "document", "fileName"],
+                "properties": {
+                  "to": {
+                    "type": "string",
+                    "description": "Número do destinatário"
+                  },
+                  "document": {
+                    "type": "string",
+                    "description": "URL do documento ou base64"
+                  },
+                  "fileName": {
+                    "type": "string",
+                    "description": "Nome do arquivo"
+                  },
+                  "mimetype": {
+                    "type": "string",
+                    "description": "Tipo MIME do arquivo"
+                  },
+                  "caption": {
+                    "type": "string",
+                    "description": "Legenda do documento"
+                  },
+                  "delay": {
+                    "type": "number",
+                    "description": "Delay em milissegundos"
+                  },
+                  "useQueue": {
+                    "type": "boolean",
+                    "description": "Usar fila de mensagens"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Documento enviado com sucesso"
+          }
+        }
+      }
+    },
+     "/chat/send-location": {
+      "post": {
+        "summary": "Enviar localização",
+        "tags": ["Chats"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["to", "latitude", "longitude"],
+                "properties": {
+                  "to": {
+                    "type": "string",
+                    "description": "Número do destinatário",
+                    "default": "5511999999999"
+                  },
+                  "latitude": {
+                    "type": "number",
+                    "description": "Latitude",
+                    "default": -23.55052
+                  },
+                  "longitude": {
+                    "type": "number",
+                    "description": "Longitude",
+                    "default": -46.633308
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "Nome do local",
+                    "default": "Praça da Sé"
+                  },
+                  "address": {
+                    "type": "string",
+                    "description": "Endereço do local",
+                    "default": "Praça da Sé, São Paulo - SP"
+                  },
+                  "delay": {
+                    "type": "number",
+                    "description": "Delay em milissegundos",
+                    "default": 1200
+                  },
+                  "useQueue": {
+                    "type": "boolean",
+                    "description": "Usar fila de mensagens",
+                    "default": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Localização enviada com sucesso"
+          }
+        }
+      }
+    },
+    "/chat/send-contact": {
+      "post": {
+        "summary": "Enviar contato",
+        "tags": ["Chats"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["to", "contact"],
+                "properties": {
+                  "to": {
+                    "type": "string",
+                    "description": "Número do destinatário",
+                    "default": "5511999999999"
+                  },
+                  "contact": {
+                    "type": "object",
+                    "properties": {
+                      "displayName": {
+                        "type": "string",
+                        "description": "Nome do contato",
+                        "default": "João da Silva"
+                      },
+                      "vcard": {
+                        "type": "string",
+                        "description": "vCard do contato",
+                        "default": "BEGIN:VCARD\nVERSION:3.0\nFN:João da Silva\nTEL:+5511999999999\nEND:VCARD"
+                      }
+                    }
+                  },
+                  "delay": {
+                    "type": "number",
+                    "description": "Delay em milissegundos",
+                    "default": 1200
+                  },
+                  "useQueue": {
+                    "type": "boolean",
+                    "description": "Usar fila de mensagens",
+                    "default": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Contato enviado com sucesso"
+          }
+        }
+      }
+    },
+    "/chat/send-sticker": {
+      "post": {
+        "summary": "Enviar sticker",
+        "tags": ["Chats"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["to", "sticker"],
+                "properties": {
+                  "to": {
+                    "type": "string",
+                    "description": "Número do destinatário",
+                    "default": "5511999999999"
+                  },
+                  "sticker": {
+                    "type": "string",
+                    "description": "URL do sticker ou base64",
+                    "default": "https://exemplo.com/sticker.webp"
+                  },
+                  "delay": {
+                    "type": "number",
+                    "description": "Delay em milissegundos",
+                    "default": 1200
+                  },
+                  "useQueue": {
+                    "type": "boolean",
+                    "description": "Usar fila de mensagens",
+                    "default": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sticker enviado com sucesso"
+          }
+        }
+      }
+    },
+    "/chat/send-reaction": {
+      "post": {
+        "summary": "Enviar reação a uma mensagem",
+        "tags": ["Chats"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["to", "messageId", "emoji"],
+                "properties": {
+                  "to": {
+                    "type": "string",
+                    "description": "JID do chat",
+                    "default": "5511999999999@c.us"
+                  },
+                  "messageId": {
+                    "type": "string",
+                    "description": "ID da mensagem para reagir",
+                    "default": "ABCDEF1234567890"
+                  },
+                  "emoji": {
+                    "type": "string",
+                    "description": "Emoji da reação (ou string vazia para remover)",
+                    "default": "❤️"
+                  },
+                  "delay": {
+                    "type": "number",
+                    "description": "Delay em milissegundos",
+                    "default": 1200
+                  },
+                  "useQueue": {
+                    "type": "boolean",
+                    "description": "Usar fila de mensagens",
+                    "default": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Reação enviada com sucesso"
+          }
+        }
+      }
+    },
+    "/chat/send-poll": {
+      "post": {
+        "summary": "Enviar enquete",
+        "tags": ["Chats"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["to", "name", "options"],
+                "properties": {
+                  "to": {
+                    "type": "string",
+                    "description": "Número do destinatário",
+                    "default": "5511999999999"
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "Pergunta da enquete",
+                    "default": "Qual sua linguagem favorita?"
+                  },
+                  "options": {
+                    "type": "array",
+                    "description": "Opções da enquete (máximo 12)",
+                    "items": {
+                      "type": "string"
+                    },
+                    "default": ["JavaScript", "Python", "PHP"]
+                  },
+                  "selectableCount": {
+                    "type": "number",
+                    "description": "Número de opções selecionáveis",
+                    "default": 1
+                  },
+                  "delay": {
+                    "type": "number",
+                    "description": "Delay em milissegundos",
+                    "default": 1200
+                  },
+                  "useQueue": {
+                    "type": "boolean",
+                    "description": "Usar fila de mensagens",
+                    "default": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Enquete enviada com sucesso"
+          }
+        }
+      }
+    },
+    "/chat/typing": {
+      "post": {
+        "summary": "Enviar status de digitação",
+        "tags": ["Chats"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["to", "typing"],
+                "properties": {
+                  "to": {
+                    "type": "string",
+                    "description": "Número do destinatário",
+                    "default": "5511999999999"
+                  },
+                  "typing": {
+                    "type": "boolean",
+                    "description": "true para digitando, false para parar",
+                    "default": true
+                  },
+                  "delay": {
+                    "type": "number",
+                    "description": "Delay em milissegundos",
+                    "default": 1200
+                  },
+                  "useQueue": {
+                    "type": "boolean",
+                    "description": "Usar fila de mensagens",
+                    "default": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Status de digitação enviado com sucesso"
+          }
+        }
+      }
+    },
+    "/chat/mark-read": {
+      "post": {
+        "summary": "Marcar mensagem como lida",
+        "tags": ["Chats"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["jid"],
+                "properties": {
+                  "jid": {
+                    "type": "string",
+                    "description": "JID do chat",
+                    "default": "5511999999999@c.us"
+                  },
+                  "messageId": {
+                    "type": "string",
+                    "description": "ID da mensagem específica (opcional)",
+                    "default": "ABCDEF1234567890"
+                  },
+                  "delay": {
+                    "type": "number",
+                    "description": "Delay em milissegundos",
+                    "default": 1200
+                  },
+                  "useQueue": {
+                    "type": "boolean",
+                    "description": "Usar fila de mensagens",
+                    "default": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Mensagem marcada como lida com sucesso"
+          }
+        }
+      }
+    },
+    "/chat/messages": {
+      "get": {
+        "summary": "Obter mensagens do chat",
+        "tags": ["Chats"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "jid",
+            "schema": {
+              "type": "string"
+            },
+            "description": "JID do chat (opcional)"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 50
+            },
+            "description": "Limite de mensagens"
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "type": "integer",
+              "default": 0
+            },
+            "description": "Offset para paginação"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de mensagens"
+          }
+        }
+      }
+    },
+    "/chat/chats": {
+      "get": {
+        "summary": "Obter lista de chats",
+        "tags": ["Chats"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de chats"
+          }
+        }
+      }
+    },
+    "/chat/queue/status": {
+      "get": {
+        "summary": "Obter status da fila de mensagens",
+        "tags": ["Chats"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Status da fila"
+          }
+        }
+      }
+    },
+    "/chat/queue/clear": {
+      "post": {
+        "summary": "Limpar fila de mensagens",
+        "tags": ["Chats"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Fila limpa com sucesso"
+          }
+        }
+      }
+    },
+    "/chat/delete/{id_message}": {
+      "delete": {
+        "summary": "Deleta uma mensagem específica com base no ID fornecido",
+        "tags": ["Chats"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id_message",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Id da mensagem",
+              "example": "3EB0835454FA1934E6D249"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Mensagem deletada com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Mensagem deletada com sucesso"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+}

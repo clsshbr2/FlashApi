@@ -1,0 +1,50 @@
+{
+    "/system/status": {
+      "get": {
+        "summary": "Status geral do sistema",
+        "tags": ["Sistema"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Status do sistema"
+          }
+        }
+      }
+    },
+    "/system/config": {
+      "get": {
+        "summary": "Configurações do sistema",
+        "tags": ["Sistema"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Configurações do sistema"
+          }
+        }
+      }
+    },
+    "/system/cleanup": {
+      "post": {
+        "summary": "Limpar sessões desconectadas",
+        "tags": ["Sistema"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Limpeza realizada com sucesso"
+          }
+        }
+      }
+    }
+}

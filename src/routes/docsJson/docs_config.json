@@ -1,0 +1,160 @@
+{
+    "/config/config": {
+        "put": {
+            "summary": "Atualizar configurações da sessão",
+            "tags": [
+                "Configurações"
+            ],
+            "security": [
+                {
+                    "ApiKeyAuth": []
+                }
+            ],
+            "requestBody": {
+                "required": true,
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "ignoreGroups": {
+                                    "type": "boolean",
+                                    "description": "Ignorar mensagens de grupos",
+                                    "default": false
+                                },
+                                "autoRead": {
+                                    "type": "boolean",
+                                    "description": "Marcar mensagens como lidas automaticamente",
+                                    "default": false
+                                },
+                                "rejectCalls": {
+                                    "type": "boolean",
+                                    "description": "Rejeitar chamadas automaticamente",
+                                    "default": true
+                                },
+                                "msg_rejectCalls": {
+                                    "type": "string",
+                                    "description": "Resposta De regeitar msg",
+                                    "default": "Não atendemos ligações"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "responses": {
+                "200": {
+                    "description": "Configurações atualizadas com sucesso"
+                }
+            }
+        }
+    },
+    "/config/session": {
+        "get": {
+            "summary": "Obter configurações da sessão",
+            "tags": [
+                "Configurações"
+            ],
+            "security": [
+                {
+                    "ApiKeyAuth": []
+                }
+            ],
+            "responses": {
+                "200": {
+                    "description": "Configurações da sessão"
+                }
+            }
+        }
+    },
+    "/config/webhook": {
+        "put": {
+            "summary": "Configurar webhook da sessão",
+            "tags": [
+                "Configurações"
+            ],
+            "security": [
+                {
+                    "ApiKeyAuth": []
+                }
+            ],
+            "requestBody": {
+                "required": true,
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "required": [
+                                "webhookUrl",
+                                "events"
+                            ],
+                            "properties": {
+                                "webhookUrl": {
+                                    "type": "string",
+                                    "description": "URL do webhook"
+                                },
+                                "status_webhook": {
+                                    "type": "boolean",
+                                    "description": "true ou false",
+                                    "default": true
+                                },
+                                "events": {
+                                    "type": "array",
+                                    "description": "Configurar webhook",
+                                    "default": [
+                                        "presence_update",
+                                        "qr_updated",
+                                        "session_disconnected",
+                                        "session_connected",
+                                        "message_received",
+                                        "message_update",
+                                        "presence_update"
+                                    ],
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "responses": {
+                "200": {
+                    "description": "Webhook adicionado com sucesso",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "message": {
+                                        "type": "string",
+                                        "example": "Webhook adicionado com sucesso"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "/config/stats": {
+        "get": {
+            "summary": "Obter estatísticas da sessão",
+            "tags": [
+                "Configurações"
+            ],
+            "security": [
+                {
+                    "ApiKeyAuth": []
+                }
+            ],
+            "responses": {
+                "200": {
+                    "description": "Estatísticas da sessão"
+                }
+            }
+        }
+    }
+}

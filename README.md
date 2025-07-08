@@ -18,17 +18,26 @@ API completa para gerenciamento de múltiplas sessões WhatsApp usando Baileys.
 ## Instalação
 
 ```bash
-# Clone ou extraia o projeto
-cd baileys-multi-session-api
+# Clone o projeto
+git clone https://github.com/clsshbr2/FlashApi.git
+cd FlashApi
 
-# Instale as dependências
+# Renomeia o .env de exemplo
+cp .env.exemplo .env
+
+# Instala as dependências
 npm install
 
-# Inicie o servidor
+# Gera o banco de dados (arquivo JS que verifica e executa o SQL)
+npm run migrate_mysql
+
+# Inicia com pm2
+npm install pm2 -g
+pm2 start npm --name flashapi -- start
+
+# Inicia sem pm2
 npm start
 
-# Para desenvolvimento (com auto-reload)
-npm run dev
 ```
 
 ## Configuração
@@ -38,9 +47,15 @@ npm run dev
 Primeiro, crie uma API Key para autenticação:
 
 ```bash
-curl -X POST http://localhost:3000/api/auth/create-key \
+curl -X POST http://localhost:3000/api/session/create_sessao \
   -H "Content-Type: application/json" \
-  -d '{"name":"Minha API Key"}'
+  -H "apikey: sua-api-key" \
+  -d '{
+    "nome_sessao": "minha-sessao",
+    "numero": "5521999999999",
+    "criar_sessao": true,
+    "gerar_qrcode": true
+  }'
 ```
 
 ### 2. Usar a API Key

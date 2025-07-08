@@ -1,0 +1,358 @@
+{
+    "/group/list": {
+      "get": {
+        "summary": "Listar grupos da sessão",
+        "tags": ["Grupos"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de grupos"
+          }
+        }
+      }
+    },
+    "/group/info": {
+      "post": {
+        "summary": "Obter informações de um grupo",
+        "tags": ["Grupos"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["groupJid"],
+                "properties": {
+                  "groupJid": {
+                    "type": "string",
+                    "description": "JID do grupo"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Informações do grupo"
+          }
+        }
+      }
+    },
+    "/group/create": {
+      "post": {
+        "summary": "Criar novo grupo",
+        "tags": ["Grupos"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["subject", "participants"],
+                "properties": {
+                  "subject": {
+                    "type": "string",
+                    "description": "Nome do grupo"
+                  },
+                  "participants": {
+                    "type": "array",
+                    "description": "Lista de JIDs dos participantes",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Grupo criado com sucesso"
+          }
+        }
+      }
+    },
+    "/group/add-participant": {
+      "post": {
+        "summary": "Adicionar participante ao grupo",
+        "tags": ["Grupos"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["groupJid", "participants"],
+                "properties": {
+                  "groupJid": {
+                    "type": "string",
+                    "description": "JID do grupo"
+                  },
+                  "participants": {
+                    "type": "array",
+                    "description": "Lista de JIDs para adicionar",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Participantes adicionados com sucesso"
+          }
+        }
+      }
+    },
+    "/group/remove-participant": {
+      "post": {
+        "summary": "Remover participante do grupo",
+        "tags": ["Grupos"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["groupJid", "participants"],
+                "properties": {
+                  "groupJid": {
+                    "type": "string",
+                    "description": "JID do grupo"
+                  },
+                  "participants": {
+                    "type": "array",
+                    "description": "Lista de JIDs para remover",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Participantes removidos com sucesso"
+          }
+        }
+      }
+    },
+    "/group/promote": {
+      "post": {
+        "summary": "Promover participante a admin",
+        "tags": ["Grupos"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["groupJid", "participants"],
+                "properties": {
+                  "groupJid": {
+                    "type": "string",
+                    "description": "JID do grupo"
+                  },
+                  "participants": {
+                    "type": "array",
+                    "description": "Lista de JIDs para promover",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Participantes promovidos com sucesso"
+          }
+        }
+      }
+    },
+    "/group/demote": {
+      "post": {
+        "summary": "Rebaixar admin a participante",
+        "tags": ["Grupos"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["groupJid", "participants"],
+                "properties": {
+                  "groupJid": {
+                    "type": "string",
+                    "description": "JID do grupo"
+                  },
+                  "participants": {
+                    "type": "array",
+                    "description": "Lista de JIDs para rebaixar",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Participantes rebaixados com sucesso"
+          }
+        }
+      }
+    },
+    "/group/leave": {
+      "post": {
+        "summary": "Sair do grupo",
+        "tags": ["Grupos"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["groupJid"],
+                "properties": {
+                  "groupJid": {
+                    "type": "string",
+                    "description": "JID do grupo"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Saiu do grupo com sucesso"
+          }
+        }
+      }
+    },
+    "/group/update-subject": {
+      "post": {
+        "summary": "Atualizar nome do grupo",
+        "tags": ["Grupos"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["groupJid", "subject"],
+                "properties": {
+                  "groupJid": {
+                    "type": "string",
+                    "description": "JID do grupo"
+                  },
+                  "subject": {
+                    "type": "string",
+                    "description": "Novo nome do grupo"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Nome do grupo atualizado com sucesso"
+          }
+        }
+      }
+    },
+    "/group/update-description": {
+      "post": {
+        "summary": "Atualizar descrição do grupo",
+        "tags": ["Grupos"],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["groupJid", "description"],
+                "properties": {
+                  "groupJid": {
+                    "type": "string",
+                    "description": "JID do grupo"
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "Nova descrição do grupo"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Descrição do grupo atualizada com sucesso"
+          }
+        }
+      }
+    }
+}
