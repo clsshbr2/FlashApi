@@ -15,7 +15,9 @@ const {
   makeCacheableSignalKeyStore,
   sendListMessage,
   Browsers,
-  decryptPollVote
+  decryptPollVote,
+  WABrowserDescription
+
 } = require('@whiskeysockets/baileys');
 
 const fs = require('fs');
@@ -31,6 +33,8 @@ const configenv = require('../config/env');
 const GlobalWebSocketService = require('./GlobalWebSocketService');
 const digestSync = require('crypto-digest-sync');
 const moment = require('moment-timezone');
+const { release } = require('os');
+const qrTerminal = require('qrcode-terminal');
 
 class BaileysService {
   constructor() {
@@ -71,7 +75,7 @@ class BaileysService {
         if (session.status === 'connected' || session.status === 'connecting') {
           logger.info(`🔄 Restaurando sessão: ${session.apikey}`);
 
-           // Sincronizar credenciais antes de criar a sessão
+          // Sincronizar credenciais antes de criar a sessão
           await this.syncCreds(session.apikey);
           await this.createSession(session.apikey, session.numero, false);
         }
@@ -104,11 +108,23 @@ class BaileysService {
 
       logger.info(`📱 Usando Baileys v${version.join('.')}, isLatest: ${isLatest}`);
 
+      let browserOptions = {}
+      let number = false
+      if (phoneNumber && phoneNumber !== '') {
+        number = phoneNumber;
+
+        logger.info(`Phone number: ${number}`);
+      } else {
+        const browser = [configenv.sessao_phone, configenv.sessao_phone_name, release()];
+        browserOptions = { browser };
+      }
+
+
       const sock = makeWASocket({
         version,
         logger: pino({ level: 'silent' }),
         printQRInTerminal: false,
-        browser: Browsers.macOS('Desktop'),
+        ...browserOptions,
         auth: {
           creds: state.creds,
           keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'error' }))
@@ -124,11 +140,10 @@ class BaileysService {
         }
       });
 
-
       const sessionData = {
         sock,
         status: 'connecting',
-        phoneNumber,
+        phoneNumber: number,
         reconnectAttempts: 0,
         lastConnected: null,
         connectionAttempts: 0,
@@ -150,7 +165,7 @@ class BaileysService {
   }
 
   // Nova função para remover sessão sem deletar arquivos
-  async removeSession(sessionId) {
+  async removeSession(sessionId, delarquivos = false) {
     try {
       const sessionData = this.sessions.get(sessionId);
       if (sessionData) {
@@ -162,6 +177,18 @@ class BaileysService {
         // Remover do Map
         this.sessions.delete(sessionId);
         this.syncQueues.delete(sessionId);
+
+        if (delarquivos) {
+          await this.deleteSession(sessionId)
+          await Session.saveCreds(sessionId, null)
+        }
+
+        await Session.update(sessionId, {
+          qr_code: 'null',
+          code: 'null',
+          status: 'disconnected'
+        })
+
 
         logger.info(`🗑️ Sessão ${sessionId} removida da memória`);
       }
@@ -415,7 +442,7 @@ class BaileysService {
       logger.info(`✅ Credenciais restauradas do banco para arquivos: ${sessionId}`);
       return true;
     } catch (error) {
-            
+
       logger.error(`❌ Erro ao restaurar credenciais do banco para ${sessionId}:`, error);
       return false;
     }
@@ -534,18 +561,34 @@ class BaileysService {
 
     if (qr) {
       try {
+
+        qrTerminal.generate(qr, { small: true }, (qrcode) => {
+          console.log(`QR Code Sessão ${sessionId}:\n`, qrcode);
+        });
+        let code = null
+        if (sessionData.phoneNumber && sessionData.phoneNumber !== '') {
+          try {
+            await this.delay(1000);
+            code = await sessionData.sock.requestPairingCode(sessionData.phoneNumber);
+            logger.info(`Codigo de pareamento: ${code}`)
+          } catch (error) {
+            console.log(error)
+          }
+        }
+
         const qrCodeDataURL = await QRCode.toDataURL(qr);
         sessionData.qrCode = qrCodeDataURL;
 
         if (updateStatus) {
           await Session.update(sessionId, {
             status: 'qr_ready',
-            qr_code: qrCodeDataURL
+            qr_code: qrCodeDataURL,
+            code
           });
         }
 
         // Emit QR code event
-        await this.emitEvent(sessionId, 'qr_updated', { qr: qrCodeDataURL });
+        await this.emitEvent(sessionId, 'qr_updated', { qr: qrCodeDataURL, code });
 
         logger.info(`📱 QR Code gerado para sessão ${sessionId}`);
       } catch (error) {
@@ -575,11 +618,11 @@ class BaileysService {
           }, 5000 * sessionData.reconnectAttempts);
         } else {
           logger.error(`❌ Máximo de tentativas de reconexão atingido para ${sessionId}`);
-          await this.removeSession(sessionId);
+          await this.removeSession(sessionId, true);
         }
       } else {
         logger.info(`🚪 Sessão ${sessionId} foi desconectada (logout)`);
-        await this.removeSession(sessionId);
+        await this.removeSession(sessionId, true);
       }
 
       if (updateStatus) {
@@ -597,7 +640,7 @@ class BaileysService {
         await Session.update(sessionId, { status: 'connecting' });
       }
     }
-    
+
     if (connection === 'open') {
       sessionData.status = 'connected';
       sessionData.lastConnected = moment().tz(configenv.timeZone).format('YYYY-MM-DD HH:mm:ss');
@@ -626,6 +669,7 @@ class BaileysService {
       }, 15000); // Aguardar 15 segundos
     }
   }
+
 
   // NOVA FUNÇÃO: Forçar sincronização de contatos
   async forceSyncContacts(sessionId) {

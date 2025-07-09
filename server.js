@@ -23,6 +23,7 @@ const groupRoutes = require('./src/routes/group');
 const configRoutes = require('./src/routes/config');
 const systemRoutes = require('./src/routes/system');
 const { execSync } = require('child_process');
+const { modifyTable } = require('./src/config/verificardb');
 
 
 // Gerar arquivo swagger completo

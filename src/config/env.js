@@ -18,6 +18,10 @@ const config = {
   globalWebhookUrl: process.env.GLOBAL_WEBHOOK_URL || null,
   globalWebhookSecret: process.env.GLOBAL_WEBHOOK_SECRET || 'default-webhook-secret',
 
+  // Configuração de sessão
+  sessao_phone: process.env.SESSION_PHONE_CLIENT || 'Flash_api',
+  sessao_phone_name: process.env.SESSION_PHONE_NAME || 'Chrome',
+
   // Global WebSocket
   enableGlobalWebsocket: process.env.ENABLE_WEBSOCKET === 'true',
   globalWebsocketSecret: process.env.GLOBAL_WEBSOCKET_SECRET || '123',

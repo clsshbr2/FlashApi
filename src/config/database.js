@@ -47,11 +47,12 @@ class Database {
     }
 
     async getPoolStatus() {
+        const poolInternals = this.pool.pool || {};
         return {
-            totalConnections: this.pool.pool._allConnections.length,
-            freeConnections: this.pool.pool._freeConnections.length,
-            acquiringConnections: this.pool.pool._acquiringConnections.length,
-            connectionLimit: this.pool.config.connectionLimit
+            totalConnections: poolInternals._allConnections?.length || 0,
+            freeConnections: poolInternals._freeConnections?.length || 0,
+            acquiringConnections: poolInternals._acquiringConnections?.length || 0,
+            connectionLimit: this.pool.config?.connectionLimit || 0
         };
     }
 
