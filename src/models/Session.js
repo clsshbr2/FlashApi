@@ -16,6 +16,11 @@ class Session {
     return getsessao
   }
 
+  static async findByName(nome_sessao) {
+    const [getsessao] = await db.execute('SELECT * FROM sessao WHERE nome_sessao = ?', [nome_sessao])
+    return getsessao
+  }
+
   static async findByApiKey() {
     const getsessoes = await db.execute('SELECT * FROM sessao ORDER BY created_at DESC', [])
     return getsessoes
@@ -64,7 +69,7 @@ class Session {
       const saveCreds = await db.execute('UPDATE sessao SET creds = ?, updated_at = CURRENT_TIMESTAMP WHERE apikey = ?', [creds, id]);
       return saveCreds.affectedRows > 0;
     } catch (error) {
-      console.log(error)
+
       console.error('Erro ao salvar credenciais:', error);
       return false;
     }
@@ -72,6 +77,10 @@ class Session {
 
   static async delete(id) {
     const deletesessao = await db.execute(`DELETE FROM sessao WHERE apikey = ?`, [id])
+    await db.execute(`DELETE FROM chats WHERE sessao_id = ?`, [id])
+    await db.execute(`DELETE FROM contatos WHERE sessao_id = ?`, [id])
+    await db.execute(`DELETE FROM grupos WHERE sessao_id = ?`, [id])
+    await db.execute(`DELETE FROM mensagens WHERE sessao_id = ?`, [id])
     return deletesessao
   }
 

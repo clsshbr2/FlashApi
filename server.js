@@ -1,3 +1,11 @@
+process.on('uncaughtException', (err) => {
+    console.error('❌ Erro não tratado (uncaughtException):', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('❌ Rejeição não tratada (unhandledRejection):', reason);
+});
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');

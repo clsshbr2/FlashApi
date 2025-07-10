@@ -39,7 +39,7 @@ class Store {
       ]);
       return true;
     } catch (error) {
-      console.log(error);
+      console.log(error)
       logger.error('Erro ao salvar mensagem:', error);
       return false;
     }
@@ -159,7 +159,6 @@ class Store {
       ]);
       return true;
     } catch (error) {
-      console.log(error)
       logger.error('Erro ao salvar chat:', error);
       return false;
     }
@@ -240,7 +239,6 @@ class Store {
         participantes: group.participantes || []
       }));
     } catch (error) {
-      console.log(error)
       logger.error('Erro ao buscar grupos:', error);
       return [];
     }
@@ -283,13 +281,12 @@ class Store {
         configData.leitura_automatica ? 1 : 0,
         configData.rejeitar_ligacoes ? 1 : 0,
         configData.events || {},
-        configData.webhook_status,
+        configData.webhook_status ? 1 : 0,
         configData.msg_rejectCalls,
         sessionId
       ]);
       return true;
     } catch (error) {
-      console.log(error)
       logger.error('Erro ao salvar configuração da sessão:', error);
       return false;
     }
@@ -305,18 +302,17 @@ class Store {
 
       if (sessionConfig) {
         return {
-          webhookUrl: sessionConfig.webhook_url,
+          webhook_url: sessionConfig.webhook_url,
           webhook_status: sessionConfig.webhook_status === 1,
           events: sessionConfig.events,
-          ignoreGroups: sessionConfig.ignorar_grupos === 1,
-          autoRead: sessionConfig.leitura_automatica === 1,
-          rejectCalls: sessionConfig.rejeitar_ligacoes === 1,
+          ignorar_grupos: sessionConfig.ignorar_grupos === 1,
+          leitura_automatica: sessionConfig.leitura_automatica === 1,
+          rejeitar_ligacoes: sessionConfig.rejeitar_ligacoes === 1,
           msg_rejectCalls: sessionConfig.msg_rejectCalls || '',
         };
       }
       return null;
     } catch (error) {
-      console.log(error)
       logger.error('Erro ao buscar configuração da sessão:', error);
       return null;
     }

@@ -9,7 +9,7 @@ class WebhookService {
           timeout: 10000,
           headers: {
             'Content-Type': 'application/json',
-            'User-Agent': 'Baileys-Multi-Session-Webhook/1.0'
+            'User-Agent': 'flash-Multi-Session-Webhook/1.0'
           }
         });
 

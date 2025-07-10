@@ -71,7 +71,7 @@ router.post('/create_sessao', authenticateGlobalApiKey, async (req, res) => {
         const getsessao = await Session.findById(uuid);
         if (getsessao && getsessao.qrcode != '') {
           qrcode = getsessao.qrcode
-          code  = getsessao.code
+          code = getsessao.code
         }
       }
     }
@@ -323,25 +323,71 @@ router.delete('/delete/:sessionId', authenticateGlobalApiKey, async (req, res) =
   try {
     const { sessionId } = req.params;
 
-    const session = await Session.findById(sessionId);
-    if (!session) {
+    let sessao = await Session.findById(sessionId);
+
+    if (!sessao) {
+      sessao = await Session.findByName(sessionId);
+    }
+
+    if (!sessao) {
       return res.status(404).json({
         success: false,
         message: 'Sessão não encontrada'
       });
     }
 
-    await BaileysService.deleteSession(sessionId, true);
-    await Session.delete(sessionId);
+    await BaileysService.deleteSession(sessao.apikey, true);
+    await Session.delete(sessao.apikey);
 
     res.json({
       success: true,
       message: 'Sessão deletada com sucesso'
     });
 
-    logger.info(`Sessão deletada: ${sessionId}`);
+    logger.info(`Sessão deletada: ${sessao.apikey}`);
   } catch (error) {
     logger.error('Erro ao deletar sessão:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro interno do servidor'
+    });
+  }
+});
+
+router.delete('/desconect/:sessionId', authenticateApiKey, async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const apiKey = req.headers['apikey'];
+
+    let sessao = await Session.findById(sessionId);
+
+    if (!sessao) {
+      sessao = await Session.findByName(sessionId);
+      if (apiKey !== sessao.apikey) {
+        return res.status(404).json({
+          success: false,
+          message: 'Essa apikey não corresponde a essa sessão'
+        });
+      }
+    }
+
+    if (!sessao) {
+      return res.status(404).json({
+        success: false,
+        message: 'Sessão não encontrada'
+      });
+    }
+
+    await BaileysService.deleteSession(sessao.apikey, true);
+
+    res.json({
+      success: true,
+      message: 'Sessão Desconectada com sucesso'
+    });
+
+    logger.info(`Sessão Desconectada: ${sessao.apikey}`);
+  } catch (error) {
+    logger.error('Erro ao Desconectada sessão:', error);
     res.status(500).json({
       success: false,
       message: 'Erro interno do servidor'
