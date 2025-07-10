@@ -15,8 +15,12 @@ const {
   makeCacheableSignalKeyStore,
   sendListMessage,
   Browsers,
-  decryptPollVote
+  decryptPollVote,
+  WABrowserDescription,
+  downloadMediaMessage
+
 } = require('@whiskeysockets/baileys');
+
 
 const fs = require('fs');
 const path = require('path');
@@ -31,13 +35,19 @@ const configenv = require('../config/env');
 const GlobalWebSocketService = require('./GlobalWebSocketService');
 const digestSync = require('crypto-digest-sync');
 const moment = require('moment-timezone');
+const { release } = require('os');
+const qrTerminal = require('qrcode-terminal');
+const NodeCache = require('node-cache');
 
 class BaileysService {
   constructor() {
-    this.sessions = new Map();
     this.globalWebSocketService = null;
     this.healthCheckInterval = null;
-    this.syncQueues = new Map(); // Filas de sincronização para evitar sobrecarga
+    this.groupCache = new NodeCache({ stdTTL: 5 * 60, useClones: false }); //Cache de grupos
+    this.sessions = new Map(); //cache de sessão
+    this.messagesCache = new NodeCache({ stdTTL: 5 * 60, useClones: false }); //Cache de mensagem
+    this.contactsCache = new NodeCache({ stdTTL: 5 * 60, useClones: false }); //Cache de contatos
+    this.chatsCache = new NodeCache({ stdTTL: 5 * 60, useClones: false }); //Cache de Chats
   }
 
   setGlobalWebSocketService(service) {
@@ -71,7 +81,7 @@ class BaileysService {
         if (session.status === 'connected' || session.status === 'connecting') {
           logger.info(`🔄 Restaurando sessão: ${session.apikey}`);
 
-           // Sincronizar credenciais antes de criar a sessão
+          // Sincronizar credenciais antes de criar a sessão
           await this.syncCreds(session.apikey);
           await this.createSession(session.apikey, session.numero, false);
         }
@@ -104,53 +114,71 @@ class BaileysService {
 
       logger.info(`📱 Usando Baileys v${version.join('.')}, isLatest: ${isLatest}`);
 
+      let browserOptions = {}
+      let number = false
+      if (phoneNumber && phoneNumber !== '') {
+        number = phoneNumber;
+
+        logger.info(`Phone number: ${number}`);
+      } else {
+        const browser = [configenv.sessao_phone, configenv.sessao_phone_name, release()];
+        browserOptions = { browser };
+      }
+
+
       const sock = makeWASocket({
         version,
-        logger: pino({ level: 'silent' }),
+        logger: pino({ level: 'error' }),
         printQRInTerminal: false,
-        browser: Browsers.macOS('Desktop'),
+        ...browserOptions,
         auth: {
           creds: state.creds,
           keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'error' }))
         },
         generateHighQualityLinkPreview: true,
-        syncFullHistory: true, // Reduzir carga inicial
-        markOnlineOnConnect: true,
+        syncFullHistory: true,
+        markOnlineOnConnect: false,
         fireInitQueries: true,
         emitOwnEvents: true,
+        cachedGroupMetadata: async (jid) => groupCache.get(`${sessionId}_${jid}`),
         getMessage: async (key) => {
           const msg = await this.getMessage(key);
           return msg || undefined
         }
       });
 
-
       const sessionData = {
         sock,
         status: 'connecting',
-        phoneNumber,
+        phoneNumber: number,
         reconnectAttempts: 0,
         lastConnected: null,
         connectionAttempts: 0,
         qrRetries: 0,
-        maxQrRetries: 5
+        maxQrRetries: 5,
+        ignorar_grupos: null,
+        msg_rejectCalls: null,
+        autoRead: null,
+        rejeitar_ligacoes: null,
+        webhook_status: null,
+        webhook_url: null,
+        events: []
       };
-
       this.sessions.set(sessionId, sessionData);
+
 
       // Event handlers
       this.EventsGet(sock, sessionId, saveCreds, updateStatus);
 
       return sessionData;
     } catch (error) {
-      console.log(error)
       logger.error(`❌ Erro ao criar sessão ${sessionId}:`, error);
       throw error;
     }
   }
 
   // Nova função para remover sessão sem deletar arquivos
-  async removeSession(sessionId) {
+  async removeSession(sessionId, delarquivos = false) {
     try {
       const sessionData = this.sessions.get(sessionId);
       if (sessionData) {
@@ -161,7 +189,20 @@ class BaileysService {
 
         // Remover do Map
         this.sessions.delete(sessionId);
-        this.syncQueues.delete(sessionId);
+
+        if (delarquivos) {
+          await this.deleteSession(sessionId)
+          await Session.saveCreds(sessionId, null)
+          await sessionData?.sock?.logout();
+          await sessionData?.sock?.end();
+        }
+
+        await Session.update(sessionId, {
+          qr_code: 'null',
+          code: 'null',
+          status: 'disconnected'
+        })
+
 
         logger.info(`🗑️ Sessão ${sessionId} removida da memória`);
       }
@@ -172,36 +213,13 @@ class BaileysService {
 
   async getMessage(key, full = false) {
     try {
-      console.log('getmensagem: ', key)
-      return
-      const webMessageInfo = await Store.getMessages(key);
-      if (full) {
-        return webMessageInfo[0];
-      }
-      if (webMessageInfo[0].message?.pollCreationMessage) {
-        const messageSecretBase64 = webMessageInfo[0].message?.messageContextInfo?.messageSecret;
 
-        if (typeof messageSecretBase64 === 'string') {
-          const messageSecret = Buffer.from(messageSecretBase64, 'base64');
-
-          const msg = {
-            messageContextInfo: { messageSecret },
-            pollCreationMessage: webMessageInfo[0].message?.pollCreationMessage,
-          };
-
-          return msg;
-        }
-      }
-
-      return webMessageInfo[0].message;
-    } catch (error) {
-      console.log(error)
-      return { conversation: '' };
-    }
+    } catch (error) { }
   }
 
   //Eventos
   EventsGet(sock, sessionId, saveCreds, updateStatus) {
+
     // Connection updates
     sock.ev.on('connection.update', async (update) => {
       await this.update_conexao(sessionId, update, updateStatus);
@@ -235,7 +253,8 @@ class BaileysService {
 
     // Chats - com throttling
     sock.ev.on('chats.set', async ({ chats }) => {
-      await this.chats_set(sessionId, 'chats', async () => {
+      await this.emitEvent(sessionId, 'chats_set', chats);
+      await this.chats_set(async () => {
         try {
           logger.info(`📂 Evento chats.set: ${chats.length} chats recebidos para sessão ${sessionId}`);
 
@@ -244,7 +263,13 @@ class BaileysService {
           for (let i = 0; i < chats.length; i += batchSize) {
             const batch = chats.slice(i, i + batchSize);
             for (const chat of batch) {
-              await Store.saveChat(sessionId, chat);
+              if (!chat.id) continue;
+              const key = `${sessionId}_${chat.id}`
+              if (!this.chatsCache.has(key)) {
+                this.chatsCache.set(key, chat)
+                await Store.saveChat(sessionId, chat);
+              }
+
             }
             // Pequena pausa entre lotes
             await this.delay(100);
@@ -258,11 +283,18 @@ class BaileysService {
     });
 
     sock.ev.on('chats.update', async (updates) => {
-      await this.chats_set(sessionId, 'chats_update', async () => {
+      await this.emitEvent(sessionId, 'chats_update', updates);
+      await this.chats_set(async () => {
         try {
-          logger.info(`📂 Atualizando ${updates.length} chats para sessão ${sessionId}`);
           for (const update of updates) {
-            await Store.saveChat(sessionId, update);
+            if (!update.id) continue;
+            const key = `${sessionId}_${update.id}`
+            if (!this.chatsCache.has(key)) {
+              logger.info(`📂 Atualizando ${updates.length} chats para sessão ${sessionId}`);
+              this.chatsCache.set(key, update)
+              await Store.saveChat(sessionId, update);
+            }
+
           }
         } catch (error) {
           logger.error(`Erro ao atualizar chats:`, error);
@@ -272,7 +304,8 @@ class BaileysService {
 
     // Contacts - com throttling
     sock.ev.on('contacts.set', async ({ contacts }) => {
-      await this.chats_set(sessionId, 'contacts', async () => {
+      await this.emitEvent(sessionId, 'contacts_set', contacts);
+      await this.chats_set(async () => {
         try {
           logger.info(`👥 Evento contacts.set: ${contacts.length} contatos recebidos para sessão ${sessionId}`);
 
@@ -281,7 +314,13 @@ class BaileysService {
           for (let i = 0; i < contacts.length; i += batchSize) {
             const batch = contacts.slice(i, i + batchSize);
             for (const contact of batch) {
-              await Store.saveContact(sessionId, contact);
+              if (!contact.id) continue;
+              const key = `${sessionId}_${contact.id}`
+              if (!this.contactsCache.has(key)) {
+                this.contactsCache.set(key, contact)
+                await Store.saveContact(sessionId, contact);
+              }
+
             }
             await this.delay(50);
           }
@@ -294,11 +333,17 @@ class BaileysService {
     });
 
     sock.ev.on('contacts.update', async (updates) => {
-      await this.chats_set(sessionId, 'contacts_update', async () => {
+      await this.emitEvent(sessionId, 'contacts_update', updates);
+      await this.chats_set(async () => {
         try {
-          logger.info(`👥 Atualizando ${updates.length} contatos para sessão ${sessionId}`);
           for (const update of updates) {
-            await Store.saveContact(sessionId, update);
+            if (!update.id) continue;
+            const key = `${sessionId}_${update.id}`
+            if (!this.contactsCache.has(key)) {
+              logger.info(`👥 Atualizando ${updates.length} contatos para sessão ${sessionId}`);
+              this.contactsCache.set(key, update)
+              await Store.saveContact(sessionId, update);
+            }
           }
         } catch (error) {
           logger.error(`Erro ao atualizar contatos:`, error);
@@ -306,19 +351,45 @@ class BaileysService {
       });
     });
 
-    // Groups - com throttling
+    // Eventos de grupo update
     sock.ev.on('groups.update', async (updates) => {
-      await this.chats_set(sessionId, 'groups', async () => {
+      await this.emitEvent(sessionId, 'groups_update', updates);
+      //Função para salvar grupos no banco de dados
+      const salvegrups = async () => {
         try {
-          logger.info(`👥 Atualizando ${updates.length} grupos para sessão ${sessionId}`);
           for (const update of updates) {
-            await Store.saveGroup(sessionId, update);
+            if (!update.id) continue;
+            const metadata = await sock.groupMetadata(update.id)
+            const key = `${sessionId}_${update.id}`
+            if (!this.groupCache.has(key)) {
+              logger.info(`👥 Atualizando ${updates.length} grupos para sessão ${sessionId}`);
+              this.groupCache.set(key, metadata);
+              await Store.saveGroup(sessionId, update);
+            }
           }
         } catch (error) {
           logger.error(`Erro ao atualizar grupos:`, error);
         }
-      });
+      }
+      await this.chats_set(salvegrups);
     });
+
+    const originalEmit = sock.ev.emit;
+    // sock.ev.emit = function (event, ...args) {
+    //     console.log(`📡 Evento recebido: ${event}`);
+    //     console.dir(args, { depth: null });
+    //     return originalEmit.call(this, event, ...args);
+    // };
+
+    sock.ev.on('group-participants.update', async (event) => {
+      await this.emitEvent(sessionId, 'group_participants_update', event);
+      const metadata = await sock.groupMetadata(event.id)
+      const key = `${sessionId}_${event.id}`
+      if (!this.groupCache.has(key)) {
+        this.groupCache.set(key, metadata)
+      }
+
+    })
 
     // Presence updates
     sock.ev.on('presence.update', async ({ id, presences }) => {
@@ -332,10 +403,10 @@ class BaileysService {
 
     // Histórico - com throttling
     sock.ev.on('messaging-history.set', async ({ chats, contacts, messages, isLatest }) => {
-      //  console.log(contacts)
-      await this.chats_set(sessionId, 'history', async () => {
+
+      await this.emitEvent(sessionId, 'messaging_history_set', { chats, contacts, messages });
+      await this.chats_set(async () => {
         try {
-          console.log(`📚 Histórico carregado para sessão ${sessionId}: ${chats.length} chats, ${contacts.length} contatos, ${messages.length} mensagens`)
           logger.info(`📚 Histórico carregado para sessão ${sessionId}: ${chats.length} chats, ${contacts.length} contatos, ${messages.length} mensagens`);
 
           // Processar em lotes pequenos
@@ -346,7 +417,13 @@ class BaileysService {
             const batch = chats.slice(i, i + batchSize);
             for (const chat of batch) {
               try {
-                await Store.saveChat(sessionId, chat);
+                if (!chat.id) continue;
+                const key = `${sessionId}_${chat.id}`
+                if (!this.chatsCache.has(key)) {
+                  this.chatsCache.set(key)
+                  await Store.saveChat(sessionId, chat);
+                }
+
               } catch (error) {
                 console.error('Error ao salvar contato: ', error)
               }
@@ -360,7 +437,13 @@ class BaileysService {
             const batch = contacts.slice(i, i + batchSize);
             for (const contact of batch) {
               try {
-                await Store.saveContact(sessionId, contact);
+                if (!contact.id) continue;
+                const key = `${sessionId}_${contact.id}`
+                if (!this.contactsCache.has(key)) {
+                  this.contactsCache.set(key, contact)
+                  await Store.saveContact(sessionId, contact);
+                }
+
               } catch (error) {
                 console.error('Error ao salvar contato: ', error)
               }
@@ -374,14 +457,18 @@ class BaileysService {
           for (let i = 0; i < limitedMessages.length; i += batchSize) {
             const batch = limitedMessages.slice(i, i + batchSize);
             for (const message of batch) {
-              await Store.saveMessage(sessionId, message);
+              if (!message?.key?.id) continue;
+              const key = `${sessionId}_${message.key.id}`
+              if (!this.messagesCache.has(key)) {
+                this.messagesCache.set(key, message)
+                await Store.saveMessage(sessionId, message);
+              }
             }
             await this.delay(100);
           }
 
           logger.info(`💾 Histórico salvo no MySQL para sessão ${sessionId}`);
         } catch (error) {
-          console.log(`Erro ao salvar histórico:`, error)
           logger.error(`Erro ao salvar histórico:`, error);
         }
       });
@@ -415,7 +502,7 @@ class BaileysService {
       logger.info(`✅ Credenciais restauradas do banco para arquivos: ${sessionId}`);
       return true;
     } catch (error) {
-            
+
       logger.error(`❌ Erro ao restaurar credenciais do banco para ${sessionId}:`, error);
       return false;
     }
@@ -505,23 +592,12 @@ class BaileysService {
   }
 
   // Função para throttling de sincronização
-  async chats_set(sessionId, type, syncFunction) {
-    const queueKey = `${sessionId}_${type}`;
-
-    if (this.syncQueues.has(queueKey)) {
-      logger.debug(`Sincronização ${type} já em andamento para ${sessionId}, ignorando...`);
-      return;
-    }
-
-    this.syncQueues.set(queueKey, true);
+  async chats_set(syncFunction) {
 
     try {
       await syncFunction();
     } finally {
-      // Remover da fila após um delay
-      setTimeout(() => {
-        this.syncQueues.delete(queueKey);
-      }, 5000);
+
     }
   }
 
@@ -532,61 +608,83 @@ class BaileysService {
     if (!sessionData) return;
     logger.info(`🔄 Conexão ${sessionId}: ${connection || 'indefinido'}`);
 
+    await this.emitEvent(sessionId, 'connection_update', update);
+
     if (qr) {
       try {
+
+        qrTerminal.generate(qr, { small: true }, (qrcode) => {
+          console.log(`QR Code Sessão ${sessionId}:\n`, qrcode);
+        });
+        let code = null
+        if (sessionData.phoneNumber && sessionData.phoneNumber !== '') {
+          try {
+            await this.delay(1000);
+            code = await sessionData.sock.requestPairingCode(sessionData.phoneNumber);
+            logger.info(`Codigo de pareamento: ${code}`)
+          } catch (error) {
+            logger.error('erro ao gerar codigo de conexão')
+          }
+        }
+
         const qrCodeDataURL = await QRCode.toDataURL(qr);
         sessionData.qrCode = qrCodeDataURL;
 
         if (updateStatus) {
           await Session.update(sessionId, {
             status: 'qr_ready',
-            qr_code: qrCodeDataURL
+            qr_code: qrCodeDataURL,
+            code
           });
         }
 
         // Emit QR code event
-        await this.emitEvent(sessionId, 'qr_updated', { qr: qrCodeDataURL });
+        await this.emitEvent(sessionId, 'qr_updated', { qr: qrCodeDataURL, code });
 
         logger.info(`📱 QR Code gerado para sessão ${sessionId}`);
       } catch (error) {
-        console.log(error)
         logger.error(`Erro ao gerar QR Code para ${sessionId}:`, error);
       }
     }
 
     if (connection === 'close') {
+      try {
+        const shouldReconnect = (lastDisconnect?.error)?.output?.statusCode !== DisconnectReason.loggedOut;
 
-      const shouldReconnect = (lastDisconnect?.error)?.output?.statusCode !== DisconnectReason.loggedOut;
+        if (shouldReconnect) {
+          sessionData.reconnectAttempts++;
+          logger.info(`🔄 Tentativa de reconexão ${sessionData.reconnectAttempts} para ${sessionId}`);
 
-      if (shouldReconnect) {
-        sessionData.reconnectAttempts++;
-        logger.info(`🔄 Tentativa de reconexão ${sessionData.reconnectAttempts} para ${sessionId}`);
+          if (sessionData.reconnectAttempts <= 5) {
+            // Remover sessão atual antes de tentar reconectar
+            await this.removeSession(sessionId);
 
-        if (sessionData.reconnectAttempts <= 5) {
-          // Remover sessão atual antes de tentar reconectar
-          await this.removeSession(sessionId);
-
-          setTimeout(async () => {
-            try {
-              await this.createSession(sessionId, sessionData.phoneNumber, updateStatus);
-            } catch (error) {
-              logger.error(`Erro na reconexão automática ${sessionId}:`, error);
-            }
-          }, 5000 * sessionData.reconnectAttempts);
+            setTimeout(async () => {
+              try {
+                await this.createSession(sessionId, sessionData.phoneNumber, updateStatus);
+              } catch (error) {
+                logger.error(`Erro na reconexão automática ${sessionId}:`, error);
+              }
+            }, 5000 * sessionData.reconnectAttempts);
+          } else {
+            logger.error(`❌ Máximo de tentativas de reconexão atingido para ${sessionId}`);
+            await this.removeSession(sessionId, true);
+          }
         } else {
-          logger.error(`❌ Máximo de tentativas de reconexão atingido para ${sessionId}`);
-          await this.removeSession(sessionId);
+          logger.info(`🚪 Sessão ${sessionId} foi desconectada (logout)`);
+          await this.removeSession(sessionId, true);
         }
-      } else {
-        logger.info(`🚪 Sessão ${sessionId} foi desconectada (logout)`);
-        await this.removeSession(sessionId);
+
+        if (updateStatus) {
+          await Session.update(sessionId, { status: 'disconnected' });
+        }
+
+        await this.emitEvent(sessionId, 'session_disconnected', { reason: lastDisconnect?.error?.message });
+      } catch (error) {
+        console.error(`Erro na conexão ${sessionId}: `, error)
       }
 
-      if (updateStatus) {
-        await Session.update(sessionId, { status: 'disconnected' });
-      }
 
-      await this.emitEvent(sessionId, 'session_disconnected', { reason: lastDisconnect?.error?.message });
     }
 
     if (connection === 'connecting') {
@@ -597,14 +695,20 @@ class BaileysService {
         await Session.update(sessionId, { status: 'connecting' });
       }
     }
-    
+
     if (connection === 'open') {
       sessionData.status = 'connected';
       sessionData.lastConnected = moment().tz(configenv.timeZone).format('YYYY-MM-DD HH:mm:ss');
       sessionData.reconnectAttempts = 0;
       sessionData.connectionAttempts = 0;
-
       const phoneNumber = sessionData.sock?.user?.id?.split(':')[0];
+      const sessaoDB = await Session.findById(sessionId)
+      sessionData.ignorar_grupos = sessaoDB.ignorar_grupos
+      sessionData.rejeitar_ligacoes = sessaoDB.rejeitar_ligacoes
+      sessionData.msg_rejectCalls = sessaoDB.msg_rejectCalls
+      sessionData.webhook_status = sessaoDB.webhook_status
+      sessionData.webhook_url = sessaoDB.webhook_url
+      sessionData.events = sessaoDB.events
 
       if (updateStatus) {
         await Session.update(sessionId, {
@@ -613,19 +717,15 @@ class BaileysService {
         });
       }
 
-      await this.emitEvent(sessionId, 'session_connected', {
-        phoneNumber,
-        user: sessionData.sock?.user
-      });
-
       logger.info(`✅ Sessão ${sessionId} conectada com sucesso! Telefone: ${phoneNumber}`);
 
-      // Sincronização mais conservadora após conexão
-      setTimeout(async () => {
-        await this.forceSyncContacts(sessionId);
-      }, 15000); // Aguardar 15 segundos
+      // // Sincronização mais conservadora após conexão
+      // setTimeout(async () => {
+      //   await this.forceSyncContacts(sessionId);
+      // }, 15000); // Aguardar 15 segundos
     }
   }
+
 
   // NOVA FUNÇÃO: Forçar sincronização de contatos
   async forceSyncContacts(sessionId) {
@@ -760,34 +860,38 @@ class BaileysService {
 
   async msgrecebidas(sessionId, messages, type) {
     for (const message of messages) {
-      const selectedOptions = [];
+
+      let selectedOptions = null;
       const pollUpdate = message.message?.pollUpdateMessage;
       if (pollUpdate) {
         try {
           const pollMsgId = pollUpdate.pollCreationMessageKey?.id;
           const [msg] = await Store.getMessages(sessionId, message.key.remoteJid, pollMsgId)
+
           const voterJid = msg.remoteJid;
-          const orderId = msg.mensagem_id;
+          const getnumber = this.sessions.get(sessionId)
+          if (getnumber?.sock?.user?.id?.split(':')[0]) {
+            const decrypted = await decryptPollVote(pollUpdate.vote, {
+              pollCreatorJid: getnumber.sock.user.id.split(':')[0] + '@s.whatsapp.net',
+              pollMsgId: pollMsgId,
+              pollEncKey: Buffer.from(msg.conteudo_mensagem.messageContextInfo?.messageSecret, 'base64'),
+              voterJid,
+            });
 
-          const decrypted = await decryptPollVote(pollUpdate.vote, {
-            pollCreatorJid: this.sessions.get(sessionId).phoneNumber + '@s.whatsapp.net',
-            pollMsgId: pollMsgId,
-            pollEncKey: Buffer.from(msg.conteudo_mensagem.messageContextInfo?.messageSecret, 'base64'),
-            voterJid,
-          });
-
-          for (const decryptedHash of decrypted.selectedOptions) {
-            const hashHex = Buffer.from(decryptedHash).toString('hex').toUpperCase();
-            for (const option of msg.conteudo_mensagem.pollCreationMessageV3?.options || []) {
-              const hash = Buffer.from(digestSync("SHA-256", new TextEncoder().encode(Buffer.from(option.optionName).toString())))
-                .toString("hex")
-                .toUpperCase();
-              if (hashHex === hash) {
-                selectedOptions.push(option.optionName);
-                break;
+            for (const decryptedHash of decrypted.selectedOptions) {
+              const hashHex = Buffer.from(decryptedHash).toString('hex').toUpperCase();
+              for (const option of msg.conteudo_mensagem.pollCreationMessageV3?.options || []) {
+                const hash = Buffer.from(digestSync("SHA-256", new TextEncoder().encode(Buffer.from(option.optionName).toString())))
+                  .toString("hex")
+                  .toUpperCase();
+                if (hashHex === hash) {
+                  selectedOptions = option.optionName;
+                  break;
+                }
               }
             }
           }
+
         } catch (error) {
           console.error(`Erro ao processar atualização de enquete (sessionId: ${sessionId}):`, error);
         }
@@ -796,33 +900,99 @@ class BaileysService {
 
       try {
         // Salvar mensagem no store
-        await Store.saveMessage(sessionId, message);
+        if (!message?.key?.id) continue;
+        const key = `${sessionId}_${message.key.id}`
+        if (!this.messagesCache.has(key)) {
+          this.messagesCache.set(key, message)
+          await Store.saveMessage(sessionId, message);
+        }
 
         // Verificar configurações da sessão
-        const config = await Store.getSessionConfig(sessionId);
+        const config = this.sessions.get(sessionId);
 
         // Auto-read
         if (config?.autoRead && !message.key.fromMe) {
           await this.markAsRead(sessionId, message.key.remoteJid, message.key.id);
         }
 
+        if (selectedOptions) {
+          message.PollVote = selectedOptions;
+        }
+
+        let mensagemSend = message
+        const decryptMidia = await this.baixarMediaComoBase64(message, config.sock)
+        if (decryptMidia) {
+          mensagemSend = decryptMidia
+        }
+
         // Emit message event
         await this.emitEvent(sessionId, 'message_received', {
-          id: message.key.id,
-          fromMe: message.key.fromMe,
-          type: Object.keys(message.message || {})[0],
-          isGroup: message.key.remoteJid.includes('@g.us'),
-          content: this.extractMessageContent(message.message),
-          message: {
-            ...message.message,
-            pollVotes: selectedOptions.length > 0 ? selectedOptions : null
-          }
+          message: mensagemSend,
+
         });
 
       } catch (error) {
         console.log(error)
         logger.error(`Erro ao processar mensagem:`, error);
       }
+    }
+  }
+
+  async baixarMediaComoBase64(message, sock) {
+    try {
+      if (!message?.message) return null;
+
+      // Detectar tipo principal
+      let tipoOriginal = Object.keys(message.message)[0];
+      let midiaOriginal = message.message[tipoOriginal];
+
+      // Tratar mensagens encapsuladas (ex: documentWithCaptionMessage)
+      if (tipoOriginal.endsWith('WithCaptionMessage') && midiaOriginal?.message) {
+        const tipoInterno = Object.keys(midiaOriginal.message)[0];
+        const midiaInterna = midiaOriginal.message[tipoInterno];
+        tipoOriginal = tipoInterno;
+        midiaOriginal = midiaInterna;
+      }
+
+      // Verifica se é mídia suportada
+      const tiposSuportados = [
+        'imageMessage',
+        'videoMessage',
+        'audioMessage',
+        'documentMessage',
+        'stickerMessage',
+        'messageContextInfo'
+      ];
+
+      if (!tiposSuportados.includes(tipoOriginal)) {
+        console.warn(`⚠️ Tipo de mídia não tratado: ${tipoOriginal}`);
+        return null;
+      }
+
+      // Baixar mídia
+      const buffer = await downloadMediaMessage(message, 'buffer', {}, {
+        logger: console,
+        reuploadRequest: sock.updateMediaMessage,
+      });
+
+      const base64 = buffer.toString('base64');
+      const mimetype = midiaOriginal.mimetype || 'application/octet-stream';
+      const dataUrl = `data:${mimetype};base64,${base64}`;
+
+      // Clonar e modificar a mensagem
+      const novaMensagem = JSON.parse(JSON.stringify(message)); // clone profundo
+
+      novaMensagem.message[tipoOriginal] = {
+        ...midiaOriginal,
+        base64,
+        dataUrl,
+      };
+
+      return novaMensagem;
+
+    } catch (err) {
+      console.error('❌ Erro ao baixar mídia:', err);
+      return null;
     }
   }
 
@@ -856,16 +1026,18 @@ class BaileysService {
 
   async event_call(sessionId, calls) {
     try {
-      const config = await Store.getSessionConfig(sessionId);
+      await this.emitEvent(sessionId, 'call', calls);
+      const sessiondata = this.sessions.get(sessionId);
+      if (!sessiondata) return
 
       for (const call of calls) {
-        if (config?.rejectCalls && call.status === 'offer') {
+        if (sessiondata?.rejectCalls && call.status === 'offer') {
           const sessionData = this.sessions.get(sessionId);
           if (sessionData?.sock) {
             await sessionData.sock.rejectCall(call.id, call.from);
-            if (config.msg_rejectCalls && config.msg_rejectCalls !== '') {
+            if (sessiondata?.msg_rejectCalls && sessiondata?.msg_rejectCalls !== '') {
               const message = {
-                text: config.msg_rejectCalls,
+                text: sessiondata.msg_rejectCalls,
               };
               await this.sendMessage(sessionId, call.from, message)
             }
@@ -874,20 +1046,17 @@ class BaileysService {
         }
       }
     } catch (error) {
-      console.log(error)
       logger.error(`Erro ao processar chamadas:`, error);
     }
   }
 
   extractMessageContent(message) {
     if (!message) return '';
-
     if (message.conversation) return message.conversation;
     if (message.extendedTextMessage?.text) return message.extendedTextMessage.text;
     if (message.imageMessage?.caption) return message.imageMessage.caption;
     if (message.videoMessage?.caption) return message.videoMessage.caption;
     if (message.documentMessage?.caption) return message.documentMessage.caption;
-    if (message.pollUpdateMessage) return message.pollUpdateMessage
     return JSON.stringify(message);
   }
 
@@ -906,15 +1075,19 @@ class BaileysService {
       });
 
       // Session-specific webhook
-      const config = await Store.getSessionConfig(sessionId);
-      if (config?.webhookUrl) {
-        const webhookService = new WebhookService();
-        await webhookService.sendWebhook(config.webhookUrl, {
-          event,
-          sessionId,
-          data,
-          timestamp: moment().tz(configenv.timeZone).toISOString()
-        });
+      const config = await this.sessions.get(sessionId);
+
+      if (config?.webhook_status && config.webhook_status == '1' && config?.events && Array.isArray(config.events)) {
+        const Isevent = config.events.find(e => e == event)
+        if (Isevent) {
+          const webhookService = new WebhookService();
+          await webhookService.sendWebhook(config.webhook_url, {
+            event,
+            sessionId,
+            data,
+            timestamp: moment().tz(configenv.timeZone).toISOString()
+          });
+        }
       }
 
     } catch (error) {
@@ -993,7 +1166,6 @@ class BaileysService {
       logger.info(`📤 Mensagem enviada: ${sessionId} -> ${jid}`);
       return result;
     } catch (error) {
-      console.log(error)
       logger.error(`Erro ao enviar mensagem:`, error);
       throw error;
     }
@@ -1082,16 +1254,6 @@ class BaileysService {
         footer: 'Selecione uma opção para continuar.' // Rodapé opcional
       };
 
-      // Enviar a mensagem
-      await sessionData.sock.sendMessage('5521974963583@s.whatsapp.net', listMessage);
-
-      // try {
-      //   result = await sessionData.sock.sendMessage(jid, listMessage);
-      // } catch (error) {
-      //   console.log(error)
-      //   console.error('Erro ao enviar a lista:', error);
-      // }
-      // return result;
     } catch (error) {
       logger.error(`Erro ao enviar lista:`, error);
       throw error;

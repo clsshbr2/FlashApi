@@ -32,14 +32,26 @@ router.post('/create_sessao', authenticateGlobalApiKey, async (req, res) => {
     }
 
     //Verificar se sessão existe
-    const getsessao = await Session.findById(uuid);
-    if (getsessao) {
+    const getsessao = await Session.findByApiKey();
+    const apikeyExist = getsessao.find(a => a.apikey === uuid)
+    if (apikeyExist) {
       logger.warn(`A apikey: ${uuid} gerada já existe tente novamente`);
       return res.status(409).json({
         success: false,
         message: 'A apikey gerada já existe tente novamente'
       });
     }
+
+    const nameExist = getsessao.find(a => a.nome_sessao === nome_sessao)
+
+    if (nameExist) {
+      logger.warn(`Name Sessão: ${nameExist} Já existe`);
+      return res.status(409).json({
+        success: false,
+        message: `Name Sessão: ${nameExist.nome_sessao} Já existe tente outro`
+      });
+    }
+
 
     //Adicionar sessão
     const addapikey = await Session.addsessao({ uuid, numero, finalNomeSessao });
@@ -50,14 +62,16 @@ router.post('/create_sessao', authenticateGlobalApiKey, async (req, res) => {
         message: 'Erro ao criar apikey'
       });
     }
-    let qrcode = 'Erro ao gerar';
+    let qrcode = null;
+    let code = null;
     if (criar_sessao) {
       await BaileysService.createSession(uuid, numero);
       if (gerar_qrcode) {
-        await BaileysService.delay(2000)
+        await BaileysService.delay(3000)
         const getsessao = await Session.findById(uuid);
         if (getsessao && getsessao.qrcode != '') {
           qrcode = getsessao.qrcode
+          code = getsessao.code
         }
       }
     }
@@ -87,18 +101,27 @@ router.put('/conectar_sessao', authenticateApiKey, async (req, res) => {
     const uuid = req.headers['apikey'];
     const getsessao = await Session.findById(uuid);
 
-    if(!getsessao){
-        return res.status(400).json({
+    if (!getsessao) {
+      return res.status(400).json({
         success: false,
         message: 'Sessão não existe'
       });
     }
 
     if (getsessao.status && getsessao.status == 'connected') {
-      return res.status(400).json({
-        success: false,
+      return res.status(200).json({
+        success: true,
         message: 'Sessão já conectada'
       });
+    }
+    if (getsessao.status == 'qr_ready' && getsessao.qrcode !== null) {
+      res.status(200).json({
+        success: true,
+        message: 'Qrcode recuperado com sucesso',
+        qrcode: getsessao.qrcode,
+        code: getsessao.code
+      });
+      return
     }
 
     await BaileysService.createSession(uuid, null);
@@ -107,10 +130,12 @@ router.put('/conectar_sessao', authenticateApiKey, async (req, res) => {
     if (getsessao && getsessao.qrcode && getsessao.qrcode != '') {
       res.status(200).json({
         success: true,
-        qrcode: getsessao.qrcode
+        message: 'Qrcode Gerado com sucesso',
+        qrcode: getsessao.qrcode,
+        code: getsessao.code
       });
     } else {
-      res.status(400).json({
+      res.status(404).json({
         success: false,
         message: 'Erro ao buscar qrcode caso continue delete a sessao e crie outra'
       });
@@ -130,8 +155,8 @@ router.put('/restart', authenticateApiKey, async (req, res) => {
     const uuid = req.headers['apikey'];
     const getsessao = await Session.findById(uuid);
 
-    if(!getsessao){
-        return res.status(400).json({
+    if (!getsessao) {
+      return res.status(400).json({
         success: false,
         message: 'Sessão não existe'
       });
@@ -148,9 +173,9 @@ router.put('/restart', authenticateApiKey, async (req, res) => {
     await BaileysService.delay(2000);
 
     return res.status(200).json({
-        success: true,
-        message: 'Sessão reniciada'
-      });
+      success: true,
+      message: 'Sessão reniciada'
+    });
 
   } catch (error) {
     logger.error('Erro ao criar sessão:', error);
@@ -298,25 +323,71 @@ router.delete('/delete/:sessionId', authenticateGlobalApiKey, async (req, res) =
   try {
     const { sessionId } = req.params;
 
-    const session = await Session.findById(sessionId);
-    if (!session) {
+    let sessao = await Session.findById(sessionId);
+
+    if (!sessao) {
+      sessao = await Session.findByName(sessionId);
+    }
+
+    if (!sessao) {
       return res.status(404).json({
         success: false,
         message: 'Sessão não encontrada'
       });
     }
 
-    await BaileysService.deleteSession(sessionId);
-    await Session.delete(sessionId);
+    await BaileysService.deleteSession(sessao.apikey, true);
+    await Session.delete(sessao.apikey);
 
     res.json({
       success: true,
       message: 'Sessão deletada com sucesso'
     });
 
-    logger.info(`Sessão deletada: ${sessionId}`);
+    logger.info(`Sessão deletada: ${sessao.apikey}`);
   } catch (error) {
     logger.error('Erro ao deletar sessão:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro interno do servidor'
+    });
+  }
+});
+
+router.delete('/desconect/:sessionId', authenticateApiKey, async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const apiKey = req.headers['apikey'];
+
+    let sessao = await Session.findById(sessionId);
+
+    if (!sessao) {
+      sessao = await Session.findByName(sessionId);
+      if (apiKey !== sessao.apikey) {
+        return res.status(404).json({
+          success: false,
+          message: 'Essa apikey não corresponde a essa sessão'
+        });
+      }
+    }
+
+    if (!sessao) {
+      return res.status(404).json({
+        success: false,
+        message: 'Sessão não encontrada'
+      });
+    }
+
+    await BaileysService.deleteSession(sessao.apikey, true);
+
+    res.json({
+      success: true,
+      message: 'Sessão Desconectada com sucesso'
+    });
+
+    logger.info(`Sessão Desconectada: ${sessao.apikey}`);
+  } catch (error) {
+    logger.error('Erro ao Desconectada sessão:', error);
     res.status(500).json({
       success: false,
       message: 'Erro interno do servidor'

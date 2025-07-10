@@ -31,11 +31,7 @@ async function checkAndInitDatabase() {
     // Verifica se o database existe
     const [rows] = await connection.query('SHOW DATABASES LIKE ?', [MYSQL_DATABASE]);
     if (rows.length === 0) {
-      console.log(`Banco de dados "${MYSQL_DATABASE}" não encontrado. Criando...`);
       await connection.query(`CREATE DATABASE \`${MYSQL_DATABASE}\``);
-      console.log('Banco criado com sucesso.');
-    } else {
-      console.log(`Banco de dados "${MYSQL_DATABASE}" já existe.`);
     }
 
     // Agora conecta direto ao database para executar o script
@@ -44,15 +40,12 @@ async function checkAndInitDatabase() {
     // Lê arquivo SQL
     const sqlFilePath = path.resolve(__dirname, 'supabase/migrations/database.sql');
     const sql = fs.readFileSync(sqlFilePath, 'utf8');
-
-    console.log('Executando script SQL...');
     await connection.query(sql);
-
-    console.log('Script SQL executado com sucesso! Banco pronto para uso.');
   } catch (error) {
-    console.error('Erro ao verificar/inicializar banco:', error);
+
   } finally {
     if (connection) await connection.end();
+        console.log('Script SQL executado com sucesso! Banco pronto para uso.');
   }
 }
 

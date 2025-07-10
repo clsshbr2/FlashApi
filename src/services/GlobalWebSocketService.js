@@ -36,7 +36,8 @@ class GlobalWebSocketService {
       authenticated: false,
       events: [],
       sessionId: null,
-      connectedAt: moment().tz(config.timeZone).format('YYYY-MM-DD HH:mm:ss')
+      connectedAt: moment().tz(config.timeZone).format('YYYY-MM-DD HH:mm:ss'),
+      modo: null
     });
 
     const authTimeout = setTimeout(() => {
@@ -93,10 +94,6 @@ class GlobalWebSocketService {
         }));
         break;
 
-      case 'set_events':
-        await this.setEvents(ws, data, clientId);
-        break;
-
       default:
         ws.send(JSON.stringify({
           type: 'error',
@@ -147,6 +144,7 @@ class GlobalWebSocketService {
       client.events = events;
       client.connectedAt = moment().tz(config.timeZone).format('YYYY-MM-DD HH:mm:ss');
       client.sessionId = modo == 'global' ? 'global' : secret;
+      client.modo = modo;
 
       ws.send(JSON.stringify({
         type: 'auth_success',
@@ -156,21 +154,6 @@ class GlobalWebSocketService {
       }));
 
       logger.info(`Cliente WebSocket global autenticado: ${clientId}`);
-    } catch (error) {
-      logger.error('Erro na autenticação WebSocket global:', error);
-      ws.send(JSON.stringify({
-        type: 'error',
-        message: 'Erro na autenticação'
-      }));
-    }
-  }
-
-  async setEvents(ws, data, clientId) {
-    try {
-
-      const { events = [] } = data
-      const getClient = this.clients.get(clientId)
-      console.log(getClient)
     } catch (error) {
       logger.error('Erro na autenticação WebSocket global:', error);
       ws.send(JSON.stringify({
@@ -193,9 +176,10 @@ class GlobalWebSocketService {
     let sentCount = 0;
 
     for (const [clientId, client] of this.clients.entries()) {
+        
       if (client.authenticated && client.ws.readyState == WebSocket.OPEN) {
         // Verifica se o cliente está inscrito nesta sessão e evento
-        if (client == 'global') {
+        if (client.modo == 'global') {
           try {
             const foundEvent = client.events.find(e => e === event);
             if (!foundEvent) continue;

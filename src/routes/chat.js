@@ -141,6 +141,7 @@ router.post('/send-image', authenticateApiKey, async (req, res) => {
 
     logger.info(`Imagem ${useQueue ? 'enfileirada' : 'enviada'}: ${sessionId} -> ${to}`);
   } catch (error) {
+    console.log(error)
     logger.error('Erro ao enviar imagem:', error);
     res.status(500).json({
       success: false,

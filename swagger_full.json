@@ -1119,13 +1119,19 @@
                     "type": "array",
                     "description": "Configurar webhook",
                     "default": [
-                      "presence_update",
+                      "connection_update",
                       "qr_updated",
-                      "session_disconnected",
-                      "session_connected",
                       "message_received",
                       "message_update",
-                      "presence_update"
+                      "chats_set",
+                      "chats_update",
+                      "contacts_set",
+                      "contacts_update",
+                      "groups_update",
+                      "group_participants_update",
+                      "presence_update",
+                      "call",
+                      "messaging_history_set"
                     ],
                     "items": {
                       "type": "string"
@@ -1562,6 +1568,34 @@
         "responses": {
           "200": {
             "description": "Sessão deletada com sucesso"
+          }
+        }
+      }
+    },
+    "/session/desconect/{sessionId}": {
+      "delete": {
+        "summary": "Desconectar sessão",
+        "tags": [
+          "Sessões"
+        ],
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sessionId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sessão desconectada com sucesso"
           }
         }
       }

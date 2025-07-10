@@ -4,8 +4,11 @@ require('dotenv').config();
 const config = {
   // Server
   port: process.env.PORT || 3000,
+  hostapi: process.env.HOST || 'localhost',
   nodeEnv: process.env.NODE_ENV || 'development',
   logLevel: process.env.LOG_LEVEL || 'info',
+
+  origins: process.env.CORS_ORIGINS || '*',
 
   // Global API Key
   globalApiKey: process.env.GLOBAL_API_KEY || 'default-api-key-change-me',
@@ -14,6 +17,10 @@ const config = {
   enableGlobalWebhook: process.env.ENABLE_GLOBAL_WEBHOOK === 'true',
   globalWebhookUrl: process.env.GLOBAL_WEBHOOK_URL || null,
   globalWebhookSecret: process.env.GLOBAL_WEBHOOK_SECRET || 'default-webhook-secret',
+
+  // Configuração de sessão
+  sessao_phone: process.env.SESSION_PHONE_CLIENT || 'Flash_api',
+  sessao_phone_name: process.env.SESSION_PHONE_NAME || 'Chrome',
 
   // Global WebSocket
   enableGlobalWebsocket: process.env.ENABLE_WEBSOCKET === 'true',

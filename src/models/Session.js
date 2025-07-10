@@ -16,6 +16,11 @@ class Session {
     return getsessao
   }
 
+  static async findByName(nome_sessao) {
+    const [getsessao] = await db.execute('SELECT * FROM sessao WHERE nome_sessao = ?', [nome_sessao])
+    return getsessao
+  }
+
   static async findByApiKey() {
     const getsessoes = await db.execute('SELECT * FROM sessao ORDER BY created_at DESC', [])
     return getsessoes
@@ -29,6 +34,7 @@ class Session {
     const status = data.status || null
     const qr_code = data.qr_code || null
     const phone_number = data.phone_number || null
+    const code = data.code || null
 
     if (status) {
       fields.push('status = ?');
@@ -37,12 +43,17 @@ class Session {
 
     if (qr_code) {
       fields.push('qrcode = ?');
-      values.push(qr_code);
+      values.push(qr_code == 'null' ? null : qr_code);
     }
 
     if (phone_number) {
       fields.push('numero = ?');
       values.push(phone_number);
+    }
+
+    if (code) {
+      fields.push('code = ?');
+      values.push(code == 'null' ? null : code);
     }
 
     fields.push('updated_at = CURRENT_TIMESTAMP');
@@ -54,15 +65,11 @@ class Session {
 
   static async saveCreds(id, creds) {
     try {
-      const [columns] = await db.execute(`SHOW COLUMNS FROM sessao LIKE 'creds'`);
-      if (!columns) {
-        await db.execute(`ALTER TABLE sessao ADD COLUMN creds JSON`);
-        console.log('✅ Coluna "creds" criada como JSON.');
-      }
+
       const saveCreds = await db.execute('UPDATE sessao SET creds = ?, updated_at = CURRENT_TIMESTAMP WHERE apikey = ?', [creds, id]);
       return saveCreds.affectedRows > 0;
     } catch (error) {
-      console.log(error)
+
       console.error('Erro ao salvar credenciais:', error);
       return false;
     }
@@ -70,8 +77,13 @@ class Session {
 
   static async delete(id) {
     const deletesessao = await db.execute(`DELETE FROM sessao WHERE apikey = ?`, [id])
+    await db.execute(`DELETE FROM chats WHERE sessao_id = ?`, [id])
+    await db.execute(`DELETE FROM contatos WHERE sessao_id = ?`, [id])
+    await db.execute(`DELETE FROM grupos WHERE sessao_id = ?`, [id])
+    await db.execute(`DELETE FROM mensagens WHERE sessao_id = ?`, [id])
     return deletesessao
   }
+
 }
 
 module.exports = Session;

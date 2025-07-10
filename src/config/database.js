@@ -15,12 +15,7 @@ class Database {
             database: config.database || 'FlashApi',
             waitForConnections: true,
             connectionLimit: config.connectionLimit || 10, // Reduzido para 10
-            queueLimit: config.queuelimit || 0,
-            acquireTimeout: 60000,
-            timeout: 60000,
-            reconnect: true,
-            idleTimeout: 300000, // 5 minutos
-            maxIdle: 5 // Máximo de 5 conexões idle
+            queueLimit: config.queuelimit || 0
         });
 
         // Log de eventos do pool
@@ -52,11 +47,12 @@ class Database {
     }
 
     async getPoolStatus() {
+        const poolInternals = this.pool.pool || {};
         return {
-            totalConnections: this.pool.pool._allConnections.length,
-            freeConnections: this.pool.pool._freeConnections.length,
-            acquiringConnections: this.pool.pool._acquiringConnections.length,
-            connectionLimit: this.pool.config.connectionLimit
+            totalConnections: poolInternals._allConnections?.length || 0,
+            freeConnections: poolInternals._freeConnections?.length || 0,
+            acquiringConnections: poolInternals._acquiringConnections?.length || 0,
+            connectionLimit: this.pool.config?.connectionLimit || 0
         };
     }
 

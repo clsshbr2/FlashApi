@@ -4,6 +4,7 @@ const Store = require('../models/Store');
 const Session = require('../models/Session');
 const logger = require('../utils/logger');
 const config = require('../config/env');
+const BaileysService = require('../services/BaileysService');
 
 const router = express.Router();
 
@@ -48,7 +49,7 @@ router.get('/session', authenticateApiKey, async (req, res) => {
 router.put('/config', authenticateApiKey, async (req, res) => {
   try {
     const sessionId = req.headers['apikey'];
-    const { webhookUrl = null, ignoreGroups = false, autoRead = false, msg_rejectCalls = null, rejectCalls = false } = req.body;
+    const { ignoreGroups = false, autoRead = false, msg_rejectCalls = null, rejectCalls = false } = req.body;
 
     const session = await Session.findById(sessionId);
     if (!session) {
@@ -57,13 +58,28 @@ router.put('/config', authenticateApiKey, async (req, res) => {
         message: 'Sessão não encontrada'
       });
     }
-    session.rejeitar_ligacoes = rejectCalls == true ? '1' : '0';
-    session.ignorar_grupos = ignoreGroups == true ? '1' : '0';
-    session.webhook_url = webhookUrl;
-    session.leitura_automatica = autoRead == true ? '1' : '0';
-    session.msg_rejectCalls = msg_rejectCalls;
 
-    const success = await Store.saveSessionConfig(sessionId, session);
+    const currentConfig = await Store.getSessionConfig(sessionId) || {};
+    currentConfig.rejeitar_ligacoes = rejectCalls
+    currentConfig.ignorar_grupos = ignoreGroups
+    currentConfig.leitura_automatica = autoRead
+    currentConfig.msg_rejectCalls = msg_rejectCalls;
+
+    const getsessao = BaileysService.sessions.get(sessionId);
+    if (!getsessao) {
+      BaileysService.createSession(sessionId)
+      res.status(500).json({
+        success: false,
+        message: 'Erro ao buscar sessão reniciando sessao tente novamente em instantes'
+      });
+      return
+    }
+    getsessao.rejeitar_ligacoes = session.rejeitar_ligacoes
+    getsessao.ignorar_grupos = session.ignorar_grupos
+    getsessao.autoRead = session.leitura_automatica
+    getsessao.msg_rejectCalls = session.msg_rejectCalls;
+
+    const success = await Store.saveSessionConfig(sessionId, currentConfig);
 
     if (!success) {
       return res.status(500).json({
@@ -75,7 +91,7 @@ router.put('/config', authenticateApiKey, async (req, res) => {
     res.json({
       success: true,
       message: 'Configurações atualizadas com sucesso',
-      data: { sessionId, session }
+      data: { sessionId, currentConfig }
     });
 
     logger.info(`Configurações da sessão ${sessionId} atualizadas`);
@@ -117,10 +133,22 @@ router.put('/webhook', authenticateApiKey, async (req, res) => {
 
     const currentConfig = await Store.getSessionConfig(sessionId) || {};
     currentConfig.webhook_url = webhookUrl;
-    currentConfig.events = JSON.stringify(events);
+    currentConfig.events = events;
     currentConfig.webhook_status = status;
     const success = await Store.saveSessionConfig(sessionId, currentConfig);
-
+    const getsessao = BaileysService.sessions.get(sessionId);
+    if (!getsessao) {
+      BaileysService.createSession(sessionId)
+      res.status(500).json({
+        success: false,
+        message: 'Erro ao buscar sessão reniciando sessao tente novamente em instantes'
+      });
+      return
+    }
+    getsessao.webhook_url = currentConfig.webhook_url
+    getsessao.events = currentConfig.events
+    getsessao.webhook_status = currentConfig.webhook_status
+    // console.log(getsessao)
     if (!success) {
       return res.status(500).json({
         success: false,
@@ -130,13 +158,14 @@ router.put('/webhook', authenticateApiKey, async (req, res) => {
 
     res.json({
       success: true,
-      message: status_webhook ? 'Webhook configurado com sucesso' : 'Webhook removido com sucesso',
-      data: { sessionId, webhookUrl }
+      message: 'Webhook Atualizado com sucesso',
+      data: { sessionId, currentConfig }
     });
 
     logger.info(`Webhook da sessão ${sessionId} ${webhookUrl ? 'configurado' : 'removido'}`);
 
   } catch (error) {
+    console.log(error)
     logger.error('Erro ao configurar webhook:', error);
     res.status(500).json({
       success: false,

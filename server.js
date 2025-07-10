@@ -1,3 +1,11 @@
+process.on('uncaughtException', (err) => {
+    console.error('❌ Erro não tratado (uncaughtException):', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('❌ Rejeição não tratada (unhandledRejection):', reason);
+});
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -23,6 +31,7 @@ const groupRoutes = require('./src/routes/group');
 const configRoutes = require('./src/routes/config');
 const systemRoutes = require('./src/routes/system');
 const { execSync } = require('child_process');
+const { modifyTable } = require('./src/config/verificardb');
 
 
 // Gerar arquivo swagger completo
@@ -41,6 +50,7 @@ const app = express();
 const server = http.createServer(app);
 const PORT = config.port;
 
+
 // Rate limiting
 const limiter = rateLimit({
   windowMs: config.rateLimitWindowMs,
@@ -51,9 +61,21 @@ const limiter = rateLimit({
   }
 });
 
+const allowedOrigins = config.origins;
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  }
+};
+
 // Middleware
 app.use(helmet());
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -116,7 +138,7 @@ async function startServer() {
     await BaileysService.initialize();
     logger.info('✅ BaileysService inicializado');
     
-    server.listen(PORT, () => {
+    server.listen(PORT, '0.0.0.0', () => {
       logger.info(`🚀 Flash API rodando na porta ${PORT}`);
       logger.info(`📚 Documentação: http://localhost:${PORT}/api-docs`);
       logger.info(`ℹ️  Informações da API: http://localhost:${PORT}/api/info`);

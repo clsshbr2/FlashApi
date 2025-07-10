@@ -52,6 +52,11 @@ pm2 start npm --name flashapi -- start
 # Inicia sem pm2
 npm start
 
+# Atualizar repositorio
+git reset --hard
+git pull origin main
+
+
 ```
 
   ---
@@ -261,13 +266,19 @@ function connectWebSocket() {
             secret,
             modo,
             events: [
-                "presence_update",
-                "qr_updated",
-                "session_disconnected",
-                "session_connected",
-                "message_received",
-                "message_update",
-                "presence_update"
+              "connection_update",
+              "qr_updated",
+              "message_received",
+              "message_update",
+              "chats_set",
+              "chats_update",
+              "contacts_set",
+              "contacts_update",
+              "groups_update",
+              "group_participants_update",
+              "presence_update",
+              "call",
+              "messaging_history_set"
             ]
         }));
 
@@ -347,14 +358,22 @@ Você pode configurar uma **URL de Webhook** ao criar uma sessão para receber n
 
 ---
 
-| Evento                  | Descrição                              | Emoji |
-|-------------------------|------------------------------------------|:-----:|
-| `presence_update`       | Atualização de presença (ex: online)     | 🟢    |
-| `qr_updated`            | Novo QR Code gerado                     | 📷    |
-| `session_disconnected`  | Sessão foi desconectada                 | ❌    |
-| `session_connected`     | Sessão conectada com sucesso            | ✅    |
-| `message_received`      | Nova mensagem recebida                  | 📩    |
-| `message_update`        | Mensagem foi editada ou atualizada      | ✏️    |
+| Evento                      | Descrição                                  | Emoji |
+| --------------------------- | ------------------------------------------ | :---: |
+| `presence_update`           | Atualização de presença (ex: online)       |   🟢  |
+| `qr_updated`                | Novo QR Code gerado                        |   📷  |
+| `connection_update`         | Atualização de conexão                     |   ✅  |
+| `chats_set`                 | Lista inicial de chats                     |   📥  |
+| `message_received`          | Nova mensagem recebida                     |   📩  |
+| `message_update`            | Mensagem foi editada ou atualizada         |   ✏️  |
+| `chats_update`              | Um ou mais chats foram atualizados         |   ♻️  |
+| `contacts_set`              | Lista inicial de contatos                  |   👥  |
+| `contacts_update`           | Um ou mais contatos foram atualizados      |   📝  |
+| `groups_update`             | Metadados de grupos foram atualizados      |   👤  |
+| `group_participants_update` | Participantes do grupo foram alterados     |  ➕➖|
+| `call`                      | Evento relacionado a chamadas de voz/vídeo |   📞  |
+| `messaging_history_set`     | Sincronização de mensagens históricas      |  🕰️   |
+
 
 > 🔔 **Dica:** Os eventos são enviados como **POST** com payload em formato JSON. Certifique-se de que seu endpoint esteja acessível e pronto para lidar com essas requisições!
 

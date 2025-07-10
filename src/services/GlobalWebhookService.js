@@ -17,8 +17,7 @@ class GlobalWebhookService {
 
     const payload = {
       ...eventData,
-      timestamp: new Date().toISOString(),
-      source: 'baileys-multi-session-api'
+      timestamp: new Date().toISOString()
     };
     for (let i = 0; i < retries; i++) {
       try {
