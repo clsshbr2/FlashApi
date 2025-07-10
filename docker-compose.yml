@@ -1,0 +1,62 @@
+version: "3.8"
+
+services:
+  mysql:
+    image: mysql:5.7
+    container_name: flash-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ASDASDSA55WQ8R563DG9Y6T2QW5E5Q
+      MYSQL_DATABASE: flashapi
+      MYSQL_USER: root
+      MYSQL_PASSWORD: ASDASDSA55WQ8R563DG9Y6T2QW5E5Q
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    restart: always
+
+  flash-api:
+    image: flashconect/flash-api
+    container_name: flash-api
+    depends_on:
+      - mysql
+    environment:
+      PORT: 3000
+      NODE_ENV: development
+      LOG_LEVEL: info
+
+      GLOBAL_API_KEY: ASDASDSA55WQ88E55R8ER5T2QW5E5Q
+
+      ENABLE_GLOBAL_WEBHOOK: "false"
+      GLOBAL_WEBHOOK_URL: https://your-webhook-url.com/webhook
+      GLOBAL_WEBHOOK_SECRET: ASDASDSA55WQ8R563DG9Y6T2QW5E5Q
+
+      ENABLE_WEBSOCKET: "true"
+      GLOBAL_WEBSOCKET_SECRET: "ASDASDSA55WQ8R563DG9Y6T2QW5E5Q"
+
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: root
+      MYSQL_PASSWORD: ASDASDSA55WQ8R563DG9Y6T2QW5E5Q
+      MYSQL_DATABASE: flashapi
+      MYSQL_CONNECTION_LIMIT: 1000
+      QUEUELIMIT: 0
+
+      RATE_LIMIT_WINDOW_MS: 900000
+      RATE_LIMIT_MAX_REQUESTS: 100
+
+      SESSION_PHONE_NAME: Flash-Api
+
+      DELETE_TEMP_MENSAGE: "true"
+      TEMP_MENSAGE: 3600
+
+      TZ: America/Sao_Paulo
+
+      DELETE_SESAO_DISCONECT: "true"
+      TEMP_DELETE_SESSAO: 5
+    ports:
+      - "3000:3000"
+    restart: always
+
+volumes:
+  mysql_data:
