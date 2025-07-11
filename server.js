@@ -9,7 +9,6 @@ process.on('unhandledRejection', (reason, promise) => {
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
 const swaggerJsDoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
 const http = require('http');
@@ -47,19 +46,10 @@ try {
 }
 
 const app = express();
+
 const server = http.createServer(app);
 const PORT = config.port;
 
-
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: config.rateLimitWindowMs,
-  max: config.rateLimitMaxRequests,
-  message: {
-    success: false,
-    message: 'Muitas requisições. Tente novamente mais tarde.'
-  }
-});
 
 const allowedOrigins = config.origins;
 
@@ -76,7 +66,6 @@ const corsOptions = {
 // Middleware
 app.use(helmet());
 app.use(cors(corsOptions));
-app.use(limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -141,8 +130,6 @@ async function startServer() {
     server.listen(PORT, '0.0.0.0', () => {
       logger.info(`🚀 Flash API rodando na porta ${PORT}`);
       logger.info(`📚 Documentação: http://localhost:${PORT}/api-docs`);
-      logger.info(`ℹ️  Informações da API: http://localhost:${PORT}/api/info`);
-      logger.info(`🏥 Health Check: http://localhost:${PORT}/health`);
       
       if (config.enableGlobalWebsocket) {
         logger.info(`🔗 WebSocket Global: ws://localhost:${PORT}`);
