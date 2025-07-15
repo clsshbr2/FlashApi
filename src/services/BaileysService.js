@@ -48,6 +48,7 @@ class BaileysService {
     this.messagesCache = new NodeCache({ stdTTL: 5 * 60, useClones: false }); //Cache de mensagem
     this.contactsCache = new NodeCache({ stdTTL: 5 * 60, useClones: false }); //Cache de contatos
     this.chatsCache = new NodeCache({ stdTTL: 5 * 60, useClones: false }); //Cache de Chats
+    this.tentativas = new Map();
   }
 
   setGlobalWebSocketService(service) {
@@ -151,7 +152,6 @@ class BaileysService {
         sock,
         status: 'connecting',
         phoneNumber: number,
-        reconnectAttempts: 0,
         lastConnected: null,
         connectionAttempts: 0,
         qrRetries: 0,
@@ -166,12 +166,16 @@ class BaileysService {
       };
       this.sessions.set(sessionId, sessionData);
 
+      if(!this.tentativas.get(sessionId))this.tentativas.set(sessionId, {tentativas: 0})
+
+
 
       // Event handlers
       this.EventsGet(sock, sessionId, saveCreds, updateStatus);
 
       return sessionData;
     } catch (error) {
+      console.log(error)
       logger.error(`❌ Erro ao criar sessão ${sessionId}:`, error);
       throw error;
     }
@@ -207,6 +211,7 @@ class BaileysService {
         logger.info(`🗑️ Sessão ${sessionId} removida da memória`);
       }
     } catch (error) {
+      console.log(error)
       logger.error(`Erro ao remover sessão ${sessionId}:`, error);
     }
   }
@@ -604,7 +609,7 @@ class BaileysService {
   async update_conexao(sessionId, update, updateStatus = true) {
     const { connection, lastDisconnect, qr } = update;
     const sessionData = this.sessions.get(sessionId);
-
+     const tentativas = this.tentativas.get(sessionId);
     if (!sessionData) return;
     logger.info(`🔄 Conexão ${sessionId}: ${connection || 'indefinido'}`);
 
@@ -652,10 +657,11 @@ class BaileysService {
         const shouldReconnect = (lastDisconnect?.error)?.output?.statusCode !== DisconnectReason.loggedOut;
 
         if (shouldReconnect) {
-          sessionData.reconnectAttempts++;
-          logger.info(`🔄 Tentativa de reconexão ${sessionData.reconnectAttempts} para ${sessionId}`);
+          tentativas.tentativas++;
+          logger.info(`🔄 Tentativa de reconexão ${tentativas.tentativas} para ${sessionId}`);
 
-          if (sessionData.reconnectAttempts <= 5) {
+          if (tentativas.tentativas <= 5) {
+
             // Remover sessão atual antes de tentar reconectar
             await this.removeSession(sessionId);
 
@@ -665,7 +671,7 @@ class BaileysService {
               } catch (error) {
                 logger.error(`Erro na reconexão automática ${sessionId}:`, error);
               }
-            }, 5000 * sessionData.reconnectAttempts);
+            }, 5000 * tentativas.tentativas);
           } else {
             logger.error(`❌ Máximo de tentativas de reconexão atingido para ${sessionId}`);
             await this.removeSession(sessionId, true);
@@ -699,7 +705,7 @@ class BaileysService {
     if (connection === 'open') {
       sessionData.status = 'connected';
       sessionData.lastConnected = moment().tz(configenv.timeZone).format('YYYY-MM-DD HH:mm:ss');
-      sessionData.reconnectAttempts = 0;
+      tentativas.tentativas = 0;
       sessionData.connectionAttempts = 0;
       const phoneNumber = sessionData.sock?.user?.id?.split(':')[0];
       const sessaoDB = await Session.findById(sessionId)
@@ -1676,7 +1682,7 @@ class BaileysService {
 
     for (const sessionId of sessionsToCleanup) {
       logger.info(`🧹 Limpando sessão inativa: ${sessionId}`);
-      await this.removeSession(sessionId);
+      await this.removeSession(sessionId, true);
     }
 
     if (sessionsToCleanup.length > 0) {

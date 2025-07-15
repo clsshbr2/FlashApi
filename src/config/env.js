@@ -25,7 +25,6 @@ const config = {
   // Global WebSocket
   enableGlobalWebsocket: process.env.ENABLE_WEBSOCKET === 'true',
   globalWebsocketSecret: process.env.GLOBAL_WEBSOCKET_SECRET || '123',
-  auth_timeout: process.env.AUTH_TIMEOUT || 1,
 
   // Database
   databasePath: process.env.DATABASE_PATH || './database.sqlite',

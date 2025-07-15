@@ -21,14 +21,37 @@ class GlobalWebSocketService {
     }
   }
 
-  handleConnection(ws, req) {
+  async handleConnection(ws, req) {
 
     if (!this.isEnabled) {
       ws.close(1000, 'WebSocket global desabilitado');
       return;
     }
 
-    logger.info('Nova conexão WebSocket global recebida');
+    const { apikey = null, modo = null, events = [] } = req.headers
+
+    if (!apikey || !modo) {
+      ws.close(1000, 'Dados faltando no headers ex: {apikey: <sua apikey>, modo: <global ou client>, events: []}');
+      return;
+    }
+
+    if (modo !== 'global' && modo !== 'client') {
+      ws.close(1000, 'modo deve ser global ou client');
+      return;
+    }
+
+    let eventos = []
+    try {
+      eventos = JSON.parse(events)
+    } catch (error) {
+      ws.close(1000, 'paramentro events deve ser um array valido');
+      return;
+    }
+
+    if (!Array.isArray(eventos)) {
+      ws.close(1000, 'paramentro events deve ser um array valido');
+      return;
+    }
 
     const clientId = this.generateClientId();
     this.clients.set(clientId, {
@@ -40,13 +63,20 @@ class GlobalWebSocketService {
       modo: null
     });
 
-    const authTimeout = setTimeout(() => {
-      if (!this.clients.get(clientId)?.authenticated) {
-        console.log(`Authentication timeout for session ID: ${clientId}`);
-        ws.close(4001, 'Authentication timeout');
-        this.clients.delete(clientId);
-      }
-    }, parseInt(config.auth_timeout) * 60_000);
+    const auth = await this.autenticacao(ws, { apikey, modo, eventos }, clientId)
+    if (!auth) {
+      this.clients.delete(clientId)
+      ws.close();
+      return;
+    }
+
+    ws.send(JSON.stringify({
+      type: 'welcome',
+      message: 'Autenticado com sucesso no WebSocket',
+      clientId,
+      events: events
+    }));
+    logger.info('Nova conexão WebSocket global recebida');
 
     ws.on('message', (message) => {
       try {
@@ -75,16 +105,13 @@ class GlobalWebSocketService {
     // Send welcome message
     ws.send(JSON.stringify({
       type: 'welcome',
-      message: `Conectado ao WebSocket. Envie {"type":"auth","secret":"seu-secret", events: ['Eventos'] } para autenticar. Você tem ${parseInt(config.auth_timeout)} minuto pra se conectar`,
+      message: `Conectado ao WebSocket da Flash API.`,
       clientId
     }));
   }
 
   async handleMessage(ws, data, clientId) {
     switch (data.type) {
-      case 'auth':
-        await this.autenticacao(ws, data, clientId);
-        break;
 
       case 'ping':
         ws.send(JSON.stringify({
@@ -106,60 +133,29 @@ class GlobalWebSocketService {
   async autenticacao(ws, data, clientId) {
     try {
 
-      const { secret = null, modo = null, events = [] } = data
-      if (!secret) {
-        ws.send(JSON.stringify({
-          type: 'error',
-          message: 'paramentro secret e obrigatorio'
-        }));
-        return;
-      }
+      const { apikey = null, modo = null, eventos = [] } = data
 
-      if (!modo || (modo != 'global' && modo != 'client')) {
-        ws.send(JSON.stringify({
-          type: 'error',
-          message: 'paramentro modo e obrigatorio e deve ser global ou client'
-        }));
-        return;
-      }
-      if (!Array.isArray(events)) {
-        ws.send(JSON.stringify({
-          type: 'error',
-          message: 'paramentro events deve ser um array valido'
-        }));
-        return;
-      }
-
-      const authResult = await authenticateWebSocketSecret(secret, modo);
+      const authResult = await authenticateWebSocketSecret(apikey, modo);
 
       if (!authResult.success) {
-        ws.send(JSON.stringify({
-          type: 'error',
-          message: authResult.message
-        }));
-        return;
+        ws.close(1000, authResult.message);
+        return false;
       }
+      
       const client = this.clients.get(clientId);
       client.authenticated = true;
-      client.events = events;
+      client.events = eventos;
       client.connectedAt = moment().tz(config.timeZone).format('YYYY-MM-DD HH:mm:ss');
       client.sessionId = modo == 'global' ? 'global' : secret;
       client.modo = modo;
-
-      ws.send(JSON.stringify({
-        type: 'auth_success',
-        message: 'Autenticado com sucesso no WebSocket',
-        clientId,
-        events: events
-      }));
-
       logger.info(`Cliente WebSocket global autenticado: ${clientId}`);
+      return true;
+
     } catch (error) {
+      console.log(error)
       logger.error('Erro na autenticação WebSocket global:', error);
-      ws.send(JSON.stringify({
-        type: 'error',
-        message: 'Erro na autenticação'
-      }));
+      ws.close(1000, 'Erro na autenticação');
+      return false;
     }
   }
 
@@ -172,14 +168,14 @@ class GlobalWebSocketService {
       data,
       timestamp: moment().tz(config.timeZone).format('YYYY-MM-DD HH:mm:ss')
     });
-
     let sentCount = 0;
 
     for (const [clientId, client] of this.clients.entries()) {
-        
+          
       if (client.authenticated && client.ws.readyState == WebSocket.OPEN) {
-        // Verifica se o cliente está inscrito nesta sessão e evento
+        // Verifica se o cliente está inscrito nesta sessão e evento     
         if (client.modo == 'global') {
+          
           try {
             const foundEvent = client.events.find(e => e === event);
             if (!foundEvent) continue;

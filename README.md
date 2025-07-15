@@ -244,8 +244,8 @@ const WebSocket = require('ws');
 require('dotenv').config();
 
 const Websocket = 'ws://localhost:3000'
-const modo = 'client' // global/client
-const secret = 'e857f4a4-0ec1-4343-9faf-25c4187a5674' //GLOBAL_WEBSOCKET_SECRET ou apikey da instacia
+const modo = 'global' // global/client
+const secret = '123' //GLOBAL_WEBSOCKET_SECRET ou apikey da instacia
 
 /*
  * Define o secret para autenticação WebSocket com base no modo:
@@ -254,34 +254,33 @@ const secret = 'e857f4a4-0ec1-4343-9faf-25c4187a5674' //GLOBAL_WEBSOCKET_SECRET 
  */
 
 function connectWebSocket() {
-    const ws = new WebSocket(Websocket);
+    const ws = new WebSocket(Websocket, [],
+        {
+            headers: {
+                "apikey": secret,
+                "modo": modo,
+                "events": JSON.stringify([
+                    "connection_update",
+                    "qr_updated",
+                    "message_received",
+                    "message_update",
+                    "chats_set",
+                    "chats_update",
+                    "contacts_set",
+                    "contacts_update",
+                    "groups_update",
+                    "group_participants_update",
+                    "presence_update",
+                    "call",
+                    "messaging_history_set"
+                ])
+            }
+        }
+    );
 
 
     ws.onopen = () => {
         console.log('Conectado ao WebSocket');
-
-        // Implementar autenticação segura via WebSocket
-        ws.send(JSON.stringify({
-            type: 'auth',
-            secret,
-            modo,
-            events: [
-              "connection_update",
-              "qr_updated",
-              "message_received",
-              "message_update",
-              "chats_set",
-              "chats_update",
-              "contacts_set",
-              "contacts_update",
-              "groups_update",
-              "group_participants_update",
-              "presence_update",
-              "call",
-              "messaging_history_set"
-            ]
-        }));
-
 
         // Inicia o intervalo de ping
         setInterval(() => {
@@ -294,6 +293,7 @@ function connectWebSocket() {
     ws.onmessage = (event) => {
 
         const data = JSON.parse(event.data)
+        console.log(data)
         if (data.type) {
             switch (data.type) {
 
@@ -306,15 +306,7 @@ function connectWebSocket() {
                 //Boas vindas do websocket
                 case "welcome":
                     console.log('Você está conectado no websocket da Flash Api:')
-                    console.log('   Mensagem: ', data.message)
                     console.log('   Cliente ID: ', data.clientId)
-                    break;
-
-                //Autenticação com o websocket com sucesso
-                case "auth_success":
-                    console.log(`${data.message}: `)
-                    console.log('   Cliente ID: ', data.clientId)
-                    console.log('   Eventos: ', data.events)
                     break;
 
                 //Verificação de ping
@@ -326,14 +318,17 @@ function connectWebSocket() {
 
                 //Verificação de ping
                 case "event":
-                    if(data.event == 'message_received'){
-                        console.log('mensagem recebida: ', data)
+                    if (data.event == 'message_received') {
+                        console.log(data.data.message)
                     }
-                   break;
+                    if (data.event == 'qr_updated') {
+                        console.log(data)
+                    }
+                    break;
             }
         }
 
-        
+
     }
 
     ws.onclose = (event) => {
