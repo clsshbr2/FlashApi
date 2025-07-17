@@ -1,5 +1,6 @@
 const ApiKey = require('../models/ApiKey');
 const logger = require('../utils/logger');
+const config = require('../config/env');
 
 const authenticateApiKey = async (req, res, next) => {
   try {

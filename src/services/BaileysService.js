@@ -97,7 +97,7 @@ class BaileysService {
       // Se a sessão já existe, remover primeiro
       if (this.sessions.has(sessionId)) {
         logger.warn(`⚠️ Sessão ${sessionId} já existe, removendo para recriar...`);
-        await this.removeSession(sessionId);
+        await this.deleteSession(sessionId);
       }
 
       logger.info(`🚀 Criando sessão: ${sessionId}`);
@@ -166,7 +166,7 @@ class BaileysService {
       };
       this.sessions.set(sessionId, sessionData);
 
-      if(!this.tentativas.get(sessionId))this.tentativas.set(sessionId, {tentativas: 0})
+      if (!this.tentativas.get(sessionId)) this.tentativas.set(sessionId, { tentativas: 0 })
 
 
 
@@ -181,32 +181,52 @@ class BaileysService {
     }
   }
 
-  // Nova função para remover sessão sem deletar arquivos
+  // função para remover sessão sem deletar arquivos
   async removeSession(sessionId, delarquivos = false) {
     try {
       const sessionData = this.sessions.get(sessionId);
       if (sessionData) {
-        // Fechar WebSocket se existir
-        if (sessionData.sock?.ws) {
-          sessionData.sock.ws.close();
+
+
+        if (delarquivos) {
+          await Session.saveCreds(sessionId, null)
+          if (sessionData.sock) {
+            try {
+              if (sessionData.sock.ws && sessionData.sock.ws.readyState === 1) {
+                // 1 = WebSocket.OPEN
+                await sessionData.sock.logout();
+              } else {
+                console.warn("⚠️ WebSocket já fechado. Pulando logout.");
+              }
+
+              await sessionData.sock.end().catch(err => {
+                console.warn("⚠️ Erro ao encerrar sessão com .end():", err.message);
+              });
+
+              if (sessionData.sock.ws && sessionData.sock.ws.readyState !== 3) {
+                // 3 = WebSocket.CLOSED
+                sessionData.sock.ws.close();
+              }
+
+            } catch (err) {
+              console.error("❌ Erro ao encerrar sessão:", err.message);
+            }
+          }
+        } else {
+          // Fechar WebSocket se existir
+          if (sessionData.sock?.ws) {
+            await sessionData.sock.ws.close();
+          }
         }
 
         // Remover do Map
         this.sessions.delete(sessionId);
-
-        if (delarquivos) {
-          await this.deleteSession(sessionId)
-          await Session.saveCreds(sessionId, null)
-          await sessionData?.sock?.logout();
-          await sessionData?.sock?.end();
-        }
 
         await Session.update(sessionId, {
           qr_code: 'null',
           code: 'null',
           status: 'disconnected'
         })
-
 
         logger.info(`🗑️ Sessão ${sessionId} removida da memória`);
       }
@@ -609,7 +629,7 @@ class BaileysService {
   async update_conexao(sessionId, update, updateStatus = true) {
     const { connection, lastDisconnect, qr } = update;
     const sessionData = this.sessions.get(sessionId);
-     const tentativas = this.tentativas.get(sessionId);
+    const tentativas = this.tentativas.get(sessionId);
     if (!sessionData) return;
     logger.info(`🔄 Conexão ${sessionId}: ${connection || 'indefinido'}`);
 
@@ -663,7 +683,7 @@ class BaileysService {
           if (tentativas.tentativas <= 5) {
 
             // Remover sessão atual antes de tentar reconectar
-            await this.removeSession(sessionId);
+            await this.deleteSession(sessionId)
 
             setTimeout(async () => {
               try {
@@ -674,11 +694,11 @@ class BaileysService {
             }, 5000 * tentativas.tentativas);
           } else {
             logger.error(`❌ Máximo de tentativas de reconexão atingido para ${sessionId}`);
-            await this.removeSession(sessionId, true);
+            await this.deleteSession(sessionId, true);
           }
         } else {
           logger.info(`🚪 Sessão ${sessionId} foi desconectada (logout)`);
-          await this.removeSession(sessionId, true);
+          await this.deleteSession(sessionId, true);
         }
 
         if (updateStatus) {
@@ -971,7 +991,7 @@ class BaileysService {
       ];
 
       if (!tiposSuportados.includes(tipoOriginal)) {
-        console.warn(`⚠️ Tipo de mídia não tratado: ${tipoOriginal}`);
+        // console.warn(`⚠️ Tipo de mídia não tratado: ${tipoOriginal}`);
         return null;
       }
 
@@ -997,7 +1017,7 @@ class BaileysService {
       return novaMensagem;
 
     } catch (err) {
-      console.error('❌ Erro ao baixar mídia:', err);
+      // console.error('❌ Erro ao baixar mídia:', err);
       return null;
     }
   }
@@ -1562,7 +1582,7 @@ class BaileysService {
   async reconnectSession(sessionId) {
     try {
       // Remover sessão atual
-      await this.removeSession(sessionId);
+      await this.deleteSession(sessionId);
 
       // Buscar dados da sessão no banco
       const session = await Session.findById(sessionId);
@@ -1577,10 +1597,11 @@ class BaileysService {
     }
   }
 
-  async deleteSession(sessionId) {
+  async deleteSession(sessionId, deleteAll = false) {
     try {
+
       // Remover da memória
-      await this.removeSession(sessionId);
+      await this.removeSession(sessionId, deleteAll);
 
       // Remove session directory
       const sessionDir = path.join(process.cwd(), 'sessions', sessionId);
@@ -1682,7 +1703,8 @@ class BaileysService {
 
     for (const sessionId of sessionsToCleanup) {
       logger.info(`🧹 Limpando sessão inativa: ${sessionId}`);
-      await this.removeSession(sessionId, true);
+
+      await this.deleteSession(sessionId, true);
     }
 
     if (sessionsToCleanup.length > 0) {

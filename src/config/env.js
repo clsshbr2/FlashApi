@@ -7,16 +7,17 @@ const config = {
   hostapi: process.env.HOST || 'localhost',
   nodeEnv: process.env.NODE_ENV || 'development',
   logLevel: process.env.LOG_LEVEL || 'info',
+  protocol: process.env.PROTOCOLO || 'http',
 
   origins: process.env.CORS_ORIGINS || '*',
 
   // Global API Key
-  globalApiKey: process.env.GLOBAL_API_KEY || 'default-api-key-change-me',
+  globalApiKey: process.env.GLOBAL_API_KEY || 'ASDASDSA55WQ88E55R8ER5T2QW5E5Q',
 
   // Global Webhook
-  enableGlobalWebhook: process.env.ENABLE_GLOBAL_WEBHOOK === 'true',
+  enableGlobalWebhook: process.env.ENABLE_GLOBAL_WEBHOOK == 'true',
   globalWebhookUrl: process.env.GLOBAL_WEBHOOK_URL || null,
-  globalWebhookSecret: process.env.GLOBAL_WEBHOOK_SECRET || 'default-webhook-secret',
+  globalWebhookSecret: process.env.GLOBAL_WEBHOOK_SECRET || 'ASDASDSA55WQ88E55R8ER5T2QW5E5Q',
 
   // Configuração de sessão
   sessao_phone: process.env.SESSION_PHONE_CLIENT || 'Flash_api',
@@ -55,6 +56,10 @@ const config = {
   database: process.env.MYSQL_DATABASE || 'FlashApi',
   connectionLimit: process.env.MYSQL_CONNECTION_LIMIT || 50,
   queuelimit: process.env.QUEUELIMIT || 0,
+
+  //manager
+  manger_secret: process.env.CHAVE_SECRET_SESSION_MANAGER || 'ASDASDSA55WQ88E55R8ER5T2QW5E5Q',
+  manager_status: process.env.MANAGER === "true",
 };
 
 // Validate required configurations
