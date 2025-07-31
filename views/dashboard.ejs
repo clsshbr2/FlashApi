@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard | Flash API</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Boostrap CSS 5.3 -->
+    <link href="/css/bootstrap.min.css" rel="stylesheet" />
+
+    <!-- Boostrap JS 5.3 -->
+    <script src="/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Jquery -->
+    <script src="/js/jquery.min.js"></script>
+
+    <!-- Axios -->
+    <script src="/js/axios.js"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bs-primary: #ff6600;
+            --bs-secondary: #ffc107;
+            --bs-dark: #000000;
+            --bs-light: #ffffff;
+            --orange-gradient: linear-gradient(135deg, #ff6600 0%, #ff8533 100%);
+            --yellow-gradient: linear-gradient(135deg, #ffc107 0%, #ffd54f 100%);
+            --shadow-primary: 0 8px 32px rgba(255, 102, 0, 0.15);
+            --shadow-secondary: 0 4px 16px rgba(255, 193, 7, 0.1);
+            --border-radius: 16px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            transition: var(--transition);
+        }
+
+        body {
+            min-height: 100vh;
+            background:
+                radial-gradient(circle at 20% 80%, rgba(255, 102, 0, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 193, 7, 0.08) 0%, transparent 50%),
+                linear-gradient(-45deg, #0a0a0a, #1a1a1a, #0f0f0f, #1e1e1e);
+            background-size: 400% 400%;
+            animation: gradientMove 15s ease infinite;
+            color: var(--bs-light);
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><filter id="noiseFilter"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="1" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noiseFilter)" opacity="0.03"/></pattern></defs><rect width="100%" height="100%" fill="url(%23grain)"/></svg>');
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .container {
+            position: relative;
+            z-index: 2;
+        }
+
+        @keyframes gradientMove {
+
+            0%,
+            100% {
+                background-position: 0% 50%;
+            }
+
+            25% {
+                background-position: 100% 50%;
+            }
+
+            50% {
+                background-position: 100% 100%;
+            }
+
+            75% {
+                background-position: 0% 100%;
+            }
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        @keyframes pulse-glow {
+
+            0%,
+            100% {
+                box-shadow: 0 0 20px rgba(255, 102, 0, 0.3);
+            }
+
+            50% {
+                box-shadow: 0 0 40px rgba(255, 102, 0, 0.6);
+            }
+        }
+
+        /* Navbar Improvements */
+        .navbar {
+            background: rgba(0, 0, 0, 0.95) !important;
+            backdrop-filter: blur(20px);
+            border-bottom: 2px solid transparent;
+            border-image: var(--orange-gradient) 1;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .navbar-brand {
+            font-weight: 700 !important;
+            font-size: 1.5rem !important;
+            background: var(--orange-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 30px rgba(255, 102, 0, 0.5);
+        }
+
+        /* Card Improvements */
+        .card-instance {
+            background: linear-gradient(145deg, #111111, #1a1a1a);
+            border: 2px solid transparent;
+            border-radius: var(--border-radius);
+            box-shadow:
+                var(--shadow-primary),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            transition: var(--transition);
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .card-instance::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--orange-gradient);
+            opacity: 0;
+            transition: var(--transition);
+            z-index: -1;
+        }
+
+        .card-instance::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            right: 2px;
+            bottom: 2px;
+            background: linear-gradient(145deg, #111111, #1a1a1a);
+            border-radius: calc(var(--border-radius) - 2px);
+            z-index: -1;
+        }
+
+        .card-instance:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow:
+                0 20px 60px rgba(255, 102, 0, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            animation-play-state: paused;
+        }
+
+        .card-instance:hover::before {
+            opacity: 1;
+        }
+
+        .card-instance:nth-child(2n) {
+            animation-delay: -2s;
+        }
+
+        .card-instance:nth-child(3n) {
+            animation-delay: -4s;
+        }
+
+        /* Status Indicators */
+        .status-connected {
+            color: #10b981;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-connected::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+            animation: pulse-glow 2s infinite;
+            box-shadow: 0 0 10px #10b981;
+        }
+
+        .status-disconnected {
+            color: #ef4444;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-disconnected::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: #ef4444;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        /* Button Improvements */
+        .btn {
+            border-radius: 12px;
+            font-weight: 500;
+            padding: 8px 16px;
+            border: none;
+            position: relative;
+            overflow: hidden;
+            transition: var(--transition);
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn-primary {
+            background: var(--orange-gradient) !important;
+            box-shadow: var(--shadow-primary);
+            font-weight: 600;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #e65c00 0%, #ff6600 100%) !important;
+            box-shadow: 0 12px 40px rgba(255, 102, 0, 0.6);
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+            box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-success:hover {
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+            box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-danger:hover {
+            box-shadow: 0 8px 25px rgba(239, 68, 68, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%) !important;
+            box-shadow: 0 4px 16px rgba(107, 114, 128, 0.3);
+        }
+
+        .btn-secondary:hover {
+            box-shadow: 0 8px 25px rgba(107, 114, 128, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .btn-outline-light {
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .btn-outline-light:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: scale(1.1);
+        }
+
+        .copiar-btn {
+            font-size: 14px;
+            width: 32px;
+            height: 32px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+        }
+
+        /* Typography */
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        h6 {
+            font-weight: 600;
+            letter-spacing: -0.025em;
+        }
+
+        .text-primary {
+            background: var(--orange-gradient) !important;
+            -webkit-background-clip: text !important;
+            -webkit-text-fill-color: transparent !important;
+            background-clip: text !important;
+        }
+
+        .text-secondary {
+            color: var(--bs-secondary) !important;
+            font-weight: 500;
+        }
+
+        /* Modal Improvements */
+        .modal-content {
+            background: linear-gradient(145deg, #111111, #1a1a1a) !important;
+            border: 2px solid transparent !important;
+            border-radius: var(--border-radius) !important;
+            box-shadow:
+                0 25px 80px rgba(0, 0, 0, 0.8),
+                var(--shadow-primary) !important;
+            backdrop-filter: blur(20px);
+        }
+
+        .modal-header {
+            border-bottom: 1px solid rgba(255, 102, 0, 0.3) !important;
+            background: rgba(255, 102, 0, 0.05);
+        }
+
+        .modal-footer {
+            border-top: 1px solid rgba(255, 102, 0, 0.3) !important;
+            background: rgba(255, 102, 0, 0.05);
+        }
+
+        .modal-title {
+            font-weight: 600;
+            background: var(--orange-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Form Improvements */
+        .form-control {
+            background: rgba(255, 255, 255, 0.05) !important;
+            border: 2px solid rgba(255, 102, 0, 0.3) !important;
+            border-radius: 12px !important;
+            color: white !important;
+            transition: var(--transition);
+        }
+
+        .form-control:focus {
+            background: rgba(255, 255, 255, 0.1) !important;
+            border-color: var(--bs-primary) !important;
+            box-shadow: 0 0 20px rgba(255, 102, 0, 0.3) !important;
+            transform: translateY(-2px);
+        }
+
+        .form-select {
+            background: rgba(255, 255, 255, 0.05) !important;
+            border: 2px solid rgba(255, 102, 0, 0.3) !important;
+            border-radius: 12px !important;
+            color: white !important;
+        }
+
+        .input-group-text {
+            background: var(--orange-gradient) !important;
+            border: 2px solid var(--bs-primary) !important;
+            color: white !important;
+            font-weight: 500;
+        }
+
+        .form-check-input:checked {
+            background-color: var(--bs-primary) !important;
+            border-color: var(--bs-primary) !important;
+        }
+
+        /* Alert Improvements */
+        .alert {
+            border-radius: var(--border-radius);
+            border: none;
+            box-shadow: var(--shadow-primary);
+        }
+
+        .alert-danger {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.15) 100%);
+            color: #fca5a5;
+            border-left: 4px solid #ef4444;
+        }
+
+        /* Responsive Improvements */
+        @media (max-width: 768px) {
+            .card-instance {
+                padding: 20px;
+            }
+
+            .navbar-brand {
+                font-size: 1.25rem !important;
+            }
+
+            body {
+                padding: 10px;
+            }
+        }
+
+        /* Additional Visual Enhancements */
+        .top-bar h2 {
+            font-size: 2rem;
+            font-weight: 700;
+            background: var(--orange-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0;
+        }
+
+        .card-actions .row {
+            gap: 8px;
+        }
+
+        .spinner-border {
+            width: 1rem;
+            height: 1rem;
+        }
+
+        /* QR Code Image Styling */
+        #qr-code-img {
+            border-radius: var(--border-radius) !important;
+            box-shadow: var(--shadow-primary) !important;
+            transition: var(--transition);
+        }
+
+        #qr-code-img:hover {
+            transform: scale(1.05);
+            box-shadow: 0 20px 60px rgba(255, 102, 0, 0.4) !important;
+        }
+
+        /* Loading States */
+        .btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .btn .spinner-border {
+            margin-left: 8px;
+        }
+
+        /* Hover Effects for Cards */
+        .card-instance h5 {
+            transition: var(--transition);
+        }
+
+        .card-instance:hover h5 {
+            color: #fbbf24 !important;
+        }
+
+        /* Border Animation */
+        @keyframes borderRotate {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .card-instance:hover::before {
+            animation: borderRotate 3s linear infinite;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-black border-bottom border-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand text-primary fw-bold" href="#">Flash API</a>
+
+            <div class="d-flex align-items-center">
+                <span class="me-3 text-light">APIKEY: <strong class="text-secondary">
+                        <%= userId %>
+                    </strong></span>
+
+            </div>
+        </div>
+    </nav>
+
+    <!-- Conteúdo do painel -->
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <h2 class="text-primary">Painel de Instâncias Flash API</h2>
+            </div>
+        </div>
+
+        <% if (error) { %>
+            <div class="alert alert-danger">
+                <%= error %>
+            </div>
+            <% } %>
+
+                <div class="row g-4 mb-3">
+                    <div class="col-6">
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalcreateSessao">
+                            <i class="bi bi-plus-lg me-1"></i> Adicionar instância
+                        </button>
+                    </div>
+                    <div class="col-12">
+                        <a href="/manager/logout" class="btn btn-sm btn-danger">
+                            🚪 Sair
+                        </a>
+                    </div>
+                </div>
+
+                <div id="userInfo" data-instance="<%= JSON.stringify(instances) %>" data-apikey="<%= userId %>"></div>
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <input type="text" id="filtroBusca" class="form-control"
+                            placeholder="🔍 Filtrar por Nome ou API Key">
+                    </div>
+                </div>
+                <div class="row g-4">
+                    <% instances.forEach(instance=> { %>
+                        <div class="col-md-6 col-lg-4">
+                            <div class="card-instance" data-nome="<%= instance.nome_sessao %>"
+                                data-apikey="<%= instance.apikey %>">
+                                <h5 class="text-primary">
+                                    📱 Nome: <%= instance.nome_sessao %>
+                                        <button class="btn btn-sm btn-outline-light ms-2 copiar-btn"
+                                            data-copy="<%= instance.nome_sessao %>" title="Copiar nome">
+                                            📝
+                                        </button>
+                                </h5>
+
+                                <h5 class="text-primary">
+                                   🔑 APIKey: <%= instance.apikey %>
+                                        <button class="btn btn-sm btn-outline-light ms-2 copiar-btn"
+                                            data-copy="<%= instance.apikey %>" title="Copiar APIKey">
+                                            📋
+                                        </button>
+                                </h5>
+                                <p>📊 Status:
+                                    <% if (instance.status==='connected' ) { %>
+                                        <span class="status-connected">Conectado</span>
+                                        <% } else { %>
+                                            <span class="status-disconnected">Desconectado</span>
+                                            <% } %>
+                                </p>
+
+                                <div class="card-actions mt-3">
+                                    <div class="row row-cols-2 g-2">
+                                        <% if (instance.status !=='connected' ) { %>
+                                            <div class="col">
+                                                <button class="btn-generate btn btn-sm btn-success w-100"
+                                                    data-id="<%= instance.id %>">
+                                                    <span class="btn-text">🔌 Conectar</span>
+                                                    <span class="spinner-border spinner-border-sm d-none" role="status"
+                                                        aria-hidden="true"></span>
+                                                </button>
+                                            </div>
+                                            <% } %>
+
+                                                <div class="col">
+                                                    <button class="btn-disconnect btn btn-sm btn-danger w-100"
+                                                        data-id="<%= instance.id %>">
+                                                        <span class="btn-text">🔌 Desconectar</span>
+                                                        <span class="spinner-border spinner-border-sm d-none"
+                                                            role="status" aria-hidden="true"></span>
+                                                    </button>
+                                                </div>
+
+                                                <div class="col">
+                                                    <button class="btn-delete btn btn-sm btn-danger w-100"
+                                                        data-id="<%= instance.id %>">
+                                                        <span class="btn-text"> 🗑 Deletar instacia</span>
+                                                        <span class="spinner-border spinner-border-sm d-none"
+                                                            role="status" aria-hidden="true"></span>
+                                                    </button>
+                                                </div>
+
+                                                <div class="col">
+                                                    <button class="btn-config btn btn-sm btn-secondary w-100"
+                                                        data-id="<%= instance.id %>">
+                                                        <i class="bi bi-gear me-1"></i>⚙️ Configuração
+                                                    </button>
+                                                </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <% }) %>
+                </div>
+    </div>
+
+    <!-- Modal qrcode -->
+    <div class="modal fade" id="modalQR" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+        aria-labelledby="staticBackdropLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content bg-dark text-white">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="staticBackdropLabel">📱 Conectar WhatsApp</h1>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <div id="qr-code-info"></div>
+                    <img id="qr-code-img" class="img-fluid mt-3 border border-light rounded shadow"
+                        style="max-width: 300px;" />
+                    <div id="info-detalhes"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal criar sessao -->
+    <div class="modal fade" id="modalcreateSessao" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+        aria-labelledby="staticBackdropLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content bg-dark text-white">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="staticBackdropLabel">➕ Criar Nova Sessão</h1>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
+                </div>
+                <form id="form-Criar-Instance">
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="row-12 mb-3">
+                                <div class="input-group">
+                                    <span class="input-group-text border-primary border-2">📱 Nome Sessão</span>
+                                    <input type="text" id="nome-sessao" class="form-control border-primary border-2">
+                                </div>
+                                <div class="form-text text-white">Deixar vazio para gerar automaticamente</div>
+                            </div>
+                            <div class="row-12 mb-3">
+                                <div class="input-group">
+                                    <span class="input-group-text border-primary border-2">🔑 APIKey</span>
+                                    <input type="text" id="apikey-sessao" class="form-control border-primary border-2">
+                                </div>
+                                <div class="form-text text-white">Deixar vazio para gerar automaticamente<br>Formato:
+                                    <span class="text-danger">(ex: 83725a47-fc7a-404a-bbac-206d590bae8f)</span></div>
+                            </div>
+                            <div class="row-12 mb-3">
+                                <div class="input-group">
+                                    <span class="input-group-text border-primary border-2" id="basic-addon3">📞
+                                        Número</span>
+                                    <input type="number" id="numero-sessao" class="form-control border-primary border-2"
+                                        placeholder="5521999999999" aria-describedby="basic-addon3 basic-addon4">
+                                </div>
+                                <div class="form-text text-white" id="basic-addon4">Caso queira conectar via código
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                        <button type="submit" class="btn btn-primary">➕ Adicionar</button>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Configuração de Sessão -->
+    <div class="modal fade" id="configSessao" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+        aria-labelledby="configSessaoLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content bg-dark text-white border border-primary">
+                <div class="modal-header">
+                    <h5 class="modal-title text-primary" id="configSessaoLabel">⚙️ Configuração da Sessão</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Fechar"></button>
+                </div>
+
+                <form id="form-config-Instance">
+                    <div class="modal-body">
+
+                        <!-- URL Webhook -->
+                        <div class="mb-3">
+                            <label for="webhook-url" class="form-label text-secondary">🔗 URL Webhook</label>
+                            <div class="input-group">
+                                <span class="input-group-text border-primary border-2">URL:</span>
+                                <input type="text" id="webhook-url" class="form-control border-primary border-2"
+                                    placeholder="ex: https://meuwebhook.com/api/receber">
+                            </div>
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox" id="webhook-status">
+                                <label class="form-check-label" for="webhook-status">✅ Ativar webhook</label>
+                            </div>
+                        </div>
+
+                        <!-- Eventos webhook  -->
+                        <div class="mb-3">
+                            <label for="webhook-url" class="form-label text-secondary">📋 Escolha os eventos</label>
+                            <div class="input-group">
+                                <span class="input-group-text border-primary border-2">Eventos:</span>
+                                <select class="form-select" name="events[]" id="events[]" multiple>
+                                    <option value="connection_update">connection_update</option>
+                                    <option value="qr_updated">qr_updated</option>
+                                    <option value="message_received">message_received</option>
+                                    <option value="message_update">message_update</option>
+                                    <option value="chats_set">chats_set</option>
+                                    <option value="chats_update">chats_update</option>
+                                    <option value="contacts_set">contacts_set</option>
+                                    <option value="contacts_update">contacts_update</option>
+                                    <option value="groups_update">groups_update</option>
+                                    <option value="group_participants_update">group_participants_update</option>
+                                    <option value="presence_update">presence_update</option>
+                                    <option value="call">call</option>
+                                    <option value="messaging_history_set">messaging_history_set</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Mensagem de Rejeição -->
+                        <div class="mb-3">
+                            <label for="mensagem-rejeicao" class="form-label text-secondary">🚫 Mensagem de
+                                Rejeição</label>
+                            <div class="input-group">
+                                <span class="input-group-text border-primary border-2">Msg:</span>
+                                <input type="text" id="mensagem-rejeicao" class="form-control border-primary border-2"
+                                    placeholder="ex: Chamada recusada.">
+                            </div>
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox" id="rejeitar-chamada">
+                                <label class="form-check-label" for="rejeitar-chamada">📞 Rejeitar chamadas</label>
+                            </div>
+                        </div>
+
+                        <!-- Opções Avançadas -->
+                        <div class="row mb-3">
+                            <div class="col">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="ignorar-grupos">
+                                    <label class="form-check-label" for="ignorar-grupos">👥 Ignorar grupos</label>
+                                </div>
+                            </div>
+
+                            <div class="col">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="sempre-online">
+                                    <label class="form-check-label" for="sempre-online">🟢 Sempre online</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="id_sessao" data-id=""></div>
+
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                        <button type="submit" class="btn btn-primary">
+                            <span class="btn-text">💾 Salvar</span>
+                            <span class="spinner-border spinner-border-sm d-none" role="status"
+                                aria-hidden="true"></span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/dashboard.js"></script>
+
+    <!-- Footer -->
+    <footer class="mt-5 pt-4 border-top border-secondary text-center text-light bg-dark">
+        <div class="container">
+            <p class="mb-2">🔗 Links úteis:</p>
+            <div class="d-flex justify-content-center flex-wrap gap-3 mb-3">
+                <a href="https://www.postman.com/winter-star-5220/flash-api/collection/3w62mm8/flash-api-v1-0-0"
+                    target="_blank" class="text-secondary text-decoration-none">📦
+                    Postman</a>
+                <a href="https://chat.whatsapp.com/Jr3lvW2tbg38MZEMpUNZMI" target="_blank"
+                    class="text-secondary text-decoration-none">💬 WhatsApp</a>
+                <a href="/api-docs" target="_blank" class="text-secondary text-decoration-none">📄 API Docs</a>
+                <a href="https://github.com/clsshbr2/FlashApi" target="_blank"
+                    class="text-secondary text-decoration-none">🐙 GitHub</a>
+                <a href="https://hub.docker.com/r/flashconect/flash-api" target="_blank"
+                    class="text-secondary text-decoration-none">🐳 Docker Hub</a>
+            </div>
+            <small class="text-muted">© <%= new Date().getFullYear() %> Flash API. Todos os direitos reservados.</small>
+        </div>
+    </footer>
+</body>
+
+</html>

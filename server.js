@@ -14,6 +14,7 @@ const swaggerUi = require('swagger-ui-express');
 const http = require('http');
 const WebSocket = require('ws');
 const fs = require('fs');
+const session = require('express-session');
 
 const config = require('./src/config/env');
 const { swaggerOptions } = require('./src/config/swagger');
@@ -29,6 +30,7 @@ const contactRoutes = require('./src/routes/contact');
 const groupRoutes = require('./src/routes/group');
 const configRoutes = require('./src/routes/config');
 const systemRoutes = require('./src/routes/system');
+const managerRoutes = require('./src/routes/manager');
 const { execSync } = require('child_process');
 const { modifyTable } = require('./src/config/verificardb');
 
@@ -64,10 +66,24 @@ const corsOptions = {
 };
 
 // Middleware
+app.set('view engine', 'ejs');
+app.use(express.static('public'));
 app.use(helmet());
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+//Sistema de sessão
+app.use(session({
+  secret: config.manger_secret,
+  resave: false,
+  saveUninitialized: false,
+  cookie: { 
+    httpOnly: true,
+    secure: config.protocol == 'https' ? true : false,
+    maxAge: 1000 * 60 * 30 // sessão dura 30 minutos
+  }
+}));
 
 // Swagger documentation
 const swaggerDocs = swaggerJsDoc(swaggerOptions);
@@ -80,6 +96,7 @@ app.use('/api/contact', contactRoutes);
 app.use('/api/group', groupRoutes);
 app.use('/api/config', configRoutes);
 app.use('/api/system', systemRoutes);
+app.use('/manager', managerRoutes);
 
 // WebSocket server
 const wss = new WebSocket.Server({ server });
@@ -99,23 +116,8 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({
-    success: false,
-    message: 'Endpoint não encontrado',
-    // availableEndpoints: [
-    //   '/api/info',
-    //   '/api-docs',
-    //   '/health',
-    //   '/api/session/*',
-    //   '/api/chat/*',
-    //   '/api/contact/*',
-    //   '/api/group/*',
-    //   '/api/config/*',
-    //   '/api/system/*'
-    // ]
-  });
+app.get('/', (req, res) => {
+  return res.redirect('/manager/login');
 });
 
 // Initialize database and start server

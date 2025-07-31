@@ -22,7 +22,13 @@
               "properties": {
                 "nome_sessao": {
                   "type": "string",
-                  "description": "Nome da sessão (obrigatório, mínimo 5 caracteres)"
+                  "description": "Nome da sessão (obrigatório, mínimo 5 caracteres)",
+                  "default": "Minha_sessao"
+                },
+                "apikey": {
+                  "type": "string",
+                  "description": "Apikey (ex: 83725a47-fc7a-404a-bbac-206d590bae8f) opcional",
+                  "default": "83725a47-fc7a-404a-bbac-206d590bae8f"
                 },
                 "numero": {
                   "type": "string",

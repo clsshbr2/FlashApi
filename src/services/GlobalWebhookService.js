@@ -8,7 +8,7 @@ class GlobalWebhookService {
     this.webhookUrl = config.globalWebhookUrl;
     this.secret = config.globalWebhookSecret;
   }
-
+  
   async sendGlobalWebhook(eventData, retries = 3) {
     if (!this.isEnabled || !this.webhookUrl) {
       logger.debug('Webhook global desabilitado ou URL não configurada');

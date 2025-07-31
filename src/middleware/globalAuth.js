@@ -11,7 +11,7 @@ const authenticateGlobalApiKey = (req, res, next) => {
     if (!apiKey) {
       return res.status(401).json({
         success: false,
-        message: 'apikey é obrigatória. Use o header apikey ou Authorization: Bearer'
+        message: 'apikey é obrigatória. Use o header apikey'
       });
     }
 

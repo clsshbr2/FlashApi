@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login | Flash-API</title>
+
+    <!-- Bootstrap -->
+    <link href="/css/bootstrap.min.css" rel="stylesheet" />
+
+    <!-- jQuery -->
+    <script src="/js/jquery.min.js"></script>
+
+    <!-- Axios -->
+    <script src="/js/axios.js"></script>
+
+    <style>
+        :root {
+            --bs-primary: #ff6600;
+            --bs-secondary: #ffc107;
+            /* amarelo */
+            --bs-dark: #000000;
+            --bs-light: #ffffff;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(-45deg, #000000, #1a1a1a, #000000, #1a1a1a);
+            background-size: 400% 400%;
+            animation: gradientMove 10s ease infinite;
+            color: var(--bs-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        @keyframes gradientMove {
+            0% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        .login-box {
+            background: #111;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 0 30px rgba(255, 102, 0, 0.2);
+            width: 100%;
+            max-width: 420px;
+            border: 1px solid var(--bs-primary);
+            transition: all 0.4s ease;
+            animation: fadeIn 1.5s ease;
+        }
+
+        .login-box:hover {
+            transform: scale(1.02);
+            box-shadow: 0 0 40px rgba(255, 102, 0, 0.3);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .form-control {
+            background-color: #1e1e1e;
+            border: 1px solid #333;
+            color: white;
+        }
+
+        .form-control:focus {
+            border-color: var(--bs-primary);
+            box-shadow: 0 0 10px rgba(255, 102, 0, 0.5);
+            background-color: #1e1e1e;
+            color: white;
+        }
+
+        .btn-primary {
+            background-color: var(--bs-primary) !important;
+            border: none;
+            font-weight: bold;
+            transition: 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            background-color: #e65c00 !important;
+            box-shadow: 0 0 10px rgba(255, 102, 0, 0.6);
+        }
+
+        .text-primary {
+            color: var(--bs-primary) !important;
+        }
+
+        .text-secondary {
+            color: var(--bs-secondary) !important;
+        }
+
+        .form-label {
+            color: var(--bs-secondary);
+            font-weight: 500;
+        }
+
+        a.text-secondary:hover {
+            color: var(--bs-primary) !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-box">
+        <div class="text-center mb-4">
+            <h2 class="text-primary fw-bold">Flash-API</h2>
+            <p class="text-secondary">Entre com sua APIKEY</p>
+        </div>
+
+        <form method="post" action="/manager/login">
+
+            <div class="mb-3 input-group">
+                <span for="apikey" class="input-group-text">ApiKey</span>
+                <input type="text" class="form-control" id="apikey" name="apikey" required />
+            </div>
+
+            <div class="d-grid mb-3">
+                <button type="submit" class="btn btn-primary">Entrar</button>
+            </div>
+            <% if (error) { %>
+                <div id="alertError" class="alert alert-<%= error.icon %>" role="alert">
+                    <%= error.message %>
+                </div>
+                <% } %>
+        </form>
+    </div>
+
+    <script src="/js/login.js"></script>
+</body>
+
+</html>

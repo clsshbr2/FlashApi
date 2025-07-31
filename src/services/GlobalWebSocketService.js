@@ -146,7 +146,7 @@ class GlobalWebSocketService {
       client.authenticated = true;
       client.events = eventos;
       client.connectedAt = moment().tz(config.timeZone).format('YYYY-MM-DD HH:mm:ss');
-      client.sessionId = modo == 'global' ? 'global' : secret;
+      client.sessionId = apikey;
       client.modo = modo;
       logger.info(`Cliente WebSocket global autenticado: ${clientId}`);
       return true;
