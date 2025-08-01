@@ -1134,7 +1134,7 @@ class BaileysService {
       if (typeof mediaData === 'string' && (mediaData.startsWith('http') || mediaData.startsWith('https'))) {
         return { url: mediaData };
       }
-
+      
       // Se for base64, converter para buffer
       if (typeof mediaData === 'string' && mediaData.startsWith('data:')) {
         const base64Data = mediaData.split(',')[1];
@@ -1171,20 +1171,20 @@ class BaileysService {
       const jid = to.includes('@') ? to : `${to}@s.whatsapp.net`;
 
       // Preparar mídia se necessário
-      if (message.image) {
-        message.image = await this.prepareMedia(sessionId, message.image);
+      if (message?.image?.url) {
+        message.image = await this.prepareMedia(sessionId, message.image.url);
       }
-      if (message.video) {
-        message.video = await this.prepareMedia(sessionId, message.video);
+      if (message.video?.url) {
+        message.video = await this.prepareMedia(sessionId, message.video.image.url);
       }
-      if (message.audio) {
-        message.audio = await this.prepareMedia(sessionId, message.audio);
+      if (message.audio?.url) {
+        message.audio = await this.prepareMedia(sessionId, message.audio.image.url);
       }
-      if (message.document) {
-        message.document = await this.prepareMedia(sessionId, message.document);
+      if (message.document?.url) {
+        message.document = await this.prepareMedia(sessionId, message.document.image.url);
       }
-      if (message.sticker) {
-        message.sticker = await this.prepareMedia(sessionId, message.sticker);
+      if (message.sticker?.url) {
+        message.sticker = await this.prepareMedia(sessionId, message.sticker.image.url);
       }
 
       const result = await sessionData.sock.sendMessage(jid, message);
