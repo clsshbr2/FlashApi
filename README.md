@@ -243,7 +243,7 @@ axios.post('http://localhost:3000/api/chat/send-text', data, {
 const WebSocket = require('ws');
 require('dotenv').config();
 
-const Websocket = 'ws://localhost:3000'
+const Websocket = 'ws://localhost:3000/ws'
 const modo = 'global' // global/client
 const secret = '123' //GLOBAL_WEBSOCKET_SECRET ou apikey da instacia
 
