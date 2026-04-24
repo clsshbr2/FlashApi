@@ -113,3 +113,21 @@ CREATE TABLE IF NOT EXISTS baileys_sessions (
   auth JSON NOT NULL,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
+
+-- Tabela de credenciais Baileys persistidas no banco (substitui Redis para auth)
+CREATE TABLE IF NOT EXISTS wa_sessions (
+  session_id VARCHAR(255) PRIMARY KEY,
+  creds_json MEDIUMTEXT NOT NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Tabela de signal keys Baileys persistidas no banco
+CREATE TABLE IF NOT EXISTS wa_session_keys (
+  session_id VARCHAR(255) NOT NULL,
+  key_type VARCHAR(100) NOT NULL,
+  key_id VARCHAR(255) NOT NULL,
+  value_json MEDIUMTEXT NOT NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (session_id, key_type, key_id),
+  INDEX idx_wa_session_keys_session (session_id)
+);

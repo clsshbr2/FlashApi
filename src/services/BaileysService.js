@@ -27,7 +27,8 @@ import NodeCache from "node-cache";
 import { ProxyAgent } from "undici";
 import redis from "./redis.js";
 import { fileURLToPath } from "url";
-import { clearAuth, useRedisAuthState } from "./redisSessao.js";
+import { clearAuth } from "./redisSessao.js";
+import { makeDbAuthState, clearDbAuth } from "./dbAuthState.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 import Redis from "ioredis";
@@ -104,11 +105,8 @@ class BaileysService {
         }
       }
 
-      // Usar a instância singleton do Redis ao invés de criar uma nova
-      const { state, saveCreds } = await useRedisAuthState(
-        sessionId,
-        this.redis.client,
-      );
+      // Usar armazenamento de auth state no banco de dados (Redis apenas como cache)
+      const { state, saveCreds } = await makeDbAuthState(sessionId);
       // const version = await getversion();
       const { version, isLatest } = await fetchLatestBaileysVersion();
       logger.info(`using WA v${version.join(".")}, isLatest: ${isLatest}`);
@@ -616,7 +614,12 @@ class BaileysService {
         try {
           await clearAuth(sessionId, this.redis.client);
         } catch (err) {
-          console.error("Erro ao remover sessão:", err);
+          console.error("Erro ao remover sessão do Redis:", err);
+        }
+        try {
+          await clearDbAuth(sessionId);
+        } catch (err) {
+          console.error("Erro ao remover sessão do banco:", err);
         }
         await this.deleteSession(sessionId);
         return;
@@ -1849,7 +1852,13 @@ class BaileysService {
       try {
         await clearAuth(sessionId, this.redis.client);
       } catch (err) {
-        console.error("Erro ao remover sessão:", err);
+        console.error("Erro ao remover sessão do Redis:", err);
+      }
+
+      try {
+        await clearDbAuth(sessionId);
+      } catch (err) {
+        console.error("Erro ao remover sessão do banco:", err);
       }
 
       // Remover da memória

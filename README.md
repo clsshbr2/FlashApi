@@ -22,8 +22,78 @@
 - ✅ **Envio de Mensagens**: Texto, imagem, vídeo, áudio, documento, localização e enquetes  
 - ✅ **Gestão de Contatos**: Consulta e gerenciamento de contatos  
 - ✅ **Gestão de Grupos**: Criação e administração de grupos  
-- ✅ **Persistência com MySQL 8+**: Banco de dados estruturado  
+- ✅ **Persistência com MySQL 8+ / PostgreSQL**: Banco de dados estruturado (auth state persistido no banco)  
+- ✅ **Redis como Cache**: Sessões ativas, mensagens recentes e outros caches temporários (Redis **não** armazena `creds`/`keys` do Baileys)  
 - ✅ **Documentação Swagger e Postman**: Fácil integração com documentação interativa  
+
+---
+
+## 🗄️ Persistência de Sessão (Auth State)
+
+A partir desta versão, as credenciais Baileys (`creds`) e as signal keys são **persistidas no banco de dados principal** (MySQL ou PostgreSQL) em vez do Redis.
+
+| Tabela              | Conteúdo                              |
+|---------------------|---------------------------------------|
+| `wa_sessions`       | Credenciais (`creds`) por sessão      |
+| `wa_session_keys`   | Signal keys do protocolo WhatsApp     |
+
+O **Redis** continua sendo usado apenas como **cache**:
+- Dados da sessão em memória (`sessao:<id>`)
+- Cache de mensagens recentes para retry (`message:<id>`)
+- Outros caches temporários (contatos, chats, grupos)
+
+### Variáveis de Ambiente necessárias
+
+#### Banco de dados (MySQL ou PostgreSQL)
+
+```env
+DB_TYPE=mysql         # mysql | postgres
+DB_HOST=localhost
+DB_PORT=3306          # 3306 para MySQL / 5432 para PostgreSQL
+DB_USER=root
+DB_PASSWORD=
+DB_DATABASE=flashapi
+DB_CONNECTION_LIMIT=50
+```
+
+#### Redis (cache)
+
+```env
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
+REDIS_PASS=
+```
+
+#### Controle de TTL do cache de mensagens
+
+```env
+DELETE_TEMP_MENSAGE=true   # habilita expiração automática do cache Redis
+TEMP_MENSAGE=3600          # TTL em segundos (padrão: 1 hora)
+```
+
+### Como rodar a migração
+
+```bash
+# Gera o banco e executa o script SQL (cria todas as tabelas incluindo wa_sessions e wa_session_keys)
+npm run migrate
+```
+
+Ou execute o SQL manualmente:
+
+- **MySQL**: `supabase/migrations/database.sql`
+- **PostgreSQL**: `supabase/migrations/postgres.sql`
+
+As tabelas criadas pela migração incluem:
+
+```sql
+-- Credenciais Baileys (creds)
+wa_sessions (session_id PK, creds_json TEXT, updated_at)
+
+-- Signal keys Baileys
+wa_session_keys (session_id, key_type, key_id PK, value_json TEXT, updated_at)
+```
+
+> ⚠️ **Após atualizar de uma versão anterior**, execute `npm run migrate` para criar as novas tabelas. As sessões precisarão ser re-autenticadas uma vez, pois a fonte de verdade muda de Redis para o banco de dados.
 
 ---
 
