@@ -1,6 +1,6 @@
 import express from "express";
 import authenticateApiKey from "../middleware/auth.js";
-import Store from "../models/Store.js";
+import { estatisticasSessao } from "../whatsapp/store.js";
 import Session from "../models/Session.js";
 import logger from "../utils/logger.js";
 import config from "../config/env.js";
@@ -15,8 +15,8 @@ router.get("/session", authenticateApiKey, async (req, res) => {
     const sessao = req.sessao;
 
 
-    const config = await Store.getSessionConfig(sessao.apikey);
-    const stats = await Store.getSessionStats(sessao.apikey);
+    const config = await Session.getConfig(sessao.apikey);
+    const stats = await estatisticasSessao(sessao.apikey);
     const proxy = await Session.getProxy(sessao.apikey);
 
     res.json({
@@ -52,7 +52,7 @@ router.put("/config", authenticateApiKey, async (req, res) => {
     sessao.msg_rejectcalls = msg_rejectCall;
     sessao.rejeitar_ligacoes = rejectCall;
 
-    const success = await Store.saveSessionConfig(sessao.apikey, sessao);
+    const success = await Session.saveConfig(sessao.apikey, sessao);
     WhatsAppService.salvarSessao(sessao.apikey, sessao);
 
     res.json({
@@ -94,7 +94,7 @@ router.put("/webhook", authenticateApiKey, async (req, res) => {
     sessao.events = events;
     sessao.webhook_status = status;
     console.log(sessao)
-    const success = await Store.saveSessionConfig(sessao.apikey, sessao);
+    const success = await Session.saveConfig(sessao.apikey, sessao);
     WhatsAppService.salvarSessao(sessao.apikey, sessao);
 
     res.json({

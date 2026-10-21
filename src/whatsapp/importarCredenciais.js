@@ -22,6 +22,8 @@ function normalizarCredenciais(creds) {
   creds.noiseKey = par(creds.noiseKey);
   creds.signedIdentityKey = par(creds.signedIdentityKey);
   creds.pairingEphemeralKeyPair = par(creds.pairingEphemeralKeyPair);
+  // O WhatsApp Web não expõe o advSecretKey (só serve durante o pareamento, que já foi feito).
+  creds.advSecretKey = creds.advSecretKey || Buffer.alloc(32).toString("base64");
   if (creds.signedPreKey) {
     creds.signedPreKey = {
       ...creds.signedPreKey,

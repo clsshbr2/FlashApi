@@ -35,7 +35,8 @@ async function enviarComPresenca(sock, jid, mensagemProto, atraso) {
     await WhatsAppService.delay(atraso);
     await sock.sendPresenceUpdate("composing", jid);
     await WhatsAppService.delay(1200);
-    const id = await sock.enviarProto(jid, mensagemProto);
+    // Passa por proto.Message (encode/decode): valida os campos e envia exatamente o que vai para o fio.
+    const id = await sock.enviarProto(jid, proto.Message.decode(proto.Message.encode(mensagemProto).finish()));
     await WhatsAppService.delay(100);
     await sock.sendPresenceUpdate("paused", jid);
     return id;
@@ -64,19 +65,6 @@ async function enviarMidia(sock, tipo, fonte, extras = {}) {
     const resultado = await sock.prepararMidia({ [tipo]: fonte.url, caption: fonte.caption || "", ...extras });
     return resultado[`${tipo}Message`];
 }
-
-/**
- * Embrulha um interactiveMessage no envelope que o WhatsApp (celular e Web) exige para
- * renderizar botões native flow. Sem isso o Web mostra "Não foi possível carregar a mensagem".
- */
-const embrulharInterativa = (interactiveMessage) => ({
-    viewOnceMessage: {
-        message: {
-            messageContextInfo: { deviceListMetadata: {}, deviceListMetadataVersion: 2 },
-            interactiveMessage,
-        },
-    },
-});
 
 // -------------------------------------------------------------------- Lista
 
@@ -160,27 +148,30 @@ export const sendinteractiveMessage = (sessionId, data) =>
             });
         }
 
-        const mensagem = embrulharInterativa({
-            header: cabecalho,
-            body: { text: data?.body?.text || "" },
-            footer: { text: data?.footer?.text || "" },
-            nativeFlowMessage: {
-                // messageVersion 1 é obrigatório: sem ele o WhatsApp ignora os botões e mostra só o texto.
-                messageVersion: 1,
-                buttons: data.buttons.map((botao) => ({
-                    name: botao.name,
-                    buttonParamsJson:
-                        typeof botao.buttonParamsJson === "string" ? botao.buttonParamsJson : JSON.stringify(botao.buttonParamsJson),
-                })),
-            },
-        });
+        const mensagem = {
+            interactiveMessage: {
+                header: cabecalho,
+                body: { text: data?.body?.text || "" },
+                footer: { text: data?.footer?.text || "" },
+                nativeFlowMessage: {
+                    // messageVersion 1 é obrigatório: sem ele o WhatsApp ignora os botões e mostra só o texto.
+                    // messageVersion: 1,
+                    buttons: data.buttons.map((botao) => ({
+                        "name": botao.name,
+                        "buttonParamsJson":
+                            typeof botao.buttonParamsJson === "string" ? botao.buttonParamsJson : JSON.stringify(botao.buttonParamsJson),
+                    })),
+                },
+            }
+        };
+
         return enviarComPresenca(sock, jid, mensagem, atrasoDaRequisicao(data));
     });
 
 // ----------------------------------------------------------------- Carrossel
 
 /** Converte uma ação do card do carrossel no botão de native flow correspondente. */
-function botaoDaAcao(acao) {
+function botaoDaAcao(acao, varios = false) {
     const json = (objeto) => JSON.stringify(objeto);
     switch (acao.type) {
         case "reply":
@@ -192,7 +183,18 @@ function botaoDaAcao(acao) {
         case "copy":
             return { name: "cta_copy", buttonParamsJson: json({ display_text: acao.text, copy_code: acao.code }) };
         case "list":
-            return { name: "single_select", buttonParamsJson: json({ title: acao.title, sections: acao.sections }) };
+            return {
+                name: "single_select",
+                buttonParamsJson: json({
+                    title: acao.title,
+                    sections: (acao.sections || []).map((secao) => ({
+                        title: secao.title,
+                        rows: (secao.rows || []).map((linha) => ({ header: linha.header || "", title: linha.title, description: linha.description || "", id: linha.id ?? linha.rowId })),
+                    })),
+                    // Com mais de um botão no card o WhatsApp precisa desta marca para abrir a lista.
+                    ...(varios ? { has_multiple_buttons: true } : {}),
+                }),
+            };
         default:
             throw new Error(`Tipo de ação inválido: ${acao.type}`);
     }
@@ -206,7 +208,7 @@ export const sendCarousel = (sessionId, data) =>
                     throw new Error("Cada card deve conter uma midia image|video|document.");
                 }
 
-                const cabecalho = { title: item.title, hasMediaAttachment: false };
+                const cabecalho = { title: item.title, hasMediaAttachment: true };
                 if (item.video) {
                     cabecalho.hasMediaAttachment = true;
                     cabecalho.videoMessage = await enviarMidia(sock, "video", item.video);
@@ -220,15 +222,24 @@ export const sendCarousel = (sessionId, data) =>
                     header: cabecalho,
                     body: { text: item.description },
                     footer: { text: item.footer || "" },
-                    nativeFlowMessage: { messageVersion: 1, buttons: item.actions.map(botaoDaAcao) },
+                    nativeFlowMessage: { messageVersion: 1, buttons: item.actions.map((acao) => botaoDaAcao(acao, item.actions.length > 1)) },
                 };
             }),
         );
 
-        const mensagem = embrulharInterativa({
-            body: { text: data.text || "" },
-            footer: { text: data.footer?.text || "" },
-            carouselMessage: { cards },
-        });
+        const mensagem = {
+            interactiveMessage: {
+                body: { text: data.text || "" },
+                footer: { text: data.footer?.text || "" },
+                // A zapo só monta o nó <biz> (exigido pelo celular) quando há nativeFlowMessage no nível superior.
+                nativeFlowMessage: { messageVersion: 1, buttons: [] },
+                carouselMessage: {
+                    messageVersion: 1,
+                    carouselCardType: 1,
+                    cards
+                },
+            }
+        };
+
         return enviarComPresenca(sock, jid, mensagem, atrasoDaRequisicao(data));
     });

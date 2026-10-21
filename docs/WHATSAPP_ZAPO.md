@@ -3,7 +3,7 @@
 A Flash API usa **somente** a [zapo-js](https://github.com/vinikjkkj/zapo) para falar com o WhatsApp.
 Este guia explica como a integração está organizada, o que muda ao implantar e como dar manutenção.
 
-> Nenhum endpoint, payload de webhook ou evento de WebSocket foi alterado em relação à versão que usava Baileys.
+> Payloads de webhook e eventos de WebSocket continuam iguais aos da versão que usava Baileys. As rotas de leitura (`/chat/messages`, `/chat/chats`, `/contact/list`) agora leem o que a zapo guarda e mudaram de formato (ver seção 3).
 
 ---
 
@@ -22,7 +22,6 @@ Variáveis de ambiente relacionadas (`.env.example`):
 | `WA_LOG_LEVEL` | `LOG_LEVEL` | Nível de log da zapo (aceita também o antigo `BAILEYS_LOG_LEVEL`). |
 | `VERSION_ZAP` | `[2, 3000, 1043914743]` | Versão do WhatsApp Web anunciada (convertida para `2.3000.1043914743`). |
 | `SESSION_PHONE_CLIENT` / `SESSION_PHONE_NAME` | `Flash_api` / `Chrome` | Nome do SO e do navegador em "Aparelhos conectados". |
-| `ZAPO_STORE_HISTORICO` | `false` | A zapo também guarda mensagens/chats/contatos (tabelas `zapo_*`). Normalmente desnecessário. |
 | `ZAPO_DB_POOL_MAX` | `10` | Conexões do pool PostgreSQL da zapo. |
 | `PROXY_*` | — | Proxy global; o proxy por sessão (tabela `proxy`) tem prioridade. |
 
@@ -31,7 +30,7 @@ Variáveis de ambiente relacionadas (`.env.example`):
 ## 2. Arquitetura
 
 ```
-Rotas / Serviços / Workers
+Rotas / Serviços
         │   sock.sendMessage(), sock.groupMetadata(), sock.ev.on(...)
         ▼
 WhatsAppService  ──►  SessaoWhatsApp (1 por sessão)  ──►  WaClient (zapo-js)  ──►  PostgreSQL (zapo_*)
@@ -45,9 +44,9 @@ WhatsAppService  ──►  SessaoWhatsApp (1 por sessão)  ──►  WaClient 
 | `src/whatsapp/SessaoWhatsApp.js` | Uma conexão: envio, grupos, contatos, presença, leitura, download de mídia, `end()`/`logout()`. |
 | `src/whatsapp/conteudo.js` | Converte `{ image, caption }`, `{ poll }`, `{ react }`... para os tipos da zapo. |
 | `src/whatsapp/eventos.js` | Converte `message`, `receipt`, `connection`, `group`, `call`... em `messages.upsert`, `message-receipt.update`, `connection.update`... (mesmos nomes e formato de sempre). Também junta o voto de enquete decifrado à mensagem. |
-| `src/whatsapp/store.js` | Store PostgreSQL da zapo, limpeza periódica de caches e remoção dos dados de uma sessão. |
+| `src/whatsapp/store.js` | Store PostgreSQL da zapo, limpeza periódica de caches, remoção dos dados de uma sessão e consultas (mensagens, chats, contatos, estatísticas). |
 | `src/whatsapp/importarCredenciais.js` | Importa a sessão enviada pela extensão do navegador (`POST /api/session/creds`). |
-| `src/whatsapp/utils.js` / `logger.js` | JIDs, base64, download de mídia por URL; adaptador do logger. |
+| `src/whatsapp/utils.js` | JIDs, base64, download de mídia por URL; adaptador do logger. |
 | `src/services/buttonsService.js` | Lista, botões, mensagem interativa e carrossel (proto puro). |
 
 Fluxo de conexão: `createSession` → cria `SessaoWhatsApp` → `registrarEventos` (liga webhooks/WebSocket) → `iniciar()` (conecta).
@@ -59,8 +58,8 @@ A zapo **não reconecta sozinha**: a reconexão continua em `connection_update.j
 ## 3. Diferenças em relação à versão com Baileys
 
 1. **Sessões**: precisam ser reconectadas uma vez (credenciais não migradas).
-2. **Histórico inicial**: a zapo não entrega as listas de chats/contatos/mensagens no evento de sincronização (só contagens).
-   As tabelas `chats`/`contatos` passam a ser preenchidas conforme chegam mensagens novas.
+2. **Armazenamento**: a zapo guarda mensagens, chats e contatos sozinha (`zapo_mailbox_*`); a API não grava nada manualmente. As rotas `/chat/messages`, `/chat/chats`, `/contact/list` e `/config/session` só leem essas tabelas (`src/whatsapp/store.js`).
+   As tabelas antigas `mensagens`, `chats`, `contatos` e `grupos` não são mais usadas.
 3. **Votos de enquete**: decifrados pela própria zapo (`message_addon`) e publicados em `pollUpdateMessage.vote`.
    O segredo da enquete fica em `zapo_*` (sobrevive a reinícios). Voto de enquete criada antes de a sessão existir chega com `vote: []`.
 4. **Rejeitar chamada**: a zapo só recebe sinalização de chamada; a rejeição é enviada como nó `<call><reject/></call>` (`SessaoWhatsApp.rejectCall`).

@@ -221,6 +221,7 @@ router.post("/creds", authenticateApiKey, async (req, res) => {
     const sessionId = req.sessao.apikey
     const { creds, keys } = req.body
     const setcreds = await Session.setCreds(sessionId, creds, keys)
+
     if (setcreds.success) {
       Session.update(sessionId, {
         status: 'connected'

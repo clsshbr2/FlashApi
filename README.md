@@ -68,8 +68,8 @@ Gerencie centenas de instâncias do WhatsApp de forma independente, com autentic
 O projeto foi pensado para cenários de **multi-tenant/multi-atendimento**, oferecendo:
 
 - Criação de sessões via QR Code ou pareamento por número de telefone;
-- Persistência de credenciais e chaves da sessão em **PostgreSQL**;
-- Fila e cache de alta performance com **Redis**;
+- Persistência automática pela **zapo** em **PostgreSQL**: credenciais, chaves, mensagens, chats e contatos (a API não grava nada manualmente);
+- Cache de sessões e do painel com **Redis**;
 - Notificações em tempo real via **Webhook HTTP** e/ou **WebSocket**;
 - Um **painel web (Manager)** para acompanhar e administrar as sessões visualmente.
 
@@ -89,8 +89,8 @@ O projeto foi pensado para cenários de **multi-tenant/multi-atendimento**, ofer
 | 👤 **Gestão de Contatos**                  | Listagem, verificação de números no WhatsApp, bloqueio/desbloqueio e conversão de LID para JID.                                                                                                                |
 | 🔔 **Webhooks configuráveis**              | Webhook global (via `.env`) ou por sessão, com lista de eventos customizável e tentativas de reenvio configuráveis.                                                                                            |
 | 🔌 **WebSocket nativo**                    | Canal bidirecional (`/ws`) para consumo de eventos em tempo real sem long-polling.                                                                                                                             |
-| 🗄️ **Persistência híbrida**                | PostgreSQL para dados estruturados (sessões, mensagens, contatos, grupos) e Redis para sessões, cache e filas de credenciais/chaves.                                                                           |
-| 🖥️ **Painel Web (Manager)**                | Dashboard EJS com login de administrador/usuário para visualizar e operar sessões sem usar a API diretamente.                                                                                                  |
+| 🗄️ **Persistência pela zapo**              | A zapo guarda sozinha credenciais, chaves, mensagens, chats e contatos no PostgreSQL (tabelas `zapo_*`); a API só consulta. O Redis guarda o estado das sessões, o cache e a sessão do painel.                 |
+| 🖥️ **Painel Web (Manager)**                | Dashboard EJS com login de administrador/usuário para operar sessões, e um **testador de endpoints** (enviar mensagens, listar contatos, chats e grupos) sem sair do painel.                                   |
 | 🌍 **Suporte a Proxy**                     | Roteamento de conexões por proxy HTTP/HTTPS/SOCKS4/SOCKS5 por sessão.                                                                                                                                          |
 | 🧹 **Auto-limpeza de sessões**             | Remoção automática de sessões desconectadas após um tempo configurável.                                                                                                                                        |
 | 🐳 **Docker-ready**                        | `Dockerfile` e `docker-compose.yml` prontos, orquestrando API + PostgreSQL + Redis.                                                                                                                            |
@@ -100,7 +100,7 @@ O projeto foi pensado para cenários de **multi-tenant/multi-atendimento**, ofer
 
 ## 🏗️ Arquitetura
 
-A Flash API segue uma arquitetura em camadas (routes → services → models → banco de dados), com Redis atuando como camada de cache/sessão e barramento de filas entre a API e o worker que processa as credenciais da zapo.
+A Flash API segue uma arquitetura em camadas (routes → services → models → banco de dados), com a **zapo** persistindo tudo da conta no PostgreSQL e o Redis atuando como camada de cache/sessão.
 
 ```mermaid
 flowchart TB
@@ -115,8 +115,9 @@ flowchart TB
         Manager["Manager Web (EJS)<br/>/manager/*"] --> Routes
     end
 
-    Services <-->|sessões, filas, cache| Redis[(Redis)]
-    Services <-->|sessões, mensagens, grupos, contatos| Postgres[(PostgreSQL)]
+    Services <-->|estado das sessões, cache| Redis[(Redis)]
+    Services <-->|dados das sessões, proxies| Postgres[(PostgreSQL)]
+    Zapo <-->|credenciais, chaves, mensagens, chats, contatos| Postgres
 
     WSService -->|eventos em tempo real| WSClients["Clientes WebSocket<br/>/ws"]
     Services -->|POST evento| Webhook["Webhook externo<br/>(HTTP callback)"]
@@ -174,7 +175,7 @@ FlashApi/
 ├── public/                     # Arquivos estáticos servidos pela API
 │   ├── css/                    # Estilos do painel Manager
 │   ├── images/                 # Imagens (banner, avatar padrão etc.)
-│   └── js/                     # Scripts front-end do painel
+│   └── js/                     # Scripts front-end do painel (inclui testador.js)
 │
 ├── views/                      # Views EJS do painel administrativo (Manager)
 │   ├── index.ejs
@@ -197,12 +198,7 @@ FlashApi/
     │
     ├── models/
     │   ├── ApiKey.js
-    │   ├── Session.js
-    │   ├── Contatos.js
-    │   ├── Grupos.js
-    │   ├── Message.js
-    │   ├── chats.js
-    │   └── Store.js
+    │   └── Session.js              # Sessões, configuração, proxy e importação de credenciais
     │
     ├── routes/
     │   ├── session.js            # Ciclo de vida das sessões (criar, conectar, status, deletar…)
@@ -219,8 +215,15 @@ FlashApi/
     │   ├── messageService.js       # Montagem/envio de mensagens (mídia, texto, localização…)
     │   ├── buttonsService.js       # Botões, listas, mensagens interativas e carrossel
     │   ├── redis.js                # Cliente Redis (ioredis)
-    │   ├── EventService.js         # Liga os eventos da sessão a webhooks, WebSocket e filas
-    │   └── workers/                # Workers assíncronos (ex.: processamento de filas)
+    │   └── EventService.js         # Liga os eventos da sessão a webhooks e WebSocket (+ conexão e rejeição de chamadas)
+    │
+    ├── whatsapp/                   # Camada de integração com a zapo-js
+    │   ├── SessaoWhatsApp.js       # Uma conexão: envio, grupos, contatos, mídia, presença
+    │   ├── conteudo.js             # Corpo da requisição -> conteúdo da zapo
+    │   ├── eventos.js              # Eventos da zapo -> eventos publicados pela API
+    │   ├── store.js                # Store PostgreSQL da zapo + consultas (mensagens, chats, contatos)
+    │   ├── importarCredenciais.js  # Importa a sessão enviada pela extensão do navegador
+    │   └── utils.js                # JIDs, base64, mídia por URL e adaptador do logger
     │
     └── utils/
         ├── logger.js               # Logger (pino) com formatação amigável
@@ -338,7 +341,7 @@ Todas as variáveis abaixo devem ser definidas em um arquivo `.env` na raiz do p
 | `LOG_LEVEL`         | `info`              | Nível de log da aplicação (`fatal`,`error`,`warn`,`info`,`debug`,`trace`,`silent`) |
 | `WA_LOG_LEVEL`      | `LOG_LEVEL`         | Nível de log da zapo (aceita também o antigo `BAILEYS_LOG_LEVEL`)                  |
 | `VERSAO`            | `1.0.4`             | Versão exibida pela API                                                            |
-| `SYNC_SESSIONS`     | `true`              | Sincroniza automaticamente todas as sessões salvas ao iniciar                      |
+| `SYNC_SESSIONS`     | `true`              | Pede o histórico completo ao conectar (a zapo guarda mensagens, chats e contatos)  |
 | `TZ`                | `America/Sao_Paulo` | Timezone da aplicação                                                              |
 | `NODE_ENV`          | `development`       | Ambiente de execução (`development` \| `production`)                               |
 
@@ -458,9 +461,8 @@ npm start
 Ao subir, a API automaticamente:
 
 1. Verifica a conexão com o PostgreSQL e cria o banco/tabelas caso não existam (`gerardb.js` + `verificardb.js`);
-2. Inicializa os _workers_ internos (`startWorkers()`);
-3. Sincroniza as sessões salvas (se `SYNC_SESSIONS=true`);
-4. Inicia o servidor HTTP + WebSocket na porta configurada.
+2. Reconecta as sessões salvas (a zapo retoma as credenciais do PostgreSQL, sem novo QR Code);
+3. Inicia o servidor HTTP + WebSocket na porta configurada.
 
 ```text
 🚀 Flash API rodando na porta 3000
@@ -477,10 +479,14 @@ Quando `MANAGER=true`, um painel web fica disponível para login e acompanhament
 | ------------------------ | -------------------------------------------------------------------------------------------------------------- |
 | `GET /manager/login`     | Tela de login                                                                                                  |
 | `POST /manager/login`    | Autenticação (usuário/senha definidos em `LOGIN_MANAGER_ADMIN` / `LOGIN_MANAGER_USER` / `SENHA_MANAGER_ADMIN`) |
-| `GET /manager/dashboard` | Dashboard com status das sessões (requer sessão autenticada)                                                   |
+| `GET /manager/dashboard` | Dashboard com status das sessões (requer sessão autenticada). No painel do cliente há o card **Testar endpoints** |
 | `GET /manager/logout`    | Encerra a sessão do painel                                                                                     |
 
 A sessão do painel é persistida no **Redis** via `express-session` + `connect-redis`.
+
+### Testar endpoints
+
+No painel do cliente (login com a apikey da sessão), o card **Testar endpoints** permite escolher uma requisição pronta (enviar texto, imagem, enquete, listar contatos, chats, grupos etc.), editar o JSON, enviar e ver status, tempo e resposta. Digite o número uma vez e ele substitui `{{jid}}` e `{{numero}}` nos exemplos.
 
 ---
 
@@ -546,7 +552,7 @@ Rotas em `src/routes/chat.js` — todas exigem o header `apikey` da sessão.
 | `POST`   | `/api/chat/send-carouselMessage`    | Envia carrossel de cards                               |
 | `POST`   | `/api/chat/typing`                  | Simula "digitando…" / "gravando áudio…"                |
 | `POST`   | `/api/chat/mark-read`               | Marca mensagens como lidas                             |
-| `GET`    | `/api/chat/messages`                | Lista mensagens de uma conversa                        |
+| `GET`    | `/api/chat/messages`                | Lista mensagens de uma conversa (`jid`, `limit`, `before` em ms) |
 | `GET`    | `/api/chat/chats`                   | Lista conversas da sessão                              |
 | `DELETE` | `/api/chat/delete/:id_message`      | Apaga uma mensagem                                     |
 | `POST`   | `/api/chat/midiaToBase64`           | Converte mídia de uma mensagem recebida em base64      |
@@ -836,7 +842,7 @@ Não há um limite fixo imposto pelo código além do <code>LIMITE_QRCODE</code>
 <details>
 <summary><b>A API funciona sem PostgreSQL ou Redis?</b></summary>
 <br>
-Não. Ambos são obrigatórios: o PostgreSQL armazena sessões, mensagens, contatos e grupos; o Redis gerencia cache, sessão do painel Manager e a fila de chaves de autenticação do zapo.
+Não. Ambos são obrigatórios: o PostgreSQL guarda as sessões da API e tudo o que a zapo persiste (credenciais, chaves, mensagens, chats e contatos); o Redis guarda o estado das sessões, o cache e a sessão do painel Manager.
 </details>
 
 <details>

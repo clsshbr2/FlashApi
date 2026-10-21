@@ -1,7 +1,6 @@
 import express from "express";
 import authenticateApiKey from "../middleware/auth.js";
 import WhatsAppService from "../services/WhatsAppService.js";
-import Store from "../models/Store.js";
 import logger from "../utils/logger.js";
 import redis, { KEYS } from "../services/redis.js";
 
