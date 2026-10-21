@@ -296,14 +296,26 @@ export class SessaoWhatsApp {
     else throw new Error("Tipo de mídia não suportado para botões");
 
     const padrao = { image: "image/jpeg", video: "video/mp4", document: "application/octet-stream" };
-    const { message } = await this.client.status.buildMessageContent({
-      type: tipo,
-      media: await resolverMidia(conteudo[tipo]),
-      mimetype: conteudo.mimetype || padrao[tipo],
+    const mimetype = conteudo.mimetype || padrao[tipo];
+
+    // Envia o arquivo (cifrado) para o CDN do WhatsApp e monta o submessage com os dados do upload.
+    const envio = await this.client.message.upload(await resolverMidia(conteudo[tipo]), { type: tipo, mimetype });
+    const submensagem = {
+      url: envio.url,
+      directPath: envio.directPath,
+      mediaKey: envio.mediaKey,
+      fileSha256: envio.fileSha256,
+      fileEncSha256: envio.fileEncSha256,
+      fileLength: envio.fileLength,
+      mediaKeyTimestamp: envio.mediaKeyTimestamp,
+      mimetype,
       caption: conteudo.caption || undefined,
-      fileName: tipo === "document" ? conteudo.fileName : undefined,
-    });
-    return message;
+    };
+    if (envio.streamingSidecar) submensagem.streamingSidecar = envio.streamingSidecar;
+    if (tipo === "video" && envio.metadataUrl) submensagem.metadataUrl = envio.metadataUrl;
+    if (tipo === "document") submensagem.fileName = conteudo.fileName || "documento";
+
+    return { [`${tipo}Message`]: submensagem };
   }
 
   /**
