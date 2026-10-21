@@ -41,7 +41,7 @@ export const connection = async (sessionId, update) => {
 
         let code = null
 
-        if (getsessao.numero !== "" && !sock.authState?.creds?.registered) {
+        if (getsessao.numero && getsessao.numero !== "" && !sock.authState?.creds?.registered) {
             try {
                 code = await sock.requestPairingCode(getsessao.numero);
                 console.log('code: ', code)
@@ -61,7 +61,9 @@ export const connection = async (sessionId, update) => {
     }
 
     if (connection === "connecting") {
-        void updateSessao(sessionId, connection)
+        // Antes gravava a string "connecting" no lugar do objeto da sessão (corrompia o cache no Redis).
+        getsessao.status = "connecting";
+        void updateSessao(sessionId, getsessao)
     }
 
     if (connection === "open") {
