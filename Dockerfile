@@ -5,7 +5,7 @@ FROM node:24.14.0
 WORKDIR /app
 
 # Copia os arquivos para o container
-COPY package*.json ./
+COPY package*.json .npmrc ./
 
 # Remover node_modules
 RUN rm -rf node_modules
