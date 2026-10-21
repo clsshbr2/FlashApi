@@ -95,6 +95,12 @@ class BaileysService {
       }
 
       await this.salvarSessao(sessionId, getsessao)
+
+      // Provider zapo (WA_PROVIDER=zapo): usa o ZapoSocket, que imita o socket da Baileys.
+      if (config.waProvider === "zapo") {
+        return await this.createSessionZapo(sessionId);
+      }
+
       const { state, saveCreds } = await usePostgresAuthState(sessionId);
       state.creds.noiseKey = {
         private: this.toBuffer(state.creds.noiseKey.private),
@@ -189,6 +195,79 @@ class BaileysService {
       logger.error(`❌ Erro ao criar sessão ${sessionId}:`, error);
       throw error;
     }
+  }
+
+  /**
+   * Desligamento limpo: no provider zapo, desconecta todas as sessões para a
+   * zapo gravar no banco as chaves que ainda estão em memória (write-behind).
+   * No modo Baileys não faz nada (comportamento anterior preservado).
+   */
+  static async encerrarTodas(timeoutMs = 10000) {
+    if (config.waProvider !== "zapo") return;
+    const desligar = Promise.allSettled([...this.sockets.values()].map((sock) => sock.client?.disconnect?.()));
+    await Promise.race([desligar, this.delay(timeoutMs)]);
+    try {
+      const { encerrarStoreZapo } = await import("../providers/zapo/store.js");
+      await encerrarStoreZapo();
+    } catch {
+      // ignora erros no desligamento
+    }
+  }
+
+  //Retorna o socket de uma sessão (usado pela rota de avatar)
+  static getSocket(sessionId) {
+    return this.sockets.get(sessionId);
+  }
+
+  /**
+   * Monta a URL do proxy da sessão (individual tem prioridade sobre o global).
+   * Retorna undefined quando a sessão não usa proxy.
+   */
+  static async resolverProxyUrl(sessionId) {
+    const proxySessao = await Session.getProxy(sessionId);
+    if (proxySessao?.active) {
+      return `http://${proxySessao.username}:${proxySessao.password}@${proxySessao.host}:${proxySessao.port}`;
+    }
+    if (config.proxy_state === "true") {
+      return `${config.proxy_protocol}://${config.proxy_usename}:${config.proxy_password}@${config.proxy_host}:${config.proxy_port}`;
+    }
+    return undefined;
+  }
+
+  /**
+   * Cria a sessão usando a zapo-js em vez da Baileys.
+   * O socket retornado (ZapoSocket) tem a mesma interface do socket da Baileys,
+   * então EventService, rotas e serviços funcionam sem alterações.
+   * Os módulos da zapo são carregados sob demanda para que o modo Baileys
+   * continue funcionando mesmo sem a zapo instalada.
+   */
+  static async createSessionZapo(sessionId) {
+    const { ZapoSocket } = await import("../providers/zapo/ZapoSocket.js");
+    const { obterStoreZapo } = await import("../providers/zapo/store.js");
+    const { importarSessaoBaileys } = await import("../providers/zapo/migrarCredenciais.js");
+
+    const store = obterStoreZapo();
+
+    // Sessão antiga da Baileys? Importa as credenciais para não pedir novo QR.
+    try {
+      const importacao = await importarSessaoBaileys(sessionId, store);
+      if (importacao.importado) logger.info(`Sessão ${sessionId}: credenciais da Baileys importadas para a zapo`);
+    } catch (erro) {
+      logger.error(`Sessão ${sessionId}: falha ao importar credenciais da Baileys (será gerado novo QR): ${erro?.message || erro}`);
+    }
+
+    const proxyUrl = await this.resolverProxyUrl(sessionId);
+    if (proxyUrl) logger.info(`Instacia ${sessionId} 🛰️ Usando proxy`);
+
+    const sock = new ZapoSocket({ sessionId, store, proxyUrl });
+    this.sockets.set(sessionId, sock);
+
+    // Primeiro registra os listeners, depois conecta (senão o 1º QR pode se perder).
+    // A zapo grava as credenciais sozinha, por isso o saveCreds é vazio.
+    await eventBaileys(sock, sessionId, async () => { });
+    await sock.iniciar();
+
+    return { success: true };
   }
 
   // Função genérica para salvar dados em lotes

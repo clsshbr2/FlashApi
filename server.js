@@ -161,11 +161,13 @@ async function startServer() {
 
 // Graceful shutdown
 process.on("SIGTERM", () => {
-  server.close(() => process.exit(0)); // fecha conexões antes de sair
+  // fecha conexões e (no provider zapo) grava as chaves pendentes antes de sair
+  server.close(() => BaileysService.encerrarTodas().finally(() => process.exit(0)));
 });
 
 process.on("SIGINT", () => {
-  process.exit(0); // sai na hora, sem fechar nada
+  // no provider Baileys sai na hora (como antes); no zapo espera o flush do store
+  BaileysService.encerrarTodas().finally(() => process.exit(0));
 });
 startServer();
 

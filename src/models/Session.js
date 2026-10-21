@@ -127,6 +127,11 @@ class Session {
       await execute(`DELETE FROM grupos WHERE sessao_id = $1`, [id]);
       await execute(`DELETE FROM mensagens WHERE sessao_id = $1`, [id]);
       await execute(`DELETE FROM proxy WHERE sessao_id = $1`, [id]);
+      // Provider zapo: remove também as credenciais/chaves guardadas pela zapo.
+      if (config.waProvider === "zapo") {
+        const { limparDadosSessaoZapo } = await import("../providers/zapo/store.js");
+        await limparDadosSessaoZapo(id);
+      }
       await BaileysService.DeleteSessao(id)
       try {
         const sock = BaileysService.sockets.get(id);

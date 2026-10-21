@@ -63,6 +63,8 @@ Gerencie centenas de instâncias do WhatsApp de forma independente, com autentic
 
 **Flash API** é uma API RESTful escrita em **Node.js (ESM)** que expõe o protocolo do WhatsApp Web através da biblioteca [**Baileys**](https://github.com/WhiskeySockets/Baileys), permitindo criar e administrar **múltiplas sessões (instâncias) de WhatsApp** simultaneamente através de uma **API Key** exclusiva por sessão.
 
+> 🔁 **Provedor de WhatsApp selecionável:** além da Baileys, a API suporta a [**zapo-js**](https://github.com/vinikjkkj/zapo) sem alterar nenhum endpoint. Defina `WA_PROVIDER=baileys` (padrão) ou `WA_PROVIDER=zapo` no `.env`. Guia completo, checklist de testes e rollback em [`docs/MIGRACAO_ZAPO.md`](docs/MIGRACAO_ZAPO.md).
+
 O projeto foi pensado para cenários de **multi-tenant/multi-atendimento**, oferecendo:
 
 - Criação de sessões via QR Code ou pareamento por número de telefone;

@@ -1,4 +1,5 @@
-import { generateWAMessageFromContent, prepareWAMessageMedia, proto } from "@whiskeysockets/baileys";
+import { generateWAMessageFromContent, proto } from "@whiskeysockets/baileys";
+import { prepararMidia } from "./midiaBotoes.js";
 import BaileysService from "./BaileysService.js";
 import logger from "../utils/logger.js";
 import { prepareMedia } from "../utils/prepareMedia.js";
@@ -131,7 +132,7 @@ export const sendButton = async (sessionId, data) => {
                     video = { url: data?.video?.url };
                 }
             }
-            const media = await prepareWAMessageMedia({ video, caption: data?.video?.caption || "" }, { upload: sock.waUploadToServer });
+            const media = await prepararMidia(sock, { video, caption: data?.video?.caption || "" });
             payloadButtons.buttonsMessage.headerType = proto.Message.ButtonsMessage.HeaderType.VIDEO
             payloadButtons.buttonsMessage.videoMessage = media.videoMessage
         }
@@ -148,7 +149,7 @@ export const sendButton = async (sessionId, data) => {
                     image = { url: data?.image?.url };
                 }
             }
-            const media = await prepareWAMessageMedia({ image, caption: data?.image?.caption || "" }, { upload: sock.waUploadToServer });
+            const media = await prepararMidia(sock, { image, caption: data?.image?.caption || "" });
             payloadButtons.buttonsMessage.headerType = proto.Message.ButtonsMessage.HeaderType.IMAGE
             payloadButtons.buttonsMessage.imageMessage = media.imageMessage
         }
@@ -165,7 +166,7 @@ export const sendButton = async (sessionId, data) => {
                     document = { url: data?.document?.url };
                 }
             }
-            const media = await prepareWAMessageMedia({ document, caption: data?.document?.caption || "" }, { upload: sock.waUploadToServer });
+            const media = await prepararMidia(sock, { document, caption: data?.document?.caption || "" });
             payloadButtons.buttonsMessage.headerType = proto.Message.ButtonsMessage.HeaderType.DOCUMENT
             payloadButtons.buttonsMessage.documentMessage = media.documentMessage
         }
@@ -244,7 +245,7 @@ export const sendinteractiveMessage = async (sessionId, data) => {
                     video = { url: data?.video?.url };
                 }
             }
-            const media = await prepareWAMessageMedia({ video, caption: data?.video?.caption || "" }, { upload: sock.waUploadToServer });
+            const media = await prepararMidia(sock, { video, caption: data?.video?.caption || "" });
             payloadButtons.interactiveMessage.header.hasMediaAttachment = true
             payloadButtons.interactiveMessage.header.videoMessage = media.videoMessage
         }
@@ -261,7 +262,7 @@ export const sendinteractiveMessage = async (sessionId, data) => {
                     image = { url: data?.image?.url };
                 }
             }
-            const media = await prepareWAMessageMedia({ image }, { upload: sock.waUploadToServer });
+            const media = await prepararMidia(sock, { image });
             payloadButtons.interactiveMessage.header.hasMediaAttachment = true
             payloadButtons.interactiveMessage.header.imageMessage = media.imageMessage
         }
@@ -278,7 +279,7 @@ export const sendinteractiveMessage = async (sessionId, data) => {
                     document = { url: data?.document?.url };
                 }
             }
-            const media = await prepareWAMessageMedia({ document, mimetype: data?.document?.mimetype || "application/octet-stream", fileName: data?.document?.fileName || "docs.docs" }, { upload: sock.waUploadToServer });
+            const media = await prepararMidia(sock, { document, mimetype: data?.document?.mimetype || "application/octet-stream", fileName: data?.document?.fileName || "docs.docs" });
             payloadButtons.interactiveMessage.header.hasMediaAttachment = true
             payloadButtons.interactiveMessage.header.documentMessage = media.documentMessage
         }
@@ -346,7 +347,7 @@ export const sendCarousel = async (sessionId, data) => {
                             video = { url: item?.video?.url };
                         }
                     }
-                    const media = await prepareWAMessageMedia({ video, caption: data?.video?.caption || "" }, { upload: sock.waUploadToServer });
+                    const media = await prepararMidia(sock, { video, caption: data?.video?.caption || "" });
                     header.hasMediaAttachment = true
                     header.videoMessage = media.videoMessage
                 }
@@ -363,7 +364,7 @@ export const sendCarousel = async (sessionId, data) => {
                             image = { url: item?.image?.url };
                         }
                     }
-                    const media = await prepareWAMessageMedia({ image }, { upload: sock.waUploadToServer });
+                    const media = await prepararMidia(sock, { image });
                     header.hasMediaAttachment = true
                     header.imageMessage = media.imageMessage
                 }
@@ -380,7 +381,7 @@ export const sendCarousel = async (sessionId, data) => {
                 //             document = { url: item?.document?.url };
                 //         }
                 //     }
-                //     const media = await prepareWAMessageMedia({ document, mimetype: item?.document?.mimetype || "application/octet-stream", fileName: item?.document?.fileName || "docs.docs", title: "teste" }, { upload: sock.waUploadToServer });
+                //     const media = await prepararMidia(sock, { document, mimetype: item?.document?.mimetype || "application/octet-stream", fileName: item?.document?.fileName || "docs.docs", title: "teste" });
                 //     header.hasMediaAttachment = true
                 //     header.documentMessage = media.documentMessage
                 // }

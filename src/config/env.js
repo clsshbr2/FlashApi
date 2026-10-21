@@ -21,6 +21,10 @@ const config = {
   protocol: process.env.PROTOCOLO || 'http',
   versao: process.env.VERSION_ZAP || '[2, 3000, 1043914743]',
 
+  // Biblioteca de WhatsApp usada pelas sessões: "baileys" (padrão) ou "zapo".
+  // Trocar exige reiniciar a API. Veja docs/MIGRACAO_ZAPO.md.
+  waProvider: (process.env.WA_PROVIDER || 'baileys').toLowerCase(),
+
   origins: process.env.CORS_ORIGINS || '*',
 
   // Global API Key
