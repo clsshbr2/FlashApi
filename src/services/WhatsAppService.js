@@ -87,6 +87,8 @@ class WhatsAppService {
       if (proxyUrl) logger.info(`Instacia ${sessionId} 🛰️ Usando proxy`);
 
       const sock = new SessaoWhatsApp({ sessionId, store: obterStoreZapo(), proxyUrl });
+      // Pareamento por código só quando o número foi informado nesta requisição.
+      sock.numeroParaCodigo = phoneNumber || null;
       this.sockets.set(sessionId, sock);
 
       // Primeiro registra os listeners, depois conecta (senão o 1º QR pode se perder).
