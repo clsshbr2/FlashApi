@@ -451,7 +451,13 @@ router.get("/avatar/:apikey", async (req, res) => {
       return res.sendFile(path.resolve("public/images/image.png"));
     }
 
-    const url = await sock.profilePictureUrl(sock.user.id, "image");
+    let url;
+    try {
+      url = await sock.profilePictureUrl(sock.user.id, "image");
+    } catch {
+      url = await sock.profilePictureUrl(sock.user.id, "preview");
+    }
+    if (!url) return res.sendFile(path.resolve("public/images/image.png"));
     const response = await axios.get(url, {
       responseType: "stream",
       timeout: 5000,
