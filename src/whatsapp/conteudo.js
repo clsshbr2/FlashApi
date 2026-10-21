@@ -1,8 +1,8 @@
 /**
- * Tradutor de CONTEÚDO de mensagens: formato da Baileys -> formato da zapo.
+ * Tradutor de CONTEÚDO de mensagens: corpo da requisição da API -> formato da zapo.
  *
  * Os serviços da API (messageService.js, rotas, etc.) montam o conteúdo no
- * formato da Baileys, por exemplo:
+ * formato da requisição, por exemplo:
  *     { image: <buffer|{url}>, caption: "oi", mimetype: "image/jpeg" }
  * A zapo usa uma união discriminada com o campo `type`:
  *     { type: "image", media: <Buffer>, caption: "oi", mimetype: "image/jpeg" }
@@ -21,7 +21,7 @@ const MIMETYPE_PADRAO = {
 };
 
 /**
- * Converte o objeto "quoted" da Baileys (mensagem completa ou só a chave)
+ * Converte o objeto "quoted" da requisição (mensagem completa ou só a chave)
  * para o `quote` da zapo.
  */
 export function converterQuote(quoted) {
@@ -37,7 +37,7 @@ export function converterQuote(quoted) {
 }
 
 /**
- * Converte uma chave de mensagem (Baileys) para a chave exigida pela zapo
+ * Converte uma chave de mensagem da requisição para a chave exigida pela zapo
  * (todos os campos obrigatórios).
  */
 export function converterChave(chave, jidPadrao) {
@@ -50,11 +50,11 @@ export function converterChave(chave, jidPadrao) {
 }
 
 /**
- * Converte o conteúdo (formato Baileys) em { conteudo, opcoes } da zapo.
+ * Converte o conteúdo da requisição em { conteudo, opcoes } da zapo.
  *
  * @param {string} jid       JID de destino.
- * @param {object} c         Conteúdo no formato Baileys.
- * @param {object} [extras]  Opções do sendMessage da Baileys (quoted, statusJidList...).
+ * @param {object} c         Conteúdo no formato da requisição.
+ * @param {object} [extras]  Opções extras do envio (quoted, statusJidList...).
  */
 export async function converterConteudo(jid, c, extras = {}) {
   const opcoes = {};

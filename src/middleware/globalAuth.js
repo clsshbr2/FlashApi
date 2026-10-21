@@ -1,6 +1,6 @@
 import config from '../config/env.js';
 import Session from '../models/Session.js';
-import BaileysService from '../services/BaileysService.js';
+import WhatsAppService from '../services/WhatsAppService.js';
 import logger from '../utils/logger.js';
 
 const authenticateGlobalApiKey = (req, res, next) => {

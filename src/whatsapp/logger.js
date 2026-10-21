@@ -6,8 +6,8 @@
  * projeto espera `logger.info(objeto, "mensagem")` ou `logger.info("mensagem")`.
  * Este arquivo faz a ponte entre os dois formatos.
  */
-import logger from "../../utils/logger.js";
-import config from "../../config/env.js";
+import logger from "../utils/logger.js";
+import config from "../config/env.js";
 
 const NIVEIS = ["trace", "debug", "info", "warn", "error"];
 
@@ -21,12 +21,12 @@ function nivelValido(nivel) {
  * @param {Record<string, unknown>} [vinculos] Campos fixos adicionados a todo log (ex.: sessionId).
  * @param {string} [nivel] Nível mínimo de log.
  */
-export function criarLoggerZapo(vinculos = {}, nivel = config.baileysLogLevel || "info") {
+export function criarLoggerZapo(vinculos = {}, nivel = config.waLogLevel || "info") {
   const nivelAtual = nivelValido(nivel);
   const prioridade = Object.fromEntries(NIVEIS.map((n, i) => [n, i]));
 
   const registrar = (nome) => (mensagem, contexto) => {
-    // Respeita o nível mínimo configurado (BAILEYS_LOG_LEVEL / LOG_LEVEL).
+    // Respeita o nível mínimo configurado (WA_LOG_LEVEL / LOG_LEVEL).
     if (prioridade[nome] < prioridade[nivelAtual]) return;
 
     // O pino do projeto não tem "trace" configurado com transporte; usamos "debug".

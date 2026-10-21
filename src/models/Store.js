@@ -5,8 +5,8 @@ import Long from "long";
 
 // Instância singleton do banco
 
-// Maps Baileys numeric proto status (0-5) to the allowed DB enum values
-const BAILEYS_STATUS_MAP = {
+// Maps numeric message status (0-5) to the allowed DB enum values
+const STATUS_MENSAGEM_MAP = {
   0: "received", // ERROR / unknown
   1: "received", // PENDING
   2: "sent", // SERVER_ACK
@@ -18,7 +18,7 @@ const BAILEYS_STATUS_MAP = {
 const VALID_STATUSES = new Set(["received", "sent", "delivered", "read"]);
 
 function resolveMessageStatus(raw) {
-  if (typeof raw === "number") return BAILEYS_STATUS_MAP[raw] ?? "received";
+  if (typeof raw === "number") return STATUS_MENSAGEM_MAP[raw] ?? "received";
   if (typeof raw === "string" && VALID_STATUSES.has(raw)) return raw;
   return "received";
 }
@@ -418,14 +418,6 @@ class Store {
         grupos: { total_grupos: 0 },
       };
     }
-  }
-
-  static async getjid(key_type, sessionId) {
-    const { rows } = await execute(`SELECT value_json, key_id FROM wa_session_keys WHERE key_type = $1 AND sessao_id = $2`, [
-      key_type,
-      sessionId,
-    ]);
-    return rows[0] || null;
   }
 
   // SALVAR EM BATCH PARA OTIMIZAR PERFORMANCE

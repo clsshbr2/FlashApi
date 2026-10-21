@@ -1,11 +1,11 @@
 /**
- * Tradutor de EVENTOS: zapo -> formato da Baileys.
+ * Tradutor de EVENTOS: zapo -> formato dos eventos publicados pela API.
  *
  * Todo o resto da API (EventService, webhooks, WebSocket, workers) foi escrito
- * para escutar eventos da Baileys (`messages.upsert`, `connection.update`,
+ * para escutar eventos nomeados (`messages.upsert`, `connection.update`,
  * `message-receipt.update`...) com um formato de dados específico.
  * Em vez de reescrever tudo, este módulo escuta os eventos da zapo
- * (`message`, `connection`, `receipt`...) e os re-emite NO FORMATO DA BAILEYS,
+ * (`message`, `connection`, `receipt`...) e os re-emite NO FORMATO QUE A API SEMPRE PUBLICOU,
  * mantendo os payloads de webhook/WebSocket idênticos para quem já consome a API.
  *
  * Tabela de correspondência:
@@ -19,28 +19,28 @@
  *   zapo `picture`                 ->  `contacts.update`
  */
 import { Boom } from "@hapi/boom";
-import redis, { KEYS } from "../../services/redis.js";
-import logger from "../../utils/logger.js";
-import { paraJsonBaileys, somenteDigitos } from "./utils.js";
+import redis, { KEYS } from "../services/redis.js";
+import logger from "../utils/logger.js";
+import { paraJsonApi, somenteDigitos } from "./utils.js";
 
-// Códigos de status no estilo da Baileys (DisconnectReason), usados por
+// Códigos de status de desconexão, usados por
 // connection_update.js para decidir entre reconectar ou remover a sessão.
 export const CODIGO_DESCONECTADO = 428; // connectionClosed -> reconecta
 export const CODIGO_DESLOGADO = 401; // loggedOut
 export const MENSAGEM_LOGOUT_INTENCIONAL = "Intentional Logout";
 
-// Status de mensagem da Baileys (WAMessageStatus)
+// Status de mensagem (3 entregue, 4 lido, 5 reproduzido)
 const STATUS_MENSAGEM = { delivered: 3, read: 4, played: 5 };
 
-/** Cria um erro Boom como a Baileys criava (com statusCode). */
+/** Cria um erro Boom (com statusCode) como o connection_update.js espera. */
 export function criarErroConexao(mensagem, statusCode) {
   return new Boom(mensagem, { statusCode });
 }
 
 /**
  * Registra o mapeamento LID -> número de telefone na fila que a API já usa
- * (antes isso era feito dentro do usePostgresAuthStore, ao a Baileys gravar
- * a chave "lid-mapping-*"). Aceita JIDs completos ou só os dígitos.
+ * (a API sempre alimentou o mapeamento a partir das chaves "lid-mapping" do auth;
+ * agora ele vem dos campos *Alt das mensagens). Aceita JIDs completos ou só os dígitos.
  */
 export function registrarMapaLid(sessionId, lidJid, pnJid) {
   try {
@@ -69,10 +69,10 @@ function aprenderMapaLidDaChave(sessionId, chave) {
   }
 }
 
-/** Converte a mensagem recebida da zapo para o formato WAMessage da Baileys. */
-function paraMensagemBaileys(evento) {
+/** Converte a mensagem recebida da zapo para o formato de mensagem publicado pela API. */
+function paraMensagemApi(evento) {
   const k = evento.key || {};
-  return paraJsonBaileys({
+  return paraJsonApi({
     key: {
       remoteJid: k.remoteJid,
       fromMe: k.fromMe,
@@ -89,8 +89,8 @@ function paraMensagemBaileys(evento) {
 }
 
 /**
- * Liga todos os eventos da zapo ao emissor estilo-Baileys do socket.
- * @param {import("./ZapoSocket.js").ZapoSocket} socket
+ * Liga todos os eventos da zapo ao emissor de eventos da sessão.
+ * @param {import("./SessaoWhatsApp.js").SessaoWhatsApp} socket
  */
 export function ligarEventosZapo(socket) {
   const { client, sessionId } = socket;
@@ -102,7 +102,7 @@ export function ligarEventosZapo(socket) {
   });
 
   // A zapo para de gerar QR quando o limite de renovações acaba (forceManual) e
-  // fica esperando. A Baileys, nesse caso, fechava a conexão com 408 e a API
+  // fica esperando. Nesse caso a API espera um fechamento com 408 e
   // reiniciava o ciclo (novo QR / contador de QR). Reproduzimos esse comportamento.
   client.on("auth_pairing_required", ({ forceManual }) => {
     if (forceManual) {
@@ -131,7 +131,7 @@ export function ligarEventosZapo(socket) {
       // Logout pedido pela própria API -> a sessão deve ser removida.
       erro = criarErroConexao(MENSAGEM_LOGOUT_INTENCIONAL, CODIGO_DESLOGADO);
     } else if (evento.isLogout) {
-      // Aparelho desvinculado pelo celular. Mesmo comportamento da Baileys:
+      // Aparelho desvinculado pelo celular. Comportamento esperado pela API:
       // 401 "não intencional" (a API tenta reconectar e gera novo QR).
       erro = criarErroConexao("Dispositivo desvinculado", CODIGO_DESLOGADO);
     } else {
@@ -143,42 +143,94 @@ export function ligarEventosZapo(socket) {
   });
 
   // ------------------------------------------------------------ Mensagens
+
+  // Votos de enquete: a zapo entrega a mensagem ("message") e o voto já decifrado
+  // ("message_addon") em eventos separados, sem ordem garantida. Juntamos os dois
+  // para publicar pollUpdateMessage.vote com os nomes das opções escolhidas.
+  const votosProntos = new Map(); // idDaMensagem -> opções (voto chegou antes da mensagem)
+  const mensagensAguardandoVoto = new Map(); // idDaMensagem -> { mensagem, timer }
+  const ESPERA_VOTO_MS = 3000;
+
+  /** Publica a mensagem recebida e os eventos derivados (reação, apagar, editar). */
+  const publicarMensagem = (mensagem) => {
+    emitir("messages.upsert", { messages: [mensagem], type: "notify" });
+
+    const conteudo = mensagem.message || {};
+
+    // Reação -> também gera `messages.reaction`
+    if (conteudo.reactionMessage) {
+      emitir("messages.reaction", [
+        {
+          key: conteudo.reactionMessage.key,
+          reaction: { ...conteudo.reactionMessage, key: mensagem.key },
+        },
+      ]);
+    }
+
+    // Mensagem apagada para todos / editada -> `messages.update`
+    const proto = conteudo.protocolMessage;
+    if (proto) {
+      // 0 = REVOKE, 14 = MESSAGE_EDIT (valores do proto do WhatsApp)
+      if (proto.type === 0 || proto.type === "REVOKE") {
+        emitir("messages.update", [
+          { key: proto.key, update: { message: null, messageStubType: 1, key: mensagem.key, messageTimestamp: mensagem.messageTimestamp } },
+        ]);
+      } else if (proto.type === 14 || proto.type === "MESSAGE_EDIT") {
+        emitir("messages.update", [
+          { key: proto.key, update: { message: { editedMessage: { message: proto.editedMessage } }, messageTimestamp: mensagem.messageTimestamp } },
+        ]);
+      }
+    }
+  };
+
   client.on("message", (evento) => {
     try {
-      const mensagem = paraMensagemBaileys(evento);
+      const mensagem = paraMensagemApi(evento);
       if (!mensagem?.key?.id) return;
 
       aprenderMapaLidDaChave(sessionId, mensagem.key);
-      emitir("messages.upsert", { messages: [mensagem], type: "notify" });
 
-      const conteudo = mensagem.message || {};
+      const voto = mensagem.message?.pollUpdateMessage;
+      if (!voto) return publicarMensagem(mensagem);
 
-      // Reação -> também gera `messages.reaction` (como a Baileys fazia)
-      if (conteudo.reactionMessage) {
-        emitir("messages.reaction", [
-          {
-            key: conteudo.reactionMessage.key,
-            reaction: { ...conteudo.reactionMessage, key: mensagem.key },
-          },
-        ]);
+      // Voto de enquete: se a zapo já decifrou, publica; senão espera um pouco.
+      const id = mensagem.key.id;
+      if (votosProntos.has(id)) {
+        voto.vote = votosProntos.get(id);
+        votosProntos.delete(id);
+        return publicarMensagem(mensagem);
       }
-
-      // Mensagem apagada para todos / editada -> `messages.update`
-      const proto = conteudo.protocolMessage;
-      if (proto) {
-        // 0 = REVOKE, 14 = MESSAGE_EDIT (valores do proto do WhatsApp)
-        if (proto.type === 0 || proto.type === "REVOKE") {
-          emitir("messages.update", [
-            { key: proto.key, update: { message: null, messageStubType: 1, key: mensagem.key, messageTimestamp: mensagem.messageTimestamp } },
-          ]);
-        } else if (proto.type === 14 || proto.type === "MESSAGE_EDIT") {
-          emitir("messages.update", [
-            { key: proto.key, update: { message: { editedMessage: { message: proto.editedMessage } }, messageTimestamp: mensagem.messageTimestamp } },
-          ]);
-        }
-      }
+      const timer = setTimeout(() => {
+        // Não conseguiu decifrar (ex.: enquete criada antes da sessão existir): publica sem opções.
+        mensagensAguardandoVoto.delete(id);
+        voto.vote = [];
+        publicarMensagem(mensagem);
+      }, ESPERA_VOTO_MS);
+      mensagensAguardandoVoto.set(id, { mensagem, timer });
     } catch (erro) {
       logger.error(`Erro ao converter mensagem recebida (sessão ${sessionId}): ${erro?.message || erro}`);
+    }
+  });
+
+  client.on("message_addon", (evento) => {
+    try {
+      if (evento.kind !== "poll_vote") return;
+      const opcoes = [...(evento.decrypted?.selectedOptionNames || [])];
+      const id = evento.key?.id;
+      if (!id) return;
+
+      const aguardando = mensagensAguardandoVoto.get(id);
+      if (aguardando) {
+        clearTimeout(aguardando.timer);
+        mensagensAguardandoVoto.delete(id);
+        aguardando.mensagem.message.pollUpdateMessage.vote = opcoes;
+        return publicarMensagem(aguardando.mensagem);
+      }
+      // O voto chegou antes da mensagem: guarda por alguns segundos.
+      votosProntos.set(id, opcoes);
+      setTimeout(() => votosProntos.delete(id), 10000).unref?.();
+    } catch (erro) {
+      logger.error(`Erro ao tratar voto de enquete (sessão ${sessionId}): ${erro?.message || erro}`);
     }
   });
 
@@ -193,7 +245,7 @@ export function ligarEventosZapo(socket) {
 
       const campoTempo = { delivered: "receiptTimestamp", read: "readTimestamp", played: "playedTimestamp" }[evento.status];
       const status = STATUS_MENSAGEM[evento.status];
-      if (!campoTempo) return; // "inactive" etc. não existem na Baileys
+      if (!campoTempo) return; // "inactive" etc. não são publicados
 
       const chaves = ids.map((id) => ({ remoteJid: chat, id, fromMe: true, participant: participante }));
 
@@ -260,8 +312,8 @@ export function ligarEventosZapo(socket) {
           emitir("groups.upsert", [{ id, subject: evento.subject, owner: evento.authorJid, creation: evento.timestampSeconds }]);
           break;
         default:
-          // Outras ações (convite, link, etc.) não existiam como evento dedicado na Baileys.
-          emitir("groups.update", [{ id, ...paraJsonBaileys(evento.details || {}) }]);
+          // Outras ações (convite, link, etc.) não têm evento dedicado na API.
+          emitir("groups.update", [{ id, ...paraJsonApi(evento.details || {}) }]);
       }
     } catch (erro) {
       logger.error(`Erro ao converter evento de grupo (sessão ${sessionId}): ${erro?.message || erro}`);
@@ -334,7 +386,7 @@ export function ligarEventosZapo(socket) {
 
   // ------------------------------------------------------------- Erros
   client.on("stream_failure", (evento) => {
-    logger.warn(`Sessão ${sessionId}: falha de stream ${JSON.stringify(paraJsonBaileys(evento))}`);
+    logger.warn(`Sessão ${sessionId}: falha de stream ${JSON.stringify(paraJsonApi(evento))}`);
   });
   client.on("debug_client_error", ({ error }) => {
     logger.debug(`Sessão ${sessionId}: erro interno da zapo: ${error?.message || error}`);

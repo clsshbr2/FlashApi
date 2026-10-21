@@ -2,9 +2,8 @@ import Chats from "../../models/chats.js";
 import Contato from "../../models/Contatos.js";
 import Message from "../../models/Message.js";
 import Session from "../../models/Session.js";
-import BaileysService from "../BaileysService.js";
+import WhatsAppService from "../WhatsAppService.js";
 import redis, { KEYS } from "../redis.js";
-import { insertOrUpdateAuthKey } from "../usePostgresAuthStore.js";
 import { createLoopWorker } from "./LoopWorker.js";
 import { formMessage } from "./Batch/Messagebatch.js";
 import { createQueueWorker } from "./QueueWorker.js";
@@ -13,16 +12,6 @@ import { formContatos } from "./Batch/ContatoBatch.js";
 import { formChats } from "./Batch/ChatBatch.js";
 
 export const workers = [
-
-    //Workers de Keys
-    createQueueWorker({
-        concurrency: 5, // Total de workers
-        name: "Pre Keys",
-        client: redis.blockingClients.authKey,
-        queue: KEYS().pre_keys(),
-        validate: null,
-        handler: (dados) => insertOrUpdateAuthKey(dados.sessionId, dados.key_id, dados.json)
-    }),
 
     //Workers de chats
     createQueueWorker({
@@ -91,7 +80,7 @@ export const workers = [
     //     name: "Sessões",
     //     interval: 3000,
     //     handler: async () => {
-    //         for (const [id, sock] of BaileysService.sockets) {
+    //         for (const [id, sock] of WhatsAppService.sockets) {
 
     //             if (sock.status === "open") {
     //                 await Session.update(id, {

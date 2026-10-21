@@ -1,13 +1,13 @@
 /**
- * Funções utilitárias da camada de compatibilidade Baileys → zapo.
+ * Funções utilitárias da camada que conecta a API à zapo.
  */
 import axios from "axios";
 import { randomBytes } from "node:crypto";
 
 /**
- * Converte um objeto da zapo para o formato JSON que a Baileys produzia.
+ * Converte um objeto da zapo para o formato JSON que a API sempre publicou.
  *
- * A Baileys serializa campos binários (chaves, hashes, thumbnails, etc.) como
+ * A API publica campos binários (chaves, hashes, thumbnails, etc.) como
  * string base64 e timestamps (Long) como número. Os webhooks/WebSocket e o
  * banco de dados da API dependem desse formato, então convertemos aqui:
  *   - Uint8Array / Buffer  -> string base64
@@ -16,7 +16,7 @@ import { randomBytes } from "node:crypto";
  *   - Map / Set            -> ignorados (viram objeto/array simples)
  * Retorna uma CÓPIA; o objeto original não é alterado.
  */
-export function paraJsonBaileys(valor, profundidade = 0) {
+export function paraJsonApi(valor, profundidade = 0) {
   if (valor === null || valor === undefined) return valor;
   if (profundidade > 40) return undefined; // proteção contra referências circulares
 
@@ -29,18 +29,38 @@ export function paraJsonBaileys(valor, profundidade = 0) {
     return valor.unsigned ? (valor.high >>> 0) * 4294967296 + (valor.low >>> 0) : valor.high * 4294967296 + (valor.low >>> 0);
   }
 
-  if (Array.isArray(valor)) return valor.map((item) => paraJsonBaileys(item, profundidade + 1));
-  if (valor instanceof Map) return Object.fromEntries([...valor].map(([k, v]) => [k, paraJsonBaileys(v, profundidade + 1)]));
-  if (valor instanceof Set) return [...valor].map((item) => paraJsonBaileys(item, profundidade + 1));
+  if (Array.isArray(valor)) return valor.map((item) => paraJsonApi(item, profundidade + 1));
+  if (valor instanceof Map) return Object.fromEntries([...valor].map(([k, v]) => [k, paraJsonApi(v, profundidade + 1)]));
+  if (valor instanceof Set) return [...valor].map((item) => paraJsonApi(item, profundidade + 1));
 
   const resultado = {};
   for (const [chave, item] of Object.entries(valor)) {
     if (typeof item === "function") continue;
     // `rawNode` é o stanza bruto da zapo: grande e inútil para os consumidores da API.
     if (chave === "rawNode") continue;
-    resultado[chave] = paraJsonBaileys(item, profundidade + 1);
+    resultado[chave] = paraJsonApi(item, profundidade + 1);
   }
   return resultado;
+}
+
+// Campos de mensagens de mídia que a zapo espera como bytes (nos webhooks viram base64).
+const CAMPOS_BINARIOS = new Set(["mediaKey", "fileSha256", "fileEncSha256", "streamingSidecar", "thumbnailSha256", "thumbnailEncSha256"]);
+
+/**
+ * Operação inversa de paraJsonApi: converte para bytes os campos binários
+ * conhecidos (mediaKey, fileSha256...) que vieram como base64. Retorna uma cópia.
+ */
+export function base64ParaBinario(valor) {
+  if (Array.isArray(valor)) return valor.map(base64ParaBinario);
+  if (valor && typeof valor === "object" && !(valor instanceof Uint8Array)) {
+    return Object.fromEntries(
+      Object.entries(valor).map(([chave, item]) => [
+        chave,
+        CAMPOS_BINARIOS.has(chave) && typeof item === "string" ? Buffer.from(item, "base64") : base64ParaBinario(item),
+      ]),
+    );
+  }
+  return valor;
 }
 
 /** Mantém apenas os dígitos de um texto (ex.: "+55 (11) 9..." -> "5511..."). */
@@ -59,7 +79,7 @@ export function normalizarJid(jid) {
   return `${usuario.split(":")[0]}@${servidor}`;
 }
 
-/** Gera um ID de mensagem no mesmo padrão da Baileys/WhatsApp Web ("3EB0..."). */
+/** Gera um ID de mensagem no mesmo padrão do WhatsApp Web ("3EB0..."). */
 export function gerarIdMensagem() {
   return "3EB0" + randomBytes(9).toString("hex").toUpperCase();
 }
@@ -69,7 +89,7 @@ export function gerarIdMensagem() {
  *   - Buffer / Uint8Array
  *   - "data:...;base64,XXXX"
  *   - "http(s)://..."  (baixa o arquivo)
- *   - { url: <qualquer um dos itens acima> }  (formato que a Baileys usava)
+ *   - { url: <qualquer um dos itens acima> }  (formato usado pelas rotas)
  */
 export async function resolverMidia(entrada, timeoutMs = 30000) {
   if (entrada === null || entrada === undefined) throw new Error("Mídia não informada");
@@ -77,7 +97,7 @@ export async function resolverMidia(entrada, timeoutMs = 30000) {
   if (Buffer.isBuffer(entrada)) return entrada;
   if (entrada instanceof Uint8Array) return Buffer.from(entrada);
 
-  // Formato { url: ... } da Baileys
+  // Formato { url: ... } usado pelas rotas
   if (typeof entrada === "object" && "url" in entrada) return resolverMidia(entrada.url, timeoutMs);
 
   if (typeof entrada === "string") {

@@ -1,13 +1,12 @@
 import express from "express";
 import { v4 as uuidv4 } from "uuid";
 import globalAuth from "../middleware/globalAuth.js";
-import BaileysService from "../services/BaileysService.js";
+import WhatsAppService from "../services/WhatsAppService.js";
 import Session from "../models/Session.js";
 import logger from "../utils/logger.js";
 import authenticateApiKey from "../middleware/auth.js";
 import axios from "axios";
 import path from "path";
-import { insertOrUpdateAuthKey } from "../services/usePostgresAuthStore.js";
 import redis, { KEYS } from "../services/redis.js";
 
 const router = express.Router();
@@ -221,20 +220,11 @@ router.post("/creds", authenticateApiKey, async (req, res) => {
     //?apiurl=https://api.exemplo.com/api/session/creds&apikey=
     const sessionId = req.sessao.apikey
     const { creds, keys } = req.body
-    const setcreds = await Session.setCreds(sessionId, creds)
+    const setcreds = await Session.setCreds(sessionId, creds, keys)
     if (setcreds.success) {
       Session.update(sessionId, {
         status: 'connected'
       })
-      const pipeline = BaileysService.redis.workerClient.pipeline();
-      for (const key of keys) {
-        pipeline.lpush(
-          BaileysService.keys.pre_keys(),
-          JSON.stringify({ sessionId, key_id: key.key_id, json: key.json })
-        );
-      }
-      await pipeline.exec();
-      logger.info(`Keys da sessão: ${sessionId} Adicionado na fila`);
       return res.status(200).json({
         success: true,
         message: "Sessão adicionada",
@@ -261,12 +251,12 @@ router.post("/creds", authenticateApiKey, async (req, res) => {
 router.put("/conectar_sessao", authenticateApiKey, async (req, res) => {
   try {
     const { numero = null } = req.body
-    await BaileysService.limitReconnect.set(req.sessao.apikey, 0)
-    await BaileysService.countQrcode.set(req.sessao.apikey, 0);
+    await WhatsAppService.limitReconnect.set(req.sessao.apikey, 0)
+    await WhatsAppService.countQrcode.set(req.sessao.apikey, 0);
 
-    const conect = await BaileysService.createSession(req.sessao.apikey, numero)
-    await BaileysService.delay(4000);
-    const sessao = await BaileysService.GetSessao(req.sessao.apikey)
+    const conect = await WhatsAppService.createSession(req.sessao.apikey, numero)
+    await WhatsAppService.delay(4000);
+    const sessao = await WhatsAppService.GetSessao(req.sessao.apikey)
     if (!sessao) {
       return res.status(500).json({
         success: false,
@@ -290,7 +280,7 @@ router.put("/conectar_sessao", authenticateApiKey, async (req, res) => {
 
 //Reniciar uma sessão
 router.put("/restart", authenticateApiKey, async (req, res) => {
-  const sock = await BaileysService.sockets.get(req.sessao.apikey)
+  const sock = await WhatsAppService.sockets.get(req.sessao.apikey)
   try { sock.end() } catch (error) { }
   return res.status(200).json({
     success: true,
@@ -335,7 +325,7 @@ router.get("/list", globalAuth.authenticateGlobalApiKey, async (req, res) => {
     const getSessao = await Session.findAllSessao();
     const sessionsWithStats = await Promise.all(
       getSessao.map(async (session) => {
-        const memorySession = await BaileysService.GetSessao(session.apikey);
+        const memorySession = await WhatsAppService.GetSessao(session.apikey);
         return {
           apikey: session.apikey,
           nome_sessao: session.nome_sessao,
@@ -404,8 +394,7 @@ router.delete("/delete/:sessionId", globalAuth.authenticateGlobalApiKey, async (
     });
 
     try {
-      /** @type {import("@whiskeysockets/baileys").WASocket} */
-      const sock = await BaileysService.sockets.get(sessionId)
+      const sock = await WhatsAppService.sockets.get(sessionId)
       sock.logout();
     } catch (error) { }
 
@@ -428,8 +417,7 @@ router.delete("/delete/:sessionId", globalAuth.authenticateGlobalApiKey, async (
 //Desconectar sessão
 router.delete("/desconect/", authenticateApiKey, async (req, res) => {
   try {
-    /** @type {import("@whiskeysockets/baileys").WASocket} */
-    const sock = await BaileysService.sockets.get(req.sessao.apikey)
+    const sock = await WhatsAppService.sockets.get(req.sessao.apikey)
     sock.logout();
     Session.delete(req.sessao.id, false)
 
@@ -457,7 +445,7 @@ router.get("/avatar/:apikey", async (req, res) => {
         message: "ApiKey é obrigatória",
       });
     }
-    const sock = BaileysService.sockets.get(apiKey);
+    const sock = WhatsAppService.sockets.get(apiKey);
 
     if (!sock?.user?.id) {
       return res.sendFile(path.resolve("public/images/image.png"));

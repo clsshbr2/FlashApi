@@ -1,35 +1,28 @@
 /**
- * ZapoSocket - socket "estilo Baileys" implementado em cima da zapo-js.
+ * SessaoWhatsApp - uma conexão de WhatsApp (uma sessão da API) sobre a zapo-js.
  *
- * POR QUE EXISTE?
- * ----------------
- * Toda a API (rotas, serviços, workers, webhooks) foi escrita chamando métodos
- * do socket da Baileys: `sock.sendMessage(...)`, `sock.groupMetadata(...)`,
- * `sock.ev.on(...)`, `sock.user`, `sock.end()` etc.
- * Esta classe expõe EXATAMENTE essa mesma interface, mas por baixo usa a
- * `WaClient` da zapo. Assim:
- *   - nenhum endpoint muda;
- *   - nenhum payload de webhook/WebSocket muda;
- *   - o provider (Baileys ou zapo) é escolhido por variável de ambiente
- *     (WA_PROVIDER), permitindo voltar para a Baileys a qualquer momento.
+ * Envolve o `WaClient` da zapo e expõe os métodos que rotas, serviços e workers
+ * usam (`sendMessage`, `group*`, `readMessages`, `ev.on(...)`, `user`, `end`, `logout`...).
+ * Os nomes dos métodos e eventos são os que a API sempre usou, para NÃO alterar
+ * nenhum endpoint nem o formato dos webhooks/WebSocket que os sistemas já consomem.
  *
- * ONDE ESTÁ CADA PARTE?
- * ---------------------
- *   conteudo.js  -> traduz o conteúdo das mensagens (Baileys -> zapo)
- *   eventos.js   -> traduz os eventos (zapo -> Baileys)
+ * Arquivos desta pasta:
+ *   conteudo.js  -> traduz o conteúdo das mensagens (requisição -> zapo)
+ *   eventos.js   -> traduz os eventos da zapo para o formato publicado pela API
  *   store.js     -> armazenamento PostgreSQL da zapo
- *   migrarCredenciais.js -> importa as sessões antigas da Baileys (sem novo QR)
+ *   importarCredenciais.js -> importa a sessão enviada pela extensão do navegador
  */
 import { EventEmitter } from "node:events";
 import { WaClient } from "zapo-js";
 import { HttpsProxyAgent } from "https-proxy-agent";
 import { ProxyAgent } from "undici";
-import config from "../../config/env.js";
-import logger from "../../utils/logger.js";
+import config from "../config/env.js";
+import logger from "../utils/logger.js";
 import { criarLoggerZapo } from "./logger.js";
+import { iniciarLimpezaStore, pararLimpezaStore } from "./store.js";
 import { converterConteudo } from "./conteudo.js";
 import { criarErroConexao, CODIGO_DESCONECTADO, CODIGO_DESLOGADO, MENSAGEM_LOGOUT_INTENCIONAL, ligarEventosZapo, registrarMapaLid } from "./eventos.js";
-import { gerarIdMensagem, normalizarJid, paraJsonBaileys, resolverMidia, somenteDigitos } from "./utils.js";
+import { base64ParaBinario, gerarIdMensagem, normalizarJid, paraJsonApi, resolverMidia, somenteDigitos } from "./utils.js";
 
 const WS_ABERTO = 1; // WebSocket.OPEN
 const WS_FECHADO = 3; // WebSocket.CLOSED
@@ -46,7 +39,7 @@ function versaoParaTexto(versaoEnv) {
   return undefined;
 }
 
-export class ZapoSocket {
+export class SessaoWhatsApp {
   /**
    * @param {object} opcoes
    * @param {string} opcoes.sessionId   apikey da sessão (identifica a sessão no store).
@@ -58,10 +51,7 @@ export class ZapoSocket {
     this.store = store;
     this.proxyUrl = proxyUrl;
 
-    /** Identifica o provider para o restante da API. */
-    this.ehZapo = true;
-
-    /** Emissor de eventos no estilo da Baileys (`sock.ev.on("messages.upsert", ...)`). */
+    /** Emissor dos eventos da API (`sock.ev.on("messages.upsert", ...)`). */
     this.ev = new EventEmitter();
     this.ev.setMaxListeners(50);
 
@@ -70,7 +60,7 @@ export class ZapoSocket {
     this.encerrado = false; // end() já foi chamado
     this.fechadoEmitido = false; // evita emitir "close" duas vezes no mesmo ciclo
     this.logoutSolicitado = false; // logout() foi chamado pela API
-    this.enviadas = new Map(); // id -> proto enviado (para devolver igual à Baileys)
+    this.enviadas = new Map(); // id -> proto enviado (para devolver a mensagem completa ao enviar)
 
     // `sock.ws.socket.readyState` é lido por createSession() para saber se está conectado.
     const self = this;
@@ -94,14 +84,14 @@ export class ZapoSocket {
 
   // ------------------------------------------------------------------ Estado
 
-  /** Dados da conta conectada (equivale a `sock.user` da Baileys). */
+  /** Dados da conta conectada (`sock.user`). */
   get user() {
     const credenciais = this.client?.getCredentials?.();
     if (!credenciais?.meJid) return undefined;
     return { id: credenciais.meJid, lid: credenciais.meLid, name: credenciais.meDisplayName };
   }
 
-  /** Emite um evento no formato Baileys para quem estiver escutando em `ev`. */
+  /** Emite um evento (no formato publicado pela API) para quem escuta em `ev`. */
   emitir(nome, dados) {
     try {
       this.ev.emit(nome, dados);
@@ -154,7 +144,7 @@ export class ZapoSocket {
       criarLoggerZapo({ sessionId: this.sessionId }),
     );
 
-    // Guarda o conteúdo que enviamos para devolver o objeto completo (como a Baileys fazia).
+    // Guarda o conteúdo que enviamos para devolver o objeto completo (a API sempre devolveu o objeto completo).
     this.client.on("message_send", (evento) => {
       if (!evento?.id) return;
       this.enviadas.set(evento.id, evento.message);
@@ -168,6 +158,7 @@ export class ZapoSocket {
     this.pareamentoPronto = new Promise((resolver) => this.client.once("auth_pairing_required", resolver));
 
     ligarEventosZapo(this);
+    iniciarLimpezaStore(this.sessionId);
 
     this.emitir("connection.update", { connection: "connecting" });
 
@@ -204,6 +195,7 @@ export class ZapoSocket {
   async end(erro) {
     if (this.encerrado) return;
     this.encerrado = true;
+    pararLimpezaStore(this.sessionId);
     try {
       await this.client?.disconnect();
     } catch {
@@ -235,14 +227,14 @@ export class ZapoSocket {
   // --------------------------------------------------------------- Mensagens
 
   /**
-   * Envia uma mensagem (mesma assinatura da Baileys).
-   * Retorna um objeto no formato WAMessage da Baileys.
+   * Envia uma mensagem a partir do corpo da requisição (text, image, audio, poll...).
+   * Retorna { key, message, messageTimestamp, status }.
    */
-  async sendMessage(jid, conteudoBaileys, extras = {}) {
+  async sendMessage(jid, conteudoRequisicao, extras = {}) {
     this.#garantirConectado();
     const destino = jid === "status@broadcast" ? jid : normalizarJid(jid);
 
-    const { conteudo, opcoes } = await converterConteudo(destino, conteudoBaileys, extras);
+    const { conteudo, opcoes } = await converterConteudo(destino, conteudoRequisicao, extras);
     const id = gerarIdMensagem();
     opcoes.id = id;
 
@@ -261,14 +253,13 @@ export class ZapoSocket {
   }
 
   /**
-   * Envia uma mensagem já em formato proto (usado por listas/botões).
-   * Os "nós biz" extras (`additionalNodes`) são ignorados porque a zapo monta
-   * a estrutura correta sozinha para listas, botões e fluxos nativos.
+   * Envia uma mensagem já em formato proto (usado por listas/botões). Retorna o id.
+   * A zapo monta sozinha os "nós biz" necessários para listas, botões e fluxos nativos.
    */
-  async relayMessage(jid, mensagemProto, { messageId } = {}) {
+  async enviarProto(jid, mensagemProto, { id: idPersonalizado } = {}) {
     this.#garantirConectado();
     const destino = normalizarJid(jid);
-    const id = messageId || gerarIdMensagem();
+    const id = idPersonalizado || gerarIdMensagem();
     const resultado = await this.client.message.send(destino, mensagemProto, { id });
     const mensagem = this.#montarMensagemEnviada(destino, resultado?.id || id, mensagemProto);
     return mensagem.key.id;
@@ -279,7 +270,7 @@ export class ZapoSocket {
     const protoEnviado = this.enviadas.get(id) ?? (conteudoEnviado?.type ? undefined : conteudoEnviado);
     this.enviadas.delete(id);
 
-    const mensagem = paraJsonBaileys({
+    const mensagem = paraJsonApi({
       key: { remoteJid: destino, fromMe: true, id },
       message: protoEnviado ?? (conteudoEnviado?.type === "text" ? { conversation: conteudoEnviado.text } : undefined),
       messageTimestamp: Math.floor(Date.now() / 1000),
@@ -294,10 +285,9 @@ export class ZapoSocket {
 
   /**
    * Prepara uma mídia (upload) para ser usada dentro de botões/carrossel.
-   * Substitui `prepareWAMessageMedia(..., { upload: sock.waUploadToServer })` da Baileys.
-   * @param {object} conteudo  ex.: { image: <buffer|{url}>, caption } ou { video }, { document, mimetype, fileName }
+   *    * @param {object} conteudo  ex.: { image: <buffer|{url}>, caption } ou { video }, { document, mimetype, fileName }
    */
-  async prepararMidiaZapo(conteudo) {
+  async prepararMidia(conteudo) {
     this.#garantirConectado();
     let tipo;
     if (conteudo.image) tipo = "image";
@@ -314,6 +304,17 @@ export class ZapoSocket {
       fileName: tipo === "document" ? conteudo.fileName : undefined,
     });
     return message;
+  }
+
+  /**
+   * Baixa e decifra a mídia de uma mensagem recebida (conteúdo no formato dos
+   * webhooks: chaves e hashes em base64). Retorna um Buffer.
+   * @param {object} mensagem  ex.: { imageMessage: { url, mediaKey, ... } }
+   */
+  async baixarMidia(mensagem) {
+    this.#garantirConectado();
+    const bytes = await this.client.message.downloadBytes(base64ParaBinario(mensagem));
+    return Buffer.from(bytes);
   }
 
   /** Marca mensagens como lidas. `chaves` = [{ remoteJid, id, participant? }]. */
@@ -386,7 +387,7 @@ export class ZapoSocket {
   /**
    * Rejeita uma chamada recebida. A zapo só RECEBE sinalização de chamada
    * (o plugin de VoIP é separado), então enviamos o nó `<call><reject/></call>` na mão,
-   * da mesma forma que a Baileys faz.
+   * montando o nó na mão.
    */
   async rejectCall(idChamada, deQuem) {
     this.#garantirConectado();
@@ -400,9 +401,9 @@ export class ZapoSocket {
 
   // ------------------------------------------------------------------ Grupos
 
-  /** Converte os metadados do grupo da zapo para o formato da Baileys. */
+  /** Converte os metadados do grupo da zapo para o formato que a API publica. */
   #metadadosGrupo(g) {
-    return paraJsonBaileys({
+    return paraJsonApi({
       id: g.jid,
       subject: g.subject,
       subjectOwner: g.subjectOwner,
@@ -436,7 +437,7 @@ export class ZapoSocket {
     return this.#metadadosGrupo(await this.client.group.queryGroupMetadata(jid));
   }
 
-  /** Retorna um objeto { [jid]: metadados }, como a Baileys. */
+  /** Retorna um objeto { [jid]: metadados }, (formato da API). */
   async groupFetchAllParticipating() {
     this.#garantirConectado();
     const lista = await this.client.group.queryAllGroups();

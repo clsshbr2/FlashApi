@@ -1,17 +1,18 @@
 
 import Session from "../models/Session.js";
-import BaileysService from "./BaileysService.js";
+import WhatsAppService from "./WhatsAppService.js";
 import logger from "../utils/logger.js";
-import { DisconnectReason } from "@whiskeysockets/baileys";
 import WebSocketService from "./WebSocketService.js";
 import { call } from "./AcoesEventos/call.js";
 import { connection } from "./AcoesEventos/connection_update.js";
 import { messagemap } from "./AcoesEventos/Message.js";
 import redis, { KEYS } from "./redis.js";
 
-export const eventBaileys = async (sock, sessionId, saveCreds) => {
-
-    const originalOn = sock.ev.on.bind(sock.ev);
+/**
+ * Liga os eventos da sessão (formato legado da API) aos webhooks/WebSocket e filas.
+ * Os nomes e formatos dos eventos são os mesmos que a API sempre publicou.
+ */
+export const registrarEventos = async (sock, sessionId) => {
 
     const sessao = await redis.get(KEYS().sessao(sessionId))
 
@@ -35,8 +36,6 @@ export const eventBaileys = async (sock, sessionId, saveCreds) => {
 
         await pipeline.exec();
     }
-
-    sock.ev.on('creds.update', saveCreds)
 
     sock.ev.on('connection.update', async (update) => {
         WebSocketService.emitEvents(sessionId, 'connection_update', update)

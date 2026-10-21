@@ -37,7 +37,7 @@ import systemRoutes from "./src/routes/system.js";
 import managerRoutes from "./src/routes/manager.js";
 import { execSync } from "child_process";
 import modifyTable from "./src/config/verificardb.js";
-import BaileysService from "./src/services/BaileysService.js";
+import WhatsAppService from "./src/services/WhatsAppService.js";
 import Session from "./src/models/Session.js";
 import { checkAndInitDatabase } from "./gerardb.js";
 import { startWorkers } from "./src/services/workers/index.js";
@@ -108,7 +108,7 @@ const wss = new WebSocketServer({ server, path: "/ws", maxPayload: 200 * 1024 * 
 const WebSocket = new WebSocketService(wss);
 
 // Conexão websocket
-BaileysService.SetWebSocketService(WebSocket);
+WhatsAppService.SetWebSocketService(WebSocket);
 
 // Global error handler
 app.use((err, req, res, next) => {
@@ -149,8 +149,8 @@ async function startServer() {
       startWorkers()
 
 
-      //iniciando serviços da baileys
-      BaileysService.initialize();
+      //iniciando as sessões de WhatsApp
+      WhatsAppService.initialize();
     });
   } catch (error) {
     logger.error(error);
@@ -162,12 +162,12 @@ async function startServer() {
 // Graceful shutdown
 process.on("SIGTERM", () => {
   // fecha conexões e (no provider zapo) grava as chaves pendentes antes de sair
-  server.close(() => BaileysService.encerrarTodas().finally(() => process.exit(0)));
+  server.close(() => WhatsAppService.encerrarTodas().finally(() => process.exit(0)));
 });
 
 process.on("SIGINT", () => {
-  // no provider Baileys sai na hora (como antes); no zapo espera o flush do store
-  BaileysService.encerrarTodas().finally(() => process.exit(0));
+  // espera a zapo gravar as chaves pendentes no banco antes de sair
+  WhatsAppService.encerrarTodas().finally(() => process.exit(0));
 });
 startServer();
 

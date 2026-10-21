@@ -1,10 +1,9 @@
-import BaileysService from "../BaileysService.js";
+import WhatsAppService from "../WhatsAppService.js";
 import { Boom } from "@hapi/boom";
 import qrcode from "qrcode-terminal";
 import QRCode from "qrcode";
 import Session from "../../models/Session.js";
 import logger from "../../utils/logger.js";
-import { DisconnectReason } from "@whiskeysockets/baileys";
 import config from "../../config/env.js";
 import { updateSessao } from "./connection_update_status.js";
 
@@ -12,8 +11,8 @@ import { updateSessao } from "./connection_update_status.js";
 export const connection = async (sessionId, update) => {
     const { connection, lastDisconnect, qr } = update;
 
-    const countConnect = BaileysService.limitReconnect.get(sessionId) || 0;
-    const count = BaileysService.countQrcode.get(sessionId) || 0;
+    const countConnect = WhatsAppService.limitReconnect.get(sessionId) || 0;
+    const count = WhatsAppService.countQrcode.get(sessionId) || 0;
 
     //Limite de conexão
     if (countConnect >= 10) {
@@ -21,13 +20,12 @@ export const connection = async (sessionId, update) => {
         Session.delete(sessionId, false);
         return;
     }
-    BaileysService.limitReconnect.set(sessionId, countConnect + 1);
+    WhatsAppService.limitReconnect.set(sessionId, countConnect + 1);
 
-    /** @type {import("@whiskeysockets/baileys").WASocket} */
-    const sock = BaileysService.sockets.get(sessionId)
+    const sock = WhatsAppService.sockets.get(sessionId)
     if (!sock) return
 
-    const getsessao = await BaileysService.GetSessao(sessionId)
+    const getsessao = await WhatsAppService.GetSessao(sessionId)
     if (!getsessao) return
 
     if (qr) {
@@ -37,7 +35,7 @@ export const connection = async (sessionId, update) => {
             Session.delete(sessionId, false);
             return;
         }
-        BaileysService.countQrcode.set(sessionId, count + 1);
+        WhatsAppService.countQrcode.set(sessionId, count + 1);
 
         let code = null
 
@@ -76,8 +74,8 @@ export const connection = async (sessionId, update) => {
         getsessao.code = null
 
         void updateSessao(sessionId, getsessao)
-        BaileysService.countQrcode.delete(sessionId, 0);
-        BaileysService.limitReconnect.delete(sessionId, 0);
+        WhatsAppService.countQrcode.delete(sessionId, 0);
+        WhatsAppService.limitReconnect.delete(sessionId, 0);
 
     }
 
@@ -95,8 +93,8 @@ export const connection = async (sessionId, update) => {
             logger.info(`Status 515 Reniciando sessão: ${sessionId}`)
             getsessao.status = "connecting"
             void updateSessao(sessionId, getsessao)
-            await BaileysService.delay(3000);
-            return BaileysService.createSession(sessionId)
+            await WhatsAppService.delay(3000);
+            return WhatsAppService.createSession(sessionId)
         }
 
 
@@ -109,8 +107,8 @@ export const connection = async (sessionId, update) => {
             logger.info(`Reconectando sessão: ${sessionId}`);
             getsessao.status = "connecting";
             void updateSessao(sessionId, getsessao);
-            await BaileysService.delay(3000);
-            return BaileysService.createSession(sessionId);
+            await WhatsAppService.delay(3000);
+            return WhatsAppService.createSession(sessionId);
         }
         void updateSessao(sessionId, getsessao)
         return

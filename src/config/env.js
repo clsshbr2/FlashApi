@@ -17,13 +17,11 @@ const config = {
   hostapi: process.env.HOST || 'localhost:3000',
   nodeEnv: process.env.NODE_ENV || 'development',
   logLevel: process.env.LOG_LEVEL || 'info',
-  baileysLogLevel: process.env.BAILEYS_LOG_LEVEL || process.env.LOG_LEVEL || 'info',
+  // Nível de log da zapo (aceita também o antigo BAILEYS_LOG_LEVEL)
+  waLogLevel: process.env.WA_LOG_LEVEL || process.env.BAILEYS_LOG_LEVEL || process.env.LOG_LEVEL || 'info',
   protocol: process.env.PROTOCOLO || 'http',
   versao: process.env.VERSION_ZAP || '[2, 3000, 1043914743]',
 
-  // Biblioteca de WhatsApp usada pelas sessões: "baileys" (padrão) ou "zapo".
-  // Trocar exige reiniciar a API. Veja docs/MIGRACAO_ZAPO.md.
-  waProvider: (process.env.WA_PROVIDER || 'baileys').toLowerCase(),
 
   origins: process.env.CORS_ORIGINS || '*',
 
