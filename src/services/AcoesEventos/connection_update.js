@@ -39,12 +39,17 @@ export const connection = async (sessionId, update) => {
 
         let code = null
 
-        if (getsessao.numero && getsessao.numero !== "" && !sock.authState?.creds?.registered) {
+        // O código de pareamento só é pedido UMA vez e somente quando o número veio na
+        // requisição de conectar (sock.numeroParaCodigo). Usar o número guardado da conexão
+        // anterior repetia o pedido a cada reconexão e o WhatsApp bloqueava (429 rate-overlimit).
+        if (sock.numeroParaCodigo && !sock.authState?.creds?.registered) {
+            const numero = sock.numeroParaCodigo;
+            sock.numeroParaCodigo = null;
             try {
-                code = await sock.requestPairingCode(getsessao.numero);
-                console.log('code: ', code)
+                code = await sock.requestPairingCode(numero);
+                logger.info(`Código de pareamento gerado para a sessão ${sessionId}`);
             } catch (error) {
-                console.log(error)
+                logger.error(`Erro ao gerar código de pareamento (sessão ${sessionId}): ${error?.message || error}`);
             }
         }
 
