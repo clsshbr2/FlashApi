@@ -142,6 +142,53 @@ export function ligarEventosZapo(socket) {
     socket.emitirFechamento(erro);
   });
 
+  // ------------------------------------------------------------ Contatos
+  // A zapo não entrega a lista de contatos no histórico inicial. Então a tabela
+  // `contatos` é alimentada por duas fontes: a agenda sincronizada do celular
+  // (evento "mutation" do tipo contact) e o nome de quem manda mensagem (pushName).
+  // Vão direto para a fila dos workers, sem gerar webhook "contacts_upsert".
+  const contatosVistos = new Map(); // jid -> nome já enfileirado (evita regravar)
+  const LIMITE_CONTATOS_VISTOS = 20000;
+
+  const enfileirarContato = ({ pn, lid, nome }) => {
+    const id = pn || lid;
+    if (!id || !nome) return;
+    if (contatosVistos.get(id) === nome) return;
+    if (contatosVistos.size >= LIMITE_CONTATOS_VISTOS) contatosVistos.clear();
+    contatosVistos.set(id, nome);
+    if (pn && lid) registrarMapaLid(sessionId, lid, pn);
+    try {
+      redis.workerClient.lpush(
+        KEYS().Store_contatos(),
+        JSON.stringify({ sessionId, id, name: nome, lid: lid || undefined, phoneNumber: pn || undefined }),
+      );
+    } catch {
+      // gravar contato é "melhor esforço"
+    }
+  };
+
+  /** Separa um par de JIDs (principal + alternativo) em telefone e LID. */
+  const separarPnELid = (a, b) => {
+    const lista = [a, b].filter(Boolean);
+    return {
+      pn: lista.find((j) => j.endsWith("@s.whatsapp.net")),
+      lid: lista.find((j) => j.endsWith("@lid")),
+    };
+  };
+
+  // Agenda do celular (nomes salvos) – chega na sincronização do app-state.
+  client.on("mutation", (evento) => {
+    try {
+      if (evento?._raw?.indexParts?.[0] !== "contact" || evento.operation !== "set") return;
+      const acao = evento._raw.value?.contactAction || evento;
+      const nome = acao.fullName || acao.firstName;
+      const { pn, lid } = separarPnELid(evento._raw.indexParts[1], acao.lidJid);
+      enfileirarContato({ pn, lid, nome });
+    } catch (erro) {
+      logger.debug(`Sessão ${sessionId}: contato da agenda ignorado: ${erro?.message || erro}`);
+    }
+  });
+
   // ------------------------------------------------------------ Mensagens
 
   // Votos de enquete: a zapo entrega a mensagem ("message") e o voto já decifrado
@@ -189,6 +236,14 @@ export function ligarEventosZapo(socket) {
       if (!mensagem?.key?.id) return;
 
       aprenderMapaLidDaChave(sessionId, mensagem.key);
+
+      // Nome de quem enviou (pushName) vira contato. Em grupo, o remetente é o participante.
+      if (!evento.key.fromMe && evento.pushName && !evento.key.isBroadcast && !evento.key.isNewsletter) {
+        const { pn, lid } = evento.key.isGroup
+          ? separarPnELid(evento.key.participant, evento.key.participantAlt)
+          : separarPnELid(evento.key.remoteJid, evento.key.remoteJidAlt);
+        enfileirarContato({ pn, lid, nome: evento.pushName });
+      }
 
       const voto = mensagem.message?.pollUpdateMessage;
       if (!voto) return publicarMensagem(mensagem);

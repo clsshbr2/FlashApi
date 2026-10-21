@@ -161,18 +161,18 @@ export const sendinteractiveMessage = (sessionId, data) =>
         }
 
         const mensagem = embrulharInterativa({
-                header: cabecalho,
-                body: { text: data?.body?.text || "" },
-                footer: { text: data?.footer?.text || "" },
-                nativeFlowMessage: {
-                    // messageVersion 1 é obrigatório: sem ele o WhatsApp ignora os botões e mostra só o texto.
-                    // messageVersion: 1,
-                    buttons: data.buttons.map((botao) => ({
-                        name: botao.name,
-                        buttonParamsJson:
-                            typeof botao.buttonParamsJson === "string" ? botao.buttonParamsJson : JSON.stringify(botao.buttonParamsJson),
-                    })),
-                },
+            header: cabecalho,
+            body: { text: data?.body?.text || "" },
+            footer: { text: data?.footer?.text || "" },
+            nativeFlowMessage: {
+                // messageVersion 1 é obrigatório: sem ele o WhatsApp ignora os botões e mostra só o texto.
+                messageVersion: 1,
+                buttons: data.buttons.map((botao) => ({
+                    name: botao.name,
+                    buttonParamsJson:
+                        typeof botao.buttonParamsJson === "string" ? botao.buttonParamsJson : JSON.stringify(botao.buttonParamsJson),
+                })),
+            },
         });
         return enviarComPresenca(sock, jid, mensagem, atrasoDaRequisicao(data));
     });

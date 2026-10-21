@@ -374,7 +374,10 @@ export class SessaoWhatsApp {
   async profilePictureUrl(jid, tipo = "preview") {
     this.#garantirConectado();
     const resultado = await this.client.profile.getProfilePicture(normalizarJid(jid), tipo === "image" ? "image" : "preview");
-    return resultado?.url;
+    // Algumas respostas trazem só o caminho (directPath) e não a URL completa.
+    if (resultado?.url) return resultado.url;
+    if (resultado?.directPath) return `https://pps.whatsapp.net${resultado.directPath}`;
+    return undefined;
   }
 
   /** Verifica se números existem no WhatsApp. Retorna [{ jid, exists, lid }]. */

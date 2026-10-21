@@ -52,7 +52,14 @@ router.get("/avatar/:apikey/:jid", async (req, res) => {
       return res.sendFile(path.resolve("public/images/image.png"));
     }
 
-    const url = await sock.profilePictureUrl(jid, "image");
+    // Tenta a foto em alta resolução e, se não houver, a miniatura.
+    let url;
+    try {
+      url = await sock.profilePictureUrl(jid, "image");
+    } catch {
+      url = await sock.profilePictureUrl(jid, "preview");
+    }
+    if (!url) return res.sendFile(path.resolve("public/images/image.png"));
 
     const response = await axios.get(url, {
       responseType: "stream",
@@ -61,7 +68,9 @@ router.get("/avatar/:apikey/:jid", async (req, res) => {
 
     res.setHeader("Content-Type", "image/jpeg");
     response.data.pipe(res);
-  } catch {
+  } catch (error) {
+    // Sem foto (ou privacidade) é comum; mostra a imagem padrão e registra o motivo.
+    logger.debug(`Avatar indisponível (${req.params.jid}): ${error?.message || error}`);
     return res.sendFile(path.resolve("public/images/image.png"));
   }
 });
