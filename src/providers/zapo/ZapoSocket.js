@@ -163,6 +163,10 @@ export class ZapoSocket {
       }
     });
 
+    // A zapo só aceita pedir o código de pareamento depois de "auth_pairing_required"
+    // (pedir antes dá "companion hello iq failed (400: bad-request)").
+    this.pareamentoPronto = new Promise((resolver) => this.client.once("auth_pairing_required", resolver));
+
     ligarEventosZapo(this);
 
     this.emitir("connection.update", { connection: "connecting" });
@@ -191,6 +195,8 @@ export class ZapoSocket {
     const digitos = somenteDigitos(numero);
     // Evita gastar o estado de pareamento (e quebrar o QR) com um número vazio.
     if (digitos.length < 8) throw new Error("Número inválido para pareamento por código");
+    // Espera o servidor ficar pronto para o pareamento (no máximo 15s).
+    await Promise.race([this.pareamentoPronto, new Promise((resolver) => setTimeout(resolver, 15000))]);
     return this.client.auth.requestPairingCode(digitos);
   }
 
