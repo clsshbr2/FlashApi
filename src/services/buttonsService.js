@@ -153,6 +153,8 @@ export const sendinteractiveMessage = (sessionId, data) =>
                 body: { text: data?.body?.text || "" },
                 footer: { text: data?.footer?.text || "" },
                 nativeFlowMessage: {
+                    // messageVersion 1 é obrigatório: sem ele o WhatsApp ignora os botões e mostra só o texto.
+                    messageVersion: 1,
                     buttons: data.buttons.map((botao) => ({
                         name: botao.name,
                         buttonParamsJson:
@@ -207,7 +209,7 @@ export const sendCarousel = (sessionId, data) =>
                     header: cabecalho,
                     body: { text: item.description },
                     footer: { text: item.footer || "" },
-                    nativeFlowMessage: { buttons: item.actions.map(botaoDaAcao) },
+                    nativeFlowMessage: { messageVersion: 1, buttons: item.actions.map(botaoDaAcao) },
                 };
             }),
         );
