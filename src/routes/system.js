@@ -1,6 +1,6 @@
 import express from 'express';
 import globalAuth from '../middleware/globalAuth.js';
-import BaileysService from '../services/BaileysService.js';
+import WhatsAppService from '../services/WhatsAppService.js';
 import Store from '../models/Store.js';
 import config from '../config/env.js';
 import logger from '../utils/logger.js';
@@ -14,7 +14,7 @@ const SYSTEM_STATUS_CACHE_TTL_SECONDS = 120;
 
 router.get('/status', globalAuth.authenticateGlobalApiKey, async (req, res) => {
   try {
-    const cachedStatus = await BaileysService.redis.get(SYSTEM_STATUS_CACHE_KEY);
+    const cachedStatus = await WhatsAppService.redis.get(SYSTEM_STATUS_CACHE_KEY);
     if (cachedStatus) {
       return res.json(cachedStatus);
     }
@@ -210,7 +210,7 @@ router.get('/status', globalAuth.authenticateGlobalApiKey, async (req, res) => {
     };
 
     try {
-      await BaileysService.redis.set(
+      await WhatsAppService.redis.set(
         SYSTEM_STATUS_CACHE_KEY,
         response,
         SYSTEM_STATUS_CACHE_TTL_SECONDS,

@@ -1,6 +1,6 @@
 
 import { execute } from '../config/database.js';
-import BaileysService from '../services/BaileysService.js';
+import WhatsAppService from '../services/WhatsAppService.js';
 import logger from '../utils/logger.js';
 
 // Instância singleton do banco

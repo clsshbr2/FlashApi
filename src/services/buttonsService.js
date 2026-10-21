@@ -1,490 +1,223 @@
-import { generateWAMessageFromContent, proto } from "@whiskeysockets/baileys";
-import { prepararMidia } from "./midiaBotoes.js";
-import BaileysService from "./BaileysService.js";
+/**
+ * Mensagens interativas: lista, botões de resposta, mensagem interativa
+ * (native flow) e carrossel.
+ *
+ * Tudo é montado como objeto de proto puro (formato do WhatsApp) e enviado
+ * pela zapo, que monta sozinha os nós "biz" necessários para cada tipo.
+ */
+import { proto } from "zapo-js";
+import WhatsAppService from "./WhatsAppService.js";
 import logger from "../utils/logger.js";
-import { prepareMedia } from "../utils/prepareMedia.js";
 
-const BIZ_NATIVE_LIST = [
-    {
-        tag: "biz",
-        attrs: {},
-        content: [
-            {
-                tag: "list",
-                attrs: { type: "product_list", v: "2" },
-            },
-        ],
-    },
-];
+const { ListMessage, ButtonsMessage } = proto.Message;
 
-const BIZ_NATIVE_FLOW_NODE = [
-    {
-        tag: "biz",
-        attrs: {},
-        content: [
-            {
-                tag: "interactive",
-                attrs: { type: "native_flow", v: "1" },
-                content: [{ tag: "native_flow", attrs: { v: "9", name: "mixed" } }],
-            },
-        ],
-    },
-];
+// ---------------------------------------------------------------- Auxiliares
 
-//Enviar lista
-export const sendList = async (sessionId, data) => {
+/** Normaliza o destino: se vier só o número, completa com @s.whatsapp.net. */
+const normalizarDestino = (jid) => (jid.includes("@") ? jid : `${jid}@s.whatsapp.net`);
+
+/** Atraso em ms informado na requisição (padrão 1200). */
+const atrasoDaRequisicao = (data) => (Number.isFinite(Number(data.delay)) ? Number(data.delay) : 1200);
+
+/** Busca a sessão conectada; lança erro com mensagem amigável se não existir. */
+async function obterSessaoConectada(sessionId) {
+    const sock = WhatsAppService.sockets.get(sessionId);
+    const session = sock ? await WhatsAppService.GetSessao(sessionId) : null;
+    if (!sock || !session) throw Object.assign(new Error("Sessão não conectada"), { amigavel: true });
+    return sock;
+}
+
+/**
+ * Envia o proto simulando "digitando" antes e "pausado" depois.
+ * Retorna o id da mensagem enviada.
+ */
+async function enviarComPresenca(sock, jid, mensagemProto, atraso) {
+    await WhatsAppService.delay(atraso);
+    await sock.sendPresenceUpdate("composing", jid);
+    await WhatsAppService.delay(1200);
+    const id = await sock.enviarProto(jid, mensagemProto);
+    await WhatsAppService.delay(100);
+    await sock.sendPresenceUpdate("paused", jid);
+    return id;
+}
+
+/** Executa um envio padronizando o retorno { success, message, error }. */
+async function executar(nome, sessionId, data, montarEEnviar) {
     try {
-        /** @type {import("@whiskeysockets/baileys").WASocket} */
-        const sock = BaileysService.sockets.get(sessionId);
-        if (!sock) return { success: false, message: "Sessão não conectada" };
+        const sock = await obterSessaoConectada(sessionId);
+        const jid = normalizarDestino(data.jid);
+        const id = await montarEEnviar(sock, jid);
+        return { success: true, message: id };
+    } catch (error) {
+        if (error.amigavel) return { success: false, message: error.message };
+        logger.error(`Erro ao enviar ${nome}: `, error.message || error);
+        return { success: false, message: `Erro ao enviar ${nome}`, error: error.message || error };
+    }
+}
 
-        const session = await BaileysService.GetSessao(sessionId);
-        if (!session) return { success: false, message: "Sessão não conectada" };
+/**
+ * Faz o upload da mídia e devolve o imageMessage/videoMessage/documentMessage
+ * pronto para o proto. `fonte` é o objeto da requisição:
+ * { url: <http | data URI | buffer>, caption }.
+ */
+async function enviarMidia(sock, tipo, fonte, extras = {}) {
+    const resultado = await sock.prepararMidia({ [tipo]: fonte.url, caption: fonte.caption || "", ...extras });
+    return resultado[`${tipo}Message`];
+}
 
-        const jid = data.jid.includes("@") ? data.jid : `${data.jid}@s.whatsapp.net`;
-        const delay = Number.isFinite(Number(data.delay))
-            ? Number(data.delay)
-            : 1200;
+// -------------------------------------------------------------------- Lista
 
-        const payloadList = {
-            listMessage: proto.Message.ListMessage.fromObject({
+export const sendList = (sessionId, data) =>
+    executar("Lista", sessionId, data, (sock, jid) => {
+        const mensagem = {
+            listMessage: {
                 title: data.title,
                 description: data.description,
                 buttonText: data.buttonText,
                 footerText: data.footerText,
-                listType: proto.Message.ListMessage.ListType.SINGLE_SELECT,
-                sections: data.sections.map((sec) =>
-                    proto.Message.ListMessage.Section.fromObject({
-                        title: sec.title,
-                        rows: sec.rows.map((row) =>
-                            proto.Message.ListMessage.Row.fromObject({
-                                title: row.title,
-                                rowId: row.rowId,
-                                description: row.description || "",
-                            }),
-                        ),
-                    }),
-                ),
-            }),
+                listType: ListMessage.ListType.SINGLE_SELECT,
+                sections: data.sections.map((secao) => ({
+                    title: secao.title,
+                    rows: secao.rows.map((linha) => ({
+                        title: linha.title,
+                        rowId: linha.rowId,
+                        description: linha.description || "",
+                    })),
+                })),
+            },
+        };
+        return enviarComPresenca(sock, jid, mensagem, atrasoDaRequisicao(data));
+    });
+
+// ------------------------------------------------------------ Botões (reply)
+
+export const sendButton = (sessionId, data) =>
+    executar("Botões", sessionId, data, async (sock, jid) => {
+        const botoes = {
+            contentText: data.text,
+            footerText: data.footer,
+            headerType: ButtonsMessage.HeaderType.EMPTY,
+            buttons: data.buttons.map((botao) => ({
+                buttonId: botao.buttonId,
+                buttonText: { displayText: botao.buttonText.displayText },
+                type: ButtonsMessage.Button.Type.RESPONSE,
+            })),
         };
 
-        await BaileysService.delay(delay)
-        await sock.sendPresenceUpdate("composing", jid);
-        await BaileysService.delay(1200)
-        const msg = generateWAMessageFromContent(jid, payloadList, {
-            userJid: sock.user.id,
-        });
+        // Cabeçalho opcional com mídia
+        if (data.video) {
+            botoes.headerType = ButtonsMessage.HeaderType.VIDEO;
+            botoes.videoMessage = await enviarMidia(sock, "video", data.video);
+        }
+        if (data.image) {
+            botoes.headerType = ButtonsMessage.HeaderType.IMAGE;
+            botoes.imageMessage = await enviarMidia(sock, "image", data.image);
+        }
+        if (data.document) {
+            botoes.headerType = ButtonsMessage.HeaderType.DOCUMENT;
+            botoes.documentMessage = await enviarMidia(sock, "document", data.document);
+        }
 
-        const send = await sock.relayMessage(jid, msg.message, {
-            messageId: msg.key.id,
-            additionalNodes: BIZ_NATIVE_LIST,
-        });
-        await BaileysService.delay(100)
-        await sock.sendPresenceUpdate("paused", jid);
-        return { success: true, message: send }
-    } catch (error) {
-        console.log(error)
-        logger.error('Erro ao enviar Lista: ', error.message || error)
-        return { success: false, message: "Erro ao enviar Lista", error: error.message || error };
-    }
+        return enviarComPresenca(sock, jid, { buttonsMessage: botoes }, atrasoDaRequisicao(data));
+    });
 
-}
+// ------------------------------------------------- Mensagem interativa (flow)
 
-//Enviar butoes reply
-export const sendButton = async (sessionId, data) => {
-    try {
-        /** @type {import("@whiskeysockets/baileys").WASocket} */
-        const sock = BaileysService.sockets.get(sessionId);
-        if (!sock) return { success: false, message: "Sessão não conectada" };
-
-        const session = await BaileysService.GetSessao(sessionId);
-        if (!session) return { success: false, message: "Sessão não conectada" };
-
-        const jid = data.jid.includes("@") ? data.jid : `${data.jid}@s.whatsapp.net`;
-        const delay = Number.isFinite(Number(data.delay))
-            ? Number(data.delay)
-            : 1200;
-
-        const payloadButtons = {
-            buttonsMessage: proto.Message.ButtonsMessage.fromObject({
-                contentText: data.text,
-                footerText: data.footer,
-                headerType: proto.Message.ButtonsMessage.HeaderType.EMPTY,
-                buttons: data.buttons.map((btn) =>
-                    proto.Message.ButtonsMessage.Button.fromObject({
-                        buttonId: btn.buttonId,
-                        buttonText: { displayText: btn.buttonText.displayText },
-                        type: proto.Message.ButtonsMessage.Button.Type.RESPONSE,
-                    }),
-                ),
-            }),
+export const sendinteractiveMessage = (sessionId, data) =>
+    executar("Mensagem interativa", sessionId, data, async (sock, jid) => {
+        const cabecalho = {
+            title: data?.header?.title || "",
+            subtitle: data?.header?.subtitle || "",
+            hasMediaAttachment: false,
         };
 
         if (data.video) {
-            let video
-            if (Buffer.isBuffer(data?.video?.url)) {
-                video = data.video.url;
-            } else if (typeof data?.video?.url === "string") {
-                if (data.video.url.startsWith("data:")) {
-                    const base64Data = data?.video?.url.split(",")[1];
-                    video = Buffer.from(base64Data, "base64");
-                } else if (data?.video?.url.startsWith("http")) {
-                    video = { url: data?.video?.url };
-                }
-            }
-            const media = await prepararMidia(sock, { video, caption: data?.video?.caption || "" });
-            payloadButtons.buttonsMessage.headerType = proto.Message.ButtonsMessage.HeaderType.VIDEO
-            payloadButtons.buttonsMessage.videoMessage = media.videoMessage
+            cabecalho.hasMediaAttachment = true;
+            cabecalho.videoMessage = await enviarMidia(sock, "video", data.video);
         }
-
         if (data.image) {
-            let image
-            if (Buffer.isBuffer(data?.image?.url)) {
-                image = data?.image?.url;
-            } else if (typeof data?.image?.url === "string") {
-                if (data?.image?.url.startsWith("data:")) {
-                    const base64Data = data?.image?.url.split(",")[1];
-                    image = Buffer.from(base64Data, "base64");
-                } else if (data?.image?.url.startsWith("http")) {
-                    image = { url: data?.image?.url };
-                }
-            }
-            const media = await prepararMidia(sock, { image, caption: data?.image?.caption || "" });
-            payloadButtons.buttonsMessage.headerType = proto.Message.ButtonsMessage.HeaderType.IMAGE
-            payloadButtons.buttonsMessage.imageMessage = media.imageMessage
+            cabecalho.hasMediaAttachment = true;
+            cabecalho.imageMessage = await enviarMidia(sock, "image", data.image, { caption: undefined });
         }
-
         if (data.document) {
-            let document
-            if (Buffer.isBuffer(data?.document?.url)) {
-                document = data?.document?.url;
-            } else if (typeof data?.document?.url === "string") {
-                if (data?.document?.url.startsWith("data:")) {
-                    const base64Data = data?.document?.url.split(",")[1];
-                    document = Buffer.from(base64Data, "base64");
-                } else if (data?.document?.url.startsWith("http")) {
-                    document = { url: data?.document?.url };
-                }
-            }
-            const media = await prepararMidia(sock, { document, caption: data?.document?.caption || "" });
-            payloadButtons.buttonsMessage.headerType = proto.Message.ButtonsMessage.HeaderType.DOCUMENT
-            payloadButtons.buttonsMessage.documentMessage = media.documentMessage
+            cabecalho.hasMediaAttachment = true;
+            cabecalho.documentMessage = await enviarMidia(sock, "document", data.document, {
+                mimetype: data.document.mimetype || "application/octet-stream",
+                fileName: data.document.fileName || "docs.docs",
+            });
         }
 
-
-        await BaileysService.delay(delay)
-        await sock.sendPresenceUpdate("composing", jid);
-        await BaileysService.delay(1200)
-        const msg = generateWAMessageFromContent(jid, payloadButtons, {
-            userJid: sock.user.id,
-        });
-
-        const send = await sock.relayMessage(jid, msg.message, {
-            messageId: msg.key.id,
-            additionalNodes: BIZ_NATIVE_FLOW_NODE,
-        });
-        await BaileysService.delay(100)
-        await sock.sendPresenceUpdate("paused", jid);
-        return { success: true, message: send }
-    } catch (error) {
-        console.log(error)
-        logger.error('Erro ao enviar Lista: ', error.message || error)
-        return { success: false, message: "Erro ao enviar Lista", error: error.message || error };
-    }
-
-}
-
-//Enviar interactives
-export const sendinteractiveMessage = async (sessionId, data) => {
-    try {
-        /** @type {import("@whiskeysockets/baileys").WASocket} */
-        const sock = BaileysService.sockets.get(sessionId);
-        if (!sock) return { success: false, message: "Sessão não conectada" };
-
-        const session = await BaileysService.GetSessao(sessionId);
-        if (!session) return { success: false, message: "Sessão não conectada" };
-
-        const jid = data.jid.includes("@") ? data.jid : `${data.jid}@s.whatsapp.net`;
-        const delay = Number.isFinite(Number(data.delay))
-            ? Number(data.delay)
-            : 1200;
-
-        const payloadButtons = {
-            interactiveMessage: proto.Message.InteractiveMessage.fromObject({
-                header: proto.Message.InteractiveMessage.Header.fromObject({
-                    title: data?.header?.title || "",
-                    subtitle: data?.header?.subtitle || "",
-                    hasMediaAttachment: false
-                }),
-                body: proto.Message.InteractiveMessage.Body.fromObject({
-                    text: data?.body?.text || "",
-                }),
-                footer: proto.Message.InteractiveMessage.Footer.fromObject({
-                    text: data?.footer?.text || "",
-                }),
-                nativeFlowMessage: proto.Message.InteractiveMessage.NativeFlowMessage.fromObject({
-                    buttons: data.buttons.map(button => ({
-                        name: button.name,
-                        buttonParamsJson: typeof button.buttonParamsJson === "string"
-                            ? button.buttonParamsJson
-                            : JSON.stringify(button.buttonParamsJson)
-                    }))
-                }),
-            }),
+        const mensagem = {
+            interactiveMessage: {
+                header: cabecalho,
+                body: { text: data?.body?.text || "" },
+                footer: { text: data?.footer?.text || "" },
+                nativeFlowMessage: {
+                    buttons: data.buttons.map((botao) => ({
+                        name: botao.name,
+                        buttonParamsJson:
+                            typeof botao.buttonParamsJson === "string" ? botao.buttonParamsJson : JSON.stringify(botao.buttonParamsJson),
+                    })),
+                },
+            },
         };
+        return enviarComPresenca(sock, jid, mensagem, atrasoDaRequisicao(data));
+    });
 
-        if (data.video) {
-            let video
-            if (Buffer.isBuffer(data?.video?.url)) {
-                video = data.video.url;
-            } else if (typeof data?.video?.url === "string") {
-                if (data.video.url.startsWith("data:")) {
-                    const base64Data = data?.video?.url.split(",")[1];
-                    video = Buffer.from(base64Data, "base64");
-                } else if (data?.video?.url.startsWith("http")) {
-                    video = { url: data?.video?.url };
-                }
-            }
-            const media = await prepararMidia(sock, { video, caption: data?.video?.caption || "" });
-            payloadButtons.interactiveMessage.header.hasMediaAttachment = true
-            payloadButtons.interactiveMessage.header.videoMessage = media.videoMessage
-        }
+// ----------------------------------------------------------------- Carrossel
 
-        if (data.image) {
-            let image
-            if (Buffer.isBuffer(data?.image?.url)) {
-                image = data?.image?.url;
-            } else if (typeof data?.image?.url === "string") {
-                if (data?.image?.url.startsWith("data:")) {
-                    const base64Data = data?.image?.url.split(",")[1];
-                    image = Buffer.from(base64Data, "base64");
-                } else if (data?.image?.url.startsWith("http")) {
-                    image = { url: data?.image?.url };
-                }
-            }
-            const media = await prepararMidia(sock, { image });
-            payloadButtons.interactiveMessage.header.hasMediaAttachment = true
-            payloadButtons.interactiveMessage.header.imageMessage = media.imageMessage
-        }
-
-        if (data.document) {
-            let document
-            if (Buffer.isBuffer(data?.document?.url)) {
-                document = data?.document?.url;
-            } else if (typeof data?.document?.url === "string") {
-                if (data?.document?.url.startsWith("data:")) {
-                    const base64Data = data?.document?.url.split(",")[1];
-                    document = Buffer.from(base64Data, "base64");
-                } else if (data?.document?.url.startsWith("http")) {
-                    document = { url: data?.document?.url };
-                }
-            }
-            const media = await prepararMidia(sock, { document, mimetype: data?.document?.mimetype || "application/octet-stream", fileName: data?.document?.fileName || "docs.docs" });
-            payloadButtons.interactiveMessage.header.hasMediaAttachment = true
-            payloadButtons.interactiveMessage.header.documentMessage = media.documentMessage
-        }
-
-
-        await BaileysService.delay(delay)
-        await sock.sendPresenceUpdate("composing", jid);
-        await BaileysService.delay(1200)
-        const msg = generateWAMessageFromContent(jid, payloadButtons, {
-            userJid: sock.user.id,
-        });
-
-        const send = await sock.relayMessage(jid, msg.message, {
-            messageId: msg.key.id,
-            additionalNodes: BIZ_NATIVE_FLOW_NODE,
-        });
-        await BaileysService.delay(100)
-        await sock.sendPresenceUpdate("paused", jid);
-        return { success: true, message: send }
-    } catch (error) {
-        console.log(error)
-        logger.error('Erro ao enviar Lista: ', error.message || error)
-        return { success: false, message: "Erro ao enviar Lista", error: error.message || error };
+/** Converte uma ação do card do carrossel no botão de native flow correspondente. */
+function botaoDaAcao(acao) {
+    const json = (objeto) => JSON.stringify(objeto);
+    switch (acao.type) {
+        case "reply":
+            return { name: "quick_reply", buttonParamsJson: json({ display_text: acao.text, id: acao.id }) };
+        case "url":
+            return { name: "cta_url", buttonParamsJson: json({ display_text: acao.text, url: acao.url }) };
+        case "call":
+            return { name: "cta_call", buttonParamsJson: json({ display_text: acao.text, phone_number: acao.phone }) };
+        case "copy":
+            return { name: "cta_copy", buttonParamsJson: json({ display_text: acao.text, copy_code: acao.code }) };
+        case "list":
+            return { name: "single_select", buttonParamsJson: json({ title: acao.title, sections: acao.sections }) };
+        default:
+            throw new Error(`Tipo de ação inválido: ${acao.type}`);
     }
-
 }
 
-//Enviar carousel
-export const sendCarousel = async (sessionId, data) => {
-    try {
-        /** @type {import("@whiskeysockets/baileys").WASocket} */
-        const sock = BaileysService.sockets.get(sessionId);
-        if (!sock) return { success: false, message: "Sessão não conectada" };
-
-        const session = await BaileysService.GetSessao(sessionId);
-        if (!session) return { success: false, message: "Sessão não conectada" };
-
-        const jid = data.jid.includes("@") ? data.jid : `${data.jid}@s.whatsapp.net`;
-        const delay = Number.isFinite(Number(data.delay))
-            ? Number(data.delay)
-            : 1200;
-
+export const sendCarousel = (sessionId, data) =>
+    executar("Carrossel", sessionId, data, async (sock, jid) => {
         const cards = await Promise.all(
             data.carousel.map(async (item) => {
                 if (!item.image && !item.video && !item.document) {
-                    return {
-                        success: false,
-                        message: 'Cada card deve conter uma midia image|video|document.',
-                    };
+                    throw new Error("Cada card deve conter uma midia image|video|document.");
                 }
 
-                const header = {
-                    title: item.title,
-                    hasMediaAttachment: false,
-                }
+                const cabecalho = { title: item.title, hasMediaAttachment: false };
                 if (item.video) {
-                    let video
-                    if (Buffer.isBuffer(item?.video?.url)) {
-                        video = item.video.url;
-                    } else if (typeof item?.video?.url === "string") {
-                        if (item.video.url.startsWith("data:")) {
-                            const base64Data = item?.video?.url.split(",")[1];
-                            video = Buffer.from(base64Data, "base64");
-                        } else if (item?.video?.url.startsWith("http")) {
-                            video = { url: item?.video?.url };
-                        }
-                    }
-                    const media = await prepararMidia(sock, { video, caption: data?.video?.caption || "" });
-                    header.hasMediaAttachment = true
-                    header.videoMessage = media.videoMessage
+                    cabecalho.hasMediaAttachment = true;
+                    cabecalho.videoMessage = await enviarMidia(sock, "video", item.video);
                 }
-
                 if (item.image) {
-                    let image
-                    if (Buffer.isBuffer(item?.image?.url)) {
-                        image = item?.image?.url;
-                    } else if (typeof item?.image?.url === "string") {
-                        if (item?.image?.url.startsWith("data:")) {
-                            const base64Data = item?.image?.url.split(",")[1];
-                            image = Buffer.from(base64Data, "base64");
-                        } else if (item?.image?.url.startsWith("http")) {
-                            image = { url: item?.image?.url };
-                        }
-                    }
-                    const media = await prepararMidia(sock, { image });
-                    header.hasMediaAttachment = true
-                    header.imageMessage = media.imageMessage
+                    cabecalho.hasMediaAttachment = true;
+                    cabecalho.imageMessage = await enviarMidia(sock, "image", item.image, { caption: undefined });
                 }
-
-                // if (item.document) {
-                //     let document
-                //     if (Buffer.isBuffer(item?.document?.url)) {
-                //         document = item?.document?.url;
-                //     } else if (typeof item?.document?.url === "string") {
-                //         if (item?.document?.url.startsWith("data:")) {
-                //             const base64Data = item?.document?.url.split(",")[1];
-                //             document = Buffer.from(base64Data, "base64");
-                //         } else if (item?.document?.url.startsWith("http")) {
-                //             document = { url: item?.document?.url };
-                //         }
-                //     }
-                //     const media = await prepararMidia(sock, { document, mimetype: item?.document?.mimetype || "application/octet-stream", fileName: item?.document?.fileName || "docs.docs", title: "teste" });
-                //     header.hasMediaAttachment = true
-                //     header.documentMessage = media.documentMessage
-                // }
 
                 return {
-                    header: header,
-                    body: {
-                        text: item.description,
-                    },
-                    footer: {
-                        text: item.footer || "",
-                    },
-                    carouselCardType: proto.Message.InteractiveMessage.CarouselMessage.CarouselCardType.HSCROLL_CARDS,
-                    nativeFlowMessage: proto.Message.InteractiveMessage.NativeFlowMessage.create({
-                        buttons: item.actions.map((action) => {
-                            switch (action.type) {
-                                case "reply":
-                                    return {
-                                        name: "quick_reply",
-                                        buttonParamsJson: JSON.stringify({
-                                            display_text: action.text,
-                                            id: action.id
-                                        })
-                                    };
-
-                                case "url":
-                                    return {
-                                        name: "cta_url",
-                                        buttonParamsJson: JSON.stringify({
-                                            display_text: action.text,
-                                            url: action.url
-                                        })
-                                    };
-
-                                case "call":
-                                    return {
-                                        name: "cta_call",
-                                        buttonParamsJson: JSON.stringify({
-                                            display_text: action.text,
-                                            phone_number: action.phone
-                                        })
-                                    };
-
-                                case "copy":
-                                    return {
-                                        name: "cta_copy",
-                                        buttonParamsJson: JSON.stringify({
-                                            display_text: action.text,
-                                            copy_code: action.code
-                                        })
-                                    };
-
-                                case "list":
-                                    return {
-                                        name: "single_select",
-                                        buttonParamsJson: JSON.stringify({
-                                            title: action.title,
-                                            sections: action.sections
-                                        })
-                                    };
-
-                                default:
-                                    throw new Error(`Tipo de ação inválido: ${action.type}`);
-                            }
-                        })
-                    }),
+                    header: cabecalho,
+                    body: { text: item.description },
+                    footer: { text: item.footer || "" },
+                    nativeFlowMessage: { buttons: item.actions.map(botaoDaAcao) },
                 };
             }),
         );
 
-        const payload = {
-            interactiveMessage: proto.Message.InteractiveMessage.create({
-                body: proto.Message.InteractiveMessage.Body.create({
-                    text: data.text || "",
-                }),
-                footer: proto.Message.InteractiveMessage.Footer.create({
-                    text: data.footer.text || "",
-                    hasMediaAttachment: false
-                }),
-                carouselMessage: proto.Message.InteractiveMessage.CarouselMessage.create({
-                    cards,
-                }),
-            }),
+        const mensagem = {
+            interactiveMessage: {
+                body: { text: data.text || "" },
+                footer: { text: data.footer?.text || "" },
+                carouselMessage: { cards },
+            },
         };
-
-        await BaileysService.delay(delay)
-        await sock.sendPresenceUpdate("composing", jid);
-        await BaileysService.delay(1200)
-        const msg = generateWAMessageFromContent(jid, payload, {
-            userJid: sock.user.id,
-        });
-
-        const send = await sock.relayMessage(jid, msg.message, {
-            messageId: msg.key.id,
-            additionalNodes: BIZ_NATIVE_FLOW_NODE,
-        });
-        await BaileysService.delay(100)
-        await sock.sendPresenceUpdate("paused", jid);
-        return { success: true, message: send }
-    } catch (error) {
-        console.log(error)
-        logger.error('Erro ao enviar Lista: ', error.message || error)
-        return { success: false, message: "Erro ao enviar Lista", error: error.message || error };
-    }
-
-}
+        return enviarComPresenca(sock, jid, mensagem, atrasoDaRequisicao(data));
+    });

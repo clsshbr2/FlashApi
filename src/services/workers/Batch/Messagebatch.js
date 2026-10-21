@@ -3,7 +3,7 @@ import Message from "../../../models/Message.js";
 import logger from "../../../utils/logger.js";
 import { getMessageType } from "../../AcoesEventos/Message.js";
 
-import BaileysService from "../../BaileysService.js";
+import WhatsAppService from "../../WhatsAppService.js";
 
 const batches = new Map();
 const saving = new Set();
@@ -23,7 +23,7 @@ export const formMessage = async (dados) => {
         if (jid.endsWith("@lid")) {
             try {
                 const lidlimpo = jid.split("@")[0];
-                const mapping = await BaileysService.redis.get(BaileysService.keys.lid_map(dados.sessionId, lidlimpo));
+                const mapping = await WhatsAppService.redis.get(WhatsAppService.keys.lid_map(dados.sessionId, lidlimpo));
                 if (mapping) {
                     jid = `${mapping}@s.whatsapp.net`
                 }
@@ -35,7 +35,7 @@ export const formMessage = async (dados) => {
         if (participant?.endsWith("@lid")) {
             try {
                 const lidlimpo = participant.split("@")[0];
-                const mapping = await BaileysService.redis.get(BaileysService.keys.lid_map(dados.sessionId, lidlimpo));
+                const mapping = await WhatsAppService.redis.get(WhatsAppService.keys.lid_map(dados.sessionId, lidlimpo));
                 if (mapping) {
                     participant = `${mapping}@s.whatsapp.net`
                 }

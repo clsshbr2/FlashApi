@@ -212,7 +212,6 @@ class RedisClient {
 export const KEYS = () => ({
 
   sessao: (sessaoId) => `sessao:${sessaoId}`, //Key para salvar sessão
-  pre_keys: () => `queue:authkeys`,  //Key para salvar pre-key de sessão
   lid_map: (botId, id) => `lid-mapping:${botId}:${id}`,   //Key de lid_map
 
   Store_contatos: () => `queue:contatos`, //key de cache de contatos

@@ -11,9 +11,9 @@
  */
 import { createStore } from "zapo-js";
 import { createPostgresStore } from "@zapo-js/store-postgres";
-import config from "../../config/env.js";
-import logger from "../../utils/logger.js";
-import { execute } from "../../config/database.js";
+import config from "../config/env.js";
+import logger from "../utils/logger.js";
+import { execute } from "../config/database.js";
 
 /** Prefixo das tabelas da zapo (evita colisão com as tabelas da API). */
 export const PREFIXO_TABELAS = "zapo_";
@@ -64,16 +64,35 @@ export function obterStoreZapo() {
       threads: dominioHistorico,
       contacts: dominioHistorico,
     },
+    // Segredo das mensagens (necessário para decifrar votos de enquete) sobrevive
+    // a reinícios da API. As linhas expiradas são removidas por iniciarLimpezaStore().
+    cacheProviders: { messageSecret: "pg", retry: "pg" },
   });
 
   logger.info(`Store da zapo iniciado (PostgreSQL, prefixo "${PREFIXO_TABELAS}", histórico: ${guardarHistorico})`);
   return storeUnico;
 }
 
+const limpezas = new Map();
+
+/**
+ * Inicia (uma vez por sessão) a limpeza periódica das linhas expiradas dos
+ * caches guardados no PostgreSQL. Sem isso as tabelas de cache só crescem.
+ */
+export function iniciarLimpezaStore(sessionId) {
+  if (!resultadoPg || limpezas.has(sessionId)) return;
+  limpezas.set(sessionId, resultadoPg.startCleanup(sessionId));
+}
+
+/** Para a limpeza periódica de uma sessão (quando ela é encerrada). */
+export function pararLimpezaStore(sessionId) {
+  limpezas.get(sessionId)?.stop();
+  limpezas.delete(sessionId);
+}
+
 /**
  * Apaga TODOS os dados da zapo de uma sessão (credenciais, chaves, etc.).
- * Usado quando a sessão é deletada/desconectada de vez.
- * Não mexe nos dados do Baileys (`wa_session_keys`), que servem de backup.
+ * Chamado quando a sessão é deletada ou desvinculada.
  */
 export async function limparDadosSessaoZapo(sessionId) {
   try {
@@ -105,6 +124,8 @@ export async function encerrarStoreZapo() {
   } catch {
     // ignora erros no desligamento
   } finally {
+    for (const poller of limpezas.values()) poller.stop();
+    limpezas.clear();
     storeUnico = null;
     resultadoPg = null;
   }

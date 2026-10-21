@@ -1,6 +1,6 @@
 import express from "express";
 import authenticateApiKey from "../middleware/auth.js";
-import BaileysService from "../services/BaileysService.js";
+import WhatsAppService from "../services/WhatsAppService.js";
 import Store from "../models/Store.js";
 import logger from "../utils/logger.js";
 import redis, { KEYS } from "../services/redis.js";
@@ -10,7 +10,7 @@ const GROUP_LIST_CACHE_TTL_SECONDS = 6 * 60;
 
 async function getignorarGrupo(req, res, next) {
   const sessionId = req.headers["apikey"];
-  const getsessao = await BaileysService.redis.get(`sessao:${sessionId}`);
+  const getsessao = await WhatsAppService.redis.get(`sessao:${sessionId}`);
   if (getsessao && getsessao.ignorar_grupos) {
     return res.status(400).json({ success: false, message: "A sessão está configurada para ignorar grupos" });
   }
@@ -31,8 +31,7 @@ router.get("/list", authenticateApiKey, getignorarGrupo, async (req, res) => {
 
       });
     }
-    /** @type {import("@whiskeysockets/baileys").WASocket} */
-    const sock = BaileysService.sockets.get(sessao.apikey);
+    const sock = WhatsAppService.sockets.get(sessao.apikey);
     if (!sock) {
       return res.status(400).json({
         success: false,
@@ -72,8 +71,7 @@ router.post("/info", authenticateApiKey, getignorarGrupo, async (req, res) => {
       });
     }
 
-    /** @type {import("@whiskeysockets/baileys").WASocket} */
-    const sock = BaileysService.sockets.get(sessao.apikey);
+    const sock = WhatsAppService.sockets.get(sessao.apikey);
     if (!sock) {
       return res.status(400).json({
         success: false,
@@ -114,8 +112,7 @@ router.post("/create", authenticateApiKey, getignorarGrupo, async (req, res) => 
       });
     }
 
-    /** @type {import("@whiskeysockets/baileys").WASocket} */
-    const sock = BaileysService.sockets.get(sessao.apikey);
+    const sock = WhatsAppService.sockets.get(sessao.apikey);
     if (!sock) {
       return res.status(400).json({
         success: false,
@@ -158,8 +155,7 @@ router.post("/update-description", authenticateApiKey, getignorarGrupo, async (r
       });
     }
 
-    /** @type {import("@whiskeysockets/baileys").WASocket} */
-    const sock = BaileysService.sockets.get(sessao.apikey);
+    const sock = WhatsAppService.sockets.get(sessao.apikey);
     if (!sock) {
       return res.status(400).json({
         success: false,
@@ -209,8 +205,7 @@ router.post("/ParticipantsUpdate", authenticateApiKey, getignorarGrupo, async (r
       });
     }
 
-    /** @type {import("@whiskeysockets/baileys").WASocket} */
-    const sock = BaileysService.sockets.get(sessao.apikey);
+    const sock = WhatsAppService.sockets.get(sessao.apikey);
     if (!sock) {
       return res.status(400).json({
         success: false,
@@ -283,8 +278,7 @@ router.post("/leave", authenticateApiKey, getignorarGrupo, async (req, res) => {
       });
     }
 
-    /** @type {import("@whiskeysockets/baileys").WASocket} */
-    const sock = BaileysService.sockets.get(sessao.apikey);
+    const sock = WhatsAppService.sockets.get(sessao.apikey);
     if (!sock) {
       return res.status(400).json({
         success: false,
@@ -320,8 +314,7 @@ router.post("/update-subject", authenticateApiKey, getignorarGrupo, async (req, 
       });
     }
 
-    /** @type {import("@whiskeysockets/baileys").WASocket} */
-    const sock = BaileysService.sockets.get(sessao.apikey);
+    const sock = WhatsAppService.sockets.get(sessao.apikey);
     if (!sock) {
       return res.status(400).json({
         success: false,
@@ -364,8 +357,7 @@ router.post("/up-setting", authenticateApiKey, getignorarGrupo, async (req, res)
       });
     }
 
-    /** @type {import("@whiskeysockets/baileys").WASocket} */
-    const sock = BaileysService.sockets.get(sessao.apikey);
+    const sock = WhatsAppService.sockets.get(sessao.apikey);
     if (!sock) {
       return res.status(400).json({
         success: false,
@@ -402,8 +394,7 @@ router.get("/group-Invite/:groupJid", authenticateApiKey, getignorarGrupo, async
       });
     }
 
-    /** @type {import("@whiskeysockets/baileys").WASocket} */
-    const sock = BaileysService.sockets.get(sessao.apikey);
+    const sock = WhatsAppService.sockets.get(sessao.apikey);
     if (!sock) {
       return res.status(400).json({
         success: false,
@@ -445,8 +436,7 @@ router.get("/group-Invite-revogar/:groupJid", authenticateApiKey, getignorarGrup
       });
     }
 
-    /** @type {import("@whiskeysockets/baileys").WASocket} */
-    const sock = BaileysService.sockets.get(sessao.apikey);
+    const sock = WhatsAppService.sockets.get(sessao.apikey);
     if (!sock) {
       return res.status(400).json({
         success: false,

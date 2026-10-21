@@ -4,7 +4,7 @@ import Store from "../models/Store.js";
 import Session from "../models/Session.js";
 import logger from "../utils/logger.js";
 import config from "../config/env.js";
-import BaileysService from "../services/BaileysService.js";
+import WhatsAppService from "../services/WhatsAppService.js";
 
 const router = express.Router();
 const SESSION_STATS_CACHE_TTL_SECONDS = 120;
@@ -53,7 +53,7 @@ router.put("/config", authenticateApiKey, async (req, res) => {
     sessao.rejeitar_ligacoes = rejectCall;
 
     const success = await Store.saveSessionConfig(sessao.apikey, sessao);
-    BaileysService.salvarSessao(sessao.apikey, sessao);
+    WhatsAppService.salvarSessao(sessao.apikey, sessao);
 
     res.json({
       success: true,
@@ -95,7 +95,7 @@ router.put("/webhook", authenticateApiKey, async (req, res) => {
     sessao.webhook_status = status;
     console.log(sessao)
     const success = await Store.saveSessionConfig(sessao.apikey, sessao);
-    BaileysService.salvarSessao(sessao.apikey, sessao);
+    WhatsAppService.salvarSessao(sessao.apikey, sessao);
 
     res.json({
       success: true,
@@ -146,7 +146,7 @@ router.put("/proxy", authenticateApiKey, async (req, res) => {
       });
     }
     if (active === true) {
-      const sock = await BaileysService.sockets.get(sessao.apikey);
+      const sock = await WhatsAppService.sockets.get(sessao.apikey);
       try { await sock.end(); } catch (_) {/* ignore */ }
     }
     logger.info(`Configurações de proxy da sessão ${sessao.apikey} atualizadas`);

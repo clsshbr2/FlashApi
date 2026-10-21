@@ -50,7 +50,7 @@ services:
       NODE_ENV: production
 
       LOG_LEVEL: info
-      BAILEYS_LOG_LEVEL: error
+      WA_LOG_LEVEL: error
 
       TZ: America/Sao_Paulo
 

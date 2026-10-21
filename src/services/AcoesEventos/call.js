@@ -1,15 +1,15 @@
 import logger from "../../utils/logger.js"
-import BaileysService from "../BaileysService.js"
+import WhatsAppService from "../WhatsAppService.js"
 import { sendMessage } from "../messageService.js"
 import redis, { KEYS } from "../redis.js"
 
 
 export const call = async (sessionId, data) => {
 
-    const sock = BaileysService.sockets.get(sessionId)
+    const sock = WhatsAppService.sockets.get(sessionId)
     if (!sock) return
 
-    const getsesssao = await BaileysService.GetSessao(sessionId)
+    const getsesssao = await WhatsAppService.GetSessao(sessionId)
     if (!getsesssao) return;
 
     for (const call of data) {

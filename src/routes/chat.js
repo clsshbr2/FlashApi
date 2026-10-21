@@ -1,69 +1,15 @@
 import express from "express";
 import authenticateApiKey from "../middleware/auth.js";
-import BaileysService from "../services/BaileysService.js";
+import WhatsAppService from "../services/WhatsAppService.js";
 import Store from "../models/Store.js";
 
 import logger from "../utils/logger.js";
 import Chats from "../models/chats.js";
-import { downloadMediaMessage, generateWAMessageFromContent, prepareWAMessageMedia, proto, WAProto } from "@whiskeysockets/baileys";
-import axios from "axios";
-import { Sticker } from "wa-sticker-formatter";
-import ffmpeg from "fluent-ffmpeg";
-import ffmpegInstaller from "@ffmpeg-installer/ffmpeg";
-import fs from "fs";
-import os from "os";
-import path from "path";
 import { sendMessage } from "../services/messageService.js";
 import { sendButton, sendCarousel, sendinteractiveMessage, sendList } from "../services/buttonsService.js";
 import Message from "../models/Message.js";
-ffmpeg.setFfmpegPath(ffmpegInstaller.path);
 
 const router = express.Router();
-
-//Criar sticker a partir de uma URL ou base64 usando wa-sticker-formatter
-async function createSticker(input) {
-  try {
-    let imageBuffer;
-
-    if (typeof input === "string" && input.startsWith("data:")) {
-      const base64Data = input.split(",")[1];
-      imageBuffer = Buffer.from(base64Data, "base64");
-    } else {
-      imageBuffer = input;
-    }
-
-    const sticker = new Sticker(imageBuffer, {
-      pack: "Flash API",
-      author: "Store",
-      type: "full",
-      quality: 100,
-    });
-
-    return await sticker.toBuffer();
-  } catch (error) {
-    console.error("Erro ao criar sticker:", error);
-    return false;
-  }
-}
-
-// Converter áudio para formato Opus usando ffmpeg
-async function converterParaOpus(buffer) {
-  const input = path.join(os.tmpdir(), `${Date.now()}.mp3`);
-  const output = path.join(os.tmpdir(), `${Date.now()}.ogg`);
-
-  await fs.promises.writeFile(input, buffer);
-
-  await new Promise((resolve, reject) => {
-    ffmpeg(input).audioCodec("libopus").format("ogg").on("end", resolve).on("error", reject).save(output);
-  });
-
-  const result = await fs.promises.readFile(output);
-
-  fs.unlink(input, () => { });
-  fs.unlink(output, () => { });
-
-  return result;
-}
 
 router.post("/send-text", authenticateApiKey, async (req, res) => {
   try {
@@ -355,8 +301,7 @@ router.post("/typing", authenticateApiKey, async (req, res) => {
       });
     }
 
-    /** @type {import("@whiskeysockets/baileys").WASocket} */
-    const sock = BaileysService.sockets.get(sessionId);
+    const sock = WhatsAppService.sockets.get(sessionId);
     if (!sock) {
       return res.status(400).json({
         success: false,
@@ -365,7 +310,7 @@ router.post("/typing", authenticateApiKey, async (req, res) => {
     }
 
     if (typeof delay == "number" && delay > 0) {
-      await BaileysService.delay(parseInt(delay))
+      await WhatsAppService.delay(parseInt(delay))
     }
     if (!typing) {
       sock.sendPresenceUpdate("paused", jid);
@@ -399,8 +344,7 @@ router.post("/mark-read", authenticateApiKey, async (req, res) => {
       });
     }
 
-    /** @type {import("@whiskeysockets/baileys").WASocket} */
-    const sock = BaileysService.sockets.get(sessao.apikey);
+    const sock = WhatsAppService.sockets.get(sessao.apikey);
     if (!sock) {
       return res.status(400).json({
         success: false,
@@ -512,8 +456,7 @@ router.delete("/delete/:id_message", authenticateApiKey, async (req, res) => {
       fromMe: get_message.fromme ? true : false,
       participant: get_message.participant || undefined,
     };
-    /** @type {import("@whiskeysockets/baileys").WASocket} */
-    const sock = BaileysService.sockets.get(sessao.apikey)
+    const sock = WhatsAppService.sockets.get(sessao.apikey)
     if (!sock) {
       return res.json({
         success: false,
@@ -562,7 +505,11 @@ router.post("/midiaToBase64", authenticateApiKey, async (req, res) => {
         message: "Tipo de mídia inválido",
       });
     }
-    const buffer = await downloadMediaMessage({ message }, "buffer");
+    const sock = WhatsAppService.sockets.get(req.sessao.apikey);
+    if (!sock) {
+      return res.status(400).json({ success: false, message: "Sessão desconectada" });
+    }
+    const buffer = await sock.baixarMidia(message);
 
     const base64 = buffer.toString("base64");
     const mime = message.imageMessage?.mimetype || message.videoMessage?.mimetype || message.audioMessage?.mimetype;

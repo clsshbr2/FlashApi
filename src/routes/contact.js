@@ -1,6 +1,6 @@
 import express from "express";
 import authenticateApiKey from "../middleware/auth.js";
-import BaileysService from "../services/BaileysService.js";
+import WhatsAppService from "../services/WhatsAppService.js";
 import Store from "../models/Store.js";
 import logger from "../utils/logger.js";
 import fs from "fs";
@@ -46,7 +46,7 @@ router.get("/avatar/:apikey/:jid", async (req, res) => {
         message: "JID é obrigatório",
       });
     }
-    const sock = BaileysService.getSocket(apiKey);
+    const sock = WhatsAppService.getSocket(apiKey);
 
     if (!sock?.user?.id) {
       return res.sendFile(path.resolve("public/images/image.png"));
@@ -84,8 +84,7 @@ router.post("/check", authenticateApiKey, async (req, res) => {
         message: "numbers deve ser string"
       });
     }
-    /** @type {import("@whiskeysockets/baileys").WASocket} */
-    const sock = await BaileysService.sockets.get(sessionId)
+    const sock = await WhatsAppService.sockets.get(sessionId)
     if (!sock) {
       return res.status(500).json({
         success: false,
@@ -126,8 +125,7 @@ router.post("/block", authenticateApiKey, async (req, res) => {
       });
     }
 
-    /** @type {import("@whiskeysockets/baileys").WASocket} */
-    const sock = await BaileysService.sockets.get(sessionId)
+    const sock = await WhatsAppService.sockets.get(sessionId)
     if (!sock) {
       return res.status(400).json({
         success: false,
@@ -163,7 +161,7 @@ router.post("/lid-to-jid", authenticateApiKey, async (req, res) => {
     }
 
     const lidlimpo = lid.split("@")[0];
-    const mapping = await BaileysService.redis.get(BaileysService.keys.lid_map(sessionId, lidlimpo));
+    const mapping = await WhatsAppService.redis.get(WhatsAppService.keys.lid_map(sessionId, lidlimpo));
     if (!mapping) {
       return res.status(404).json({
         success: false,

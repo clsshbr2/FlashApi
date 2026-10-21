@@ -95,11 +95,3 @@ CREATE TABLE IF NOT EXISTS proxy (
     "active" BOOLEAN NULL,
     CONSTRAINT "proxy_sessao_id_key" UNIQUE ("sessao_id")
 );
-
-CREATE TABLE IF NOT EXISTS wa_session_keys (
-    sessao_id VARCHAR(255) NOT NULL,
-    key_id TEXT NOT NULL,
-    value_json JSONB NOT NULL,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT wa_session_keys_session_key_unique UNIQUE (sessao_id, key_id)
-);

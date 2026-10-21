@@ -4,7 +4,7 @@
 
 # ⚡ Flash API
 
-### API REST Multi-Sessão para WhatsApp, construída sobre o Baileys
+### API REST Multi-Sessão para WhatsApp, construída sobre a zapo-js
 
 Gerencie centenas de instâncias do WhatsApp de forma independente, com autenticação por API Key, Webhooks, WebSocket, painel administrativo e persistência em PostgreSQL + Redis.
 
@@ -12,7 +12,7 @@ Gerencie centenas de instâncias do WhatsApp de forma independente, com autentic
 
 [![Node.js](https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
 [![Express](https://img.shields.io/badge/Express-4.x-000000?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com/)
-[![Baileys](https://img.shields.io/badge/Baileys-WhiskeySockets-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)](https://github.com/WhiskeySockets/Baileys)
+[![zapo-js](https://img.shields.io/badge/zapo--js-WhatsApp_Web-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)](https://github.com/vinikjkkj/zapo)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16+-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Redis](https://img.shields.io/badge/Redis-7-DC382D?style=for-the-badge&logo=redis&logoColor=white)](https://redis.io/)
 [![Docker](https://img.shields.io/badge/Docker-ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
@@ -61,9 +61,9 @@ Gerencie centenas de instâncias do WhatsApp de forma independente, com autentic
 
 ## 🧭 Sobre o Projeto
 
-**Flash API** é uma API RESTful escrita em **Node.js (ESM)** que expõe o protocolo do WhatsApp Web através da biblioteca [**Baileys**](https://github.com/WhiskeySockets/Baileys), permitindo criar e administrar **múltiplas sessões (instâncias) de WhatsApp** simultaneamente através de uma **API Key** exclusiva por sessão.
+**Flash API** é uma API RESTful escrita em **Node.js (ESM)** que expõe o protocolo do WhatsApp Web através da biblioteca [**zapo-js**](https://github.com/vinikjkkj/zapo), permitindo criar e administrar **múltiplas sessões (instâncias) de WhatsApp** simultaneamente através de uma **API Key** exclusiva por sessão.
 
-> 🔁 **Provedor de WhatsApp selecionável:** além da Baileys, a API suporta a [**zapo-js**](https://github.com/vinikjkkj/zapo) sem alterar nenhum endpoint. Defina `WA_PROVIDER=baileys` (padrão) ou `WA_PROVIDER=zapo` no `.env`. Guia completo, checklist de testes e rollback em [`docs/MIGRACAO_ZAPO.md`](docs/MIGRACAO_ZAPO.md).
+> 📘 Detalhes da integração com o WhatsApp (arquitetura, banco, eventos e manutenção) em [`docs/WHATSAPP_ZAPO.md`](docs/WHATSAPP_ZAPO.md).
 
 O projeto foi pensado para cenários de **multi-tenant/multi-atendimento**, oferecendo:
 
@@ -100,7 +100,7 @@ O projeto foi pensado para cenários de **multi-tenant/multi-atendimento**, ofer
 
 ## 🏗️ Arquitetura
 
-A Flash API segue uma arquitetura em camadas (routes → services → models → banco de dados), com Redis atuando como camada de cache/sessão e barramento de filas entre a API e o worker que processa as credenciais do Baileys.
+A Flash API segue uma arquitetura em camadas (routes → services → models → banco de dados), com Redis atuando como camada de cache/sessão e barramento de filas entre a API e o worker que processa as credenciais da zapo.
 
 ```mermaid
 flowchart TB
@@ -109,8 +109,8 @@ flowchart TB
     subgraph FlashAPI["Flash API (Node.js)"]
         API --> MW["Middlewares<br/>auth.js / globalAuth.js / helmet / cors"]
         MW --> Routes["Rotas<br/>session · chat · contact · group · config · system"]
-        Routes --> Services["Services<br/>BaileysService · messageService · buttonsService"]
-        Services --> Baileys["@whiskeysockets/baileys<br/>(conexão WhatsApp Web)"]
+        Routes --> Services["Services<br/>WhatsAppService · messageService · buttonsService"]
+        Services --> Zapo["zapo-js<br/>(conexão WhatsApp Web)"]
         Services --> WSService["WebSocketService"]
         Manager["Manager Web (EJS)<br/>/manager/*"] --> Routes
     end
@@ -120,7 +120,7 @@ flowchart TB
 
     WSService -->|eventos em tempo real| WSClients["Clientes WebSocket<br/>/ws"]
     Services -->|POST evento| Webhook["Webhook externo<br/>(HTTP callback)"]
-    Baileys <-->|Protocolo WhatsApp Web| WhatsApp(["WhatsApp"])
+    Zapo <-->|Protocolo WhatsApp Web| WhatsApp(["WhatsApp"])
 ```
 
 ---
@@ -133,7 +133,7 @@ Fluxo típico de criação e uso de uma sessão:
 sequenceDiagram
     participant U as Usuário/Integração
     participant A as Flash API
-    participant B as Baileys Service
+    participant B as WhatsApp Service
     participant W as WhatsApp
 
     U->>A: POST /api/session/create_sessao (GLOBAL_API_KEY)
@@ -214,12 +214,12 @@ FlashApi/
     │   └── manager.js             # Login e dashboard do painel web
     │
     ├── services/
-    │   ├── BaileysService.js       # Núcleo de integração com o Baileys (conexão, eventos, QR)
+    │   ├── WhatsAppService.js      # Gerencia as sessões (criar, reconectar, proxy, desligar)
     │   ├── WebSocketService.js     # Broadcast de eventos via WebSocket
     │   ├── messageService.js       # Montagem/envio de mensagens (mídia, texto, localização…)
     │   ├── buttonsService.js       # Botões, listas, mensagens interativas e carrossel
     │   ├── redis.js                # Cliente Redis (ioredis)
-    │   ├── usePostgresAuthStore.js # Auth store do Baileys persistido em PostgreSQL
+    │   ├── EventService.js         # Liga os eventos da sessão a webhooks, WebSocket e filas
     │   └── workers/                # Workers assíncronos (ex.: processamento de filas)
     │
     └── utils/
@@ -237,7 +237,7 @@ FlashApi/
 | -------------------------------------------------------------------- | --------------------------------------------- |
 | [Node.js 20+](https://nodejs.org/)                                   | Runtime JavaScript (ESM — `"type": "module"`) |
 | [Express 4](https://expressjs.com/)                                  | Framework HTTP/REST                           |
-| [@whiskeysockets/baileys](https://github.com/WhiskeySockets/Baileys) | Cliente WhatsApp Web (multi-device)           |
+| [zapo-js](https://github.com/vinikjkkj/zapo) | Cliente WhatsApp Web (multi-device)           |
 | [ws](https://github.com/websockets/ws)                               | Servidor WebSocket nativo                     |
 | [EJS](https://ejs.co/)                                               | Template engine do painel Manager             |
 | [PostgreSQL](https://www.postgresql.org/) (`pg`)                     | Banco de dados relacional principal           |
@@ -250,7 +250,7 @@ FlashApi/
 | Segurança           | `helmet`, `cors`, `bcrypt`, `jsonwebtoken`, `express-session`, `connect-redis`                    |
 | Validação           | `joi`                                                                                             |
 | Mídia               | `@ffmpeg-installer/ffmpeg`, `fluent-ffmpeg`*, `wa-sticker-formatter`, `qrcode`, `qrcode-terminal` |
-| HTTP/Proxy          | `axios`, `https-proxy-agent`, `undici`, `link-preview-js`                                         |
+| HTTP/Proxy          | `axios`, `https-proxy-agent`, `undici`                                                            |
 | Documentação/Testes | `swagger-jsdoc`, `swagger-ui-express`, `@apidevtools/swagger-parser`                              |
 | Utilitários         | `uuid`, `moment-timezone`, `node-cache`, `systeminformation`, `pino`, `pino-pretty`               |
 | Dev                 | `nodemon`, `prettier`, `prettier-plugin-ejs`                                                      |
@@ -336,7 +336,7 @@ Todas as variáveis abaixo devem ser definidas em um arquivo `.env` na raiz do p
 | `PROTOCOLO`         | `http`              | Protocolo utilizado (`http` \| `https`)                                            |
 | `PORT`              | `3000`              | Porta da API                                                                       |
 | `LOG_LEVEL`         | `info`              | Nível de log da aplicação (`fatal`,`error`,`warn`,`info`,`debug`,`trace`,`silent`) |
-| `BAILEYS_LOG_LEVEL` | `LOG_LEVEL`         | Nível de log específico do Baileys                                                 |
+| `WA_LOG_LEVEL`      | `LOG_LEVEL`         | Nível de log da zapo (aceita também o antigo `BAILEYS_LOG_LEVEL`)                  |
 | `VERSAO`            | `1.0.4`             | Versão exibida pela API                                                            |
 | `SYNC_SESSIONS`     | `true`              | Sincroniza automaticamente todas as sessões salvas ao iniciar                      |
 | `TZ`                | `America/Sao_Paulo` | Timezone da aplicação                                                              |
@@ -796,7 +796,7 @@ O repositório inclui `postman_collection.json` com todos os endpoints documenta
 
 ## ⚠️ Limitações Conhecidas
 
-- 🔸 Depende diretamente da engenharia reversa do protocolo WhatsApp Web feita pelo **Baileys** — mudanças no WhatsApp podem exigir atualização da dependência.
+- 🔸 Depende diretamente da engenharia reversa do protocolo WhatsApp Web feita pela **zapo-js** — mudanças no WhatsApp podem exigir atualização da dependência.
 - 🔸 Não é uma solução oficial/homologada pela Meta; o uso em desacordo com os Termos de Serviço do WhatsApp pode resultar em banimento do número.
 - 🔸 Conversão de áudio depende de `ffmpeg` (via `@ffmpeg-installer/ffmpeg`), o que pode aumentar o tempo de build da imagem Docker.
 - 🔸 Não há suíte de testes automatizados configurada (`npm test` é um placeholder).
@@ -824,7 +824,7 @@ O repositório inclui `postman_collection.json` com todos os endpoints documenta
 <details>
 <summary><b>Preciso pagar para usar a API oficial do WhatsApp?</b></summary>
 <br>
-Não. A Flash API utiliza o <b>Baileys</b>, que se conecta via WhatsApp Web (multi-device), sem custos oficiais do WhatsApp Business API. Ainda assim, o uso é por sua conta e risco quanto aos Termos de Serviço do WhatsApp.
+Não. A Flash API utiliza a <b>zapo-js</b>, que se conecta via WhatsApp Web (multi-device), sem custos oficiais do WhatsApp Business API. Ainda assim, o uso é por sua conta e risco quanto aos Termos de Serviço do WhatsApp.
 </details>
 
 <details>
@@ -836,7 +836,7 @@ Não há um limite fixo imposto pelo código além do <code>LIMITE_QRCODE</code>
 <details>
 <summary><b>A API funciona sem PostgreSQL ou Redis?</b></summary>
 <br>
-Não. Ambos são obrigatórios: o PostgreSQL armazena sessões, mensagens, contatos e grupos; o Redis gerencia cache, sessão do painel Manager e a fila de chaves de autenticação do Baileys.
+Não. Ambos são obrigatórios: o PostgreSQL armazena sessões, mensagens, contatos e grupos; o Redis gerencia cache, sessão do painel Manager e a fila de chaves de autenticação do zapo.
 </details>
 
 <details>
@@ -848,7 +848,7 @@ Configure um <b>Webhook</b> (global ou por sessão) para receber os eventos via 
 <details>
 <summary><b>Posso usar um número de WhatsApp Business?</b></summary>
 <br>
-Sim, o Baileys suporta contas padrão e Business. O comportamento pode variar conforme recursos exclusivos do WhatsApp Business (catálogo, mensagens automáticas nativas etc.).
+Sim, a zapo-js suporta contas padrão e Business. O comportamento pode variar conforme recursos exclusivos do WhatsApp Business (catálogo, mensagens automáticas nativas etc.).
 </details>
 
 <details>

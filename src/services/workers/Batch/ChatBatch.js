@@ -2,7 +2,7 @@ import config from "../../../config/env.js";
 import Chats from "../../../models/chats.js";
 import logger from "../../../utils/logger.js";
 
-import BaileysService from "../../BaileysService.js";
+import WhatsAppService from "../../WhatsAppService.js";
 import redis, { KEYS } from "../../redis.js";
 
 const batches = new Map();

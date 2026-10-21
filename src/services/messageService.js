@@ -1,5 +1,5 @@
 import logger from "../utils/logger.js";
-import BaileysService from "./BaileysService.js";
+import WhatsAppService from "./WhatsAppService.js";
 import fs from "fs";
 import path from "path";
 import os from "os";
@@ -9,22 +9,19 @@ import ffmpeg from "fluent-ffmpeg";
 import ffmpegInstaller from "@ffmpeg-installer/ffmpeg";
 import axios from "axios";
 import { prepareMedia } from "../utils/prepareMedia.js";
-import { generateThumbnail, getUrlInfo } from "@whiskeysockets/baileys";
 ffmpeg.setFfmpegPath(ffmpegInstaller.path)
 
 /**
  * @param {string} sessionId
- * @param {import("@whiskeysockets/baileys").AnyRegularMessageContent} data
- * @param {import("@whiskeysockets/baileys").WAMessageKey} [data.quoted]
+ * @param {object} data  corpo da requisição (jid, text, image, audio, quoted, etc.)
  */
 export const sendMessage = async (sessionId, data) => {
 
     try {
-        /** @type {import("@whiskeysockets/baileys").WASocket} */
-        const sock = BaileysService.sockets.get(sessionId);
+        const sock = WhatsAppService.sockets.get(sessionId);
         if (!sock) return { success: false, message: "Sessão não conectada" };
 
-        const session = await BaileysService.GetSessao(sessionId);
+        const session = await WhatsAppService.GetSessao(sessionId);
         if (!session) return { success: false, message: "Sessão não conectada" };
 
         const jid = data.jid.includes("@") ? data.jid : `${data.jid}@s.whatsapp.net`;
@@ -151,9 +148,9 @@ export const sendMessage = async (sessionId, data) => {
             outros.broadcast = data.broadcast || undefined
         }
 
-        await BaileysService.delay(delay)
+        await WhatsAppService.delay(delay)
         await sock.sendPresenceUpdate(data.audio ? "recording" : "composing", jid);
-        await BaileysService.delay(1200)
+        await WhatsAppService.delay(1200)
 
 
         if (data.externalAdReply) {
@@ -182,7 +179,7 @@ export const sendMessage = async (sessionId, data) => {
             message,
             outros
         );
-        await BaileysService.delay(100)
+        await WhatsAppService.delay(100)
         await sock.sendPresenceUpdate("paused", jid);
         return { success: true, message: send };
 

@@ -2,7 +2,7 @@ import WebSocket from 'ws';
 import config from '../config/env.js';
 import auth from '../middleware/globalAuth.js';
 import logger from '../utils/logger.js';
-import BaileysService from './BaileysService.js';
+import WhatsAppService from './WhatsAppService.js';
 import moment from 'moment-timezone';
 import WebhookService from './WebhookService.js';
 import Session from '../models/Session.js';

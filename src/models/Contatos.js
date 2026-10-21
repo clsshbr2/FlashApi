@@ -1,6 +1,6 @@
 
 import { execute } from '../config/database.js';
-import BaileysService from '../services/BaileysService.js';
+import WhatsAppService from '../services/WhatsAppService.js';
 import logger from '../utils/logger.js';
 
 // Instância singleton do banco
@@ -17,7 +17,7 @@ class Contato {
             if (jid.endsWith("@lid")) {
                 try {
                     const lidlimpo = jid.split("@")[0];
-                    const mapping = await BaileysService.redis.get(BaileysService.keys.lid_map(dados.sessionId, lidlimpo));
+                    const mapping = await WhatsAppService.redis.get(WhatsAppService.keys.lid_map(dados.sessionId, lidlimpo));
                     if (mapping) {
                         jid = `${mapping}@s.whatsapp.net`
                     }
