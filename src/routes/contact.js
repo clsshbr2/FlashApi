@@ -1,12 +1,13 @@
 import express from "express";
 import authenticateApiKey from "../middleware/auth.js";
 import WhatsAppService from "../services/WhatsAppService.js";
-import Store from "../models/Store.js";
+import { listarContatos } from "../whatsapp/store.js";
 import logger from "../utils/logger.js";
 import fs from "fs";
 import util from "util";
 import Session from "../models/Session.js";
 import path from "path";
+import axios from "axios";
 
 const router = express.Router();
 
@@ -14,7 +15,7 @@ router.get("/list", authenticateApiKey, async (req, res) => {
   try {
     const sessionId = req.headers["apikey"];
 
-    const SoJids = await Store.getContacts(sessionId);
+    const SoJids = await listarContatos(sessionId);
     res.json({
       success: true,
       total: SoJids.length,
@@ -48,20 +49,21 @@ router.get("/avatar/:apikey/:jid", async (req, res) => {
     }
     const sock = WhatsAppService.getSocket(apiKey);
 
-    if (!sock?.user?.id) {
+    if (!sock?.client) {
       return res.sendFile(path.resolve("public/images/image.png"));
     }
+    const jidformat = jid.includes('@s.whatsapp.net') ? jid : jid + "@s.whatsapp.net"
 
     // Tenta a foto em alta resolução e, se não houver, a miniatura.
     let url;
     try {
-      url = await sock.profilePictureUrl(jid, "image");
+      url = await sock.client.profile.getProfilePicture(jid + "@s.whatsapp.net", "image")
     } catch {
-      url = await sock.profilePictureUrl(jid, "preview");
-    }
-    if (!url) return res.sendFile(path.resolve("public/images/image.png"));
 
-    const response = await axios.get(url, {
+    }
+    if (!url.url) return res.sendFile(path.resolve("public/images/image.png"));
+
+    const response = await axios.get(url.url, {
       responseType: "stream",
       timeout: 5000,
     });
@@ -69,6 +71,7 @@ router.get("/avatar/:apikey/:jid", async (req, res) => {
     res.setHeader("Content-Type", "image/jpeg");
     response.data.pipe(res);
   } catch (error) {
+    console.log(error)
     // Sem foto (ou privacidade) é comum; mostra a imagem padrão e registra o motivo.
     logger.debug(`Avatar indisponível (${req.params.jid}): ${error?.message || error}`);
     return res.sendFile(path.resolve("public/images/image.png"));

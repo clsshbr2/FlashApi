@@ -6,14 +6,19 @@
  * na primeira conexão (migrations internas do @zapo-js/store-postgres), então
  * NÃO é preciso alterar o `supabase/migrations/postgres.sql`.
  *
+ * A zapo também guarda sozinha mensagens, chats e contatos (tabelas
+ * `zapo_mailbox_*`); a API não grava nada disso manualmente, apenas consulta
+ * (veja "Consultas" no fim do arquivo).
+ *
  * Um único store é compartilhado por todas as sessões; cada sessão é
  * separada pelo `sessionId` (que continua sendo a `apikey` da sessão).
  */
-import { createStore } from "zapo-js";
+import { createStore, proto } from "zapo-js";
 import { createPostgresStore } from "@zapo-js/store-postgres";
 import config from "../config/env.js";
 import logger from "../utils/logger.js";
 import { execute } from "../config/database.js";
+import { paraJsonApi } from "./utils.js";
 
 /** Prefixo das tabelas da zapo (evita colisão com as tabelas da API). */
 export const PREFIXO_TABELAS = "zapo_";
@@ -23,9 +28,6 @@ let resultadoPg = null;
 
 /**
  * Retorna (criando na primeira chamada) o store compartilhado da zapo.
- * Por padrão mensagens/chats/contatos NÃO são gravados pela zapo, porque a API
- * já tem as próprias tabelas para isso. Para a zapo guardá-los também, use
- * ZAPO_STORE_HISTORICO=true no .env.
  */
 export function obterStoreZapo() {
   if (storeUnico) return storeUnico;
@@ -44,9 +46,6 @@ export function obterStoreZapo() {
     tablePrefix: PREFIXO_TABELAS,
   });
 
-  const guardarHistorico = process.env.ZAPO_STORE_HISTORICO === "true";
-  const dominioHistorico = guardarHistorico ? "pg" : "none";
-
   storeUnico = createStore({
     backends: { pg: resultadoPg },
     providers: {
@@ -59,17 +58,17 @@ export function obterStoreZapo() {
       senderKey: "pg",
       appState: "pg",
       privacyToken: "pg",
-      // Domínios opcionais (histórico). "none" = a zapo não guarda.
-      messages: dominioHistorico,
-      threads: dominioHistorico,
-      contacts: dominioHistorico,
+      // Histórico: a zapo guarda mensagens, chats e contatos sozinha.
+      messages: "pg",
+      threads: "pg",
+      contacts: "pg",
     },
     // Segredo das mensagens (necessário para decifrar votos de enquete) sobrevive
     // a reinícios da API. As linhas expiradas são removidas por iniciarLimpezaStore().
     cacheProviders: { messageSecret: "pg", retry: "pg" },
   });
 
-  logger.info(`Store da zapo iniciado (PostgreSQL, prefixo "${PREFIXO_TABELAS}", histórico: ${guardarHistorico})`);
+  logger.info(`Store da zapo iniciado (PostgreSQL, prefixo "${PREFIXO_TABELAS}")`);
   return storeUnico;
 }
 
@@ -128,5 +127,104 @@ export async function encerrarStoreZapo() {
     limpezas.clear();
     storeUnico = null;
     resultadoPg = null;
+  }
+}
+
+// ============================================================== Consultas
+// Leitura do que a zapo guardou. Mensagens ficam como bytes do proto; chats e
+// contatos são lidos direto das tabelas porque o contrato da zapo não lista/busca.
+
+const T = (nome) => `${PREFIXO_TABELAS}mailbox_${nome}`;
+
+function paraMensagemApi(registro) {
+  let conteudo = null;
+  if (registro.messageBytes) {
+    try {
+      conteudo = paraJsonApi(proto.Message.toObject(proto.Message.decode(registro.messageBytes), { defaults: false }));
+    } catch {
+      // bytes inválidos: devolve só os metadados
+    }
+  }
+  return {
+    key: { id: registro.id, remoteJid: registro.threadJid, fromMe: registro.fromMe, participant: registro.participantJid || undefined },
+    message: conteudo,
+    messageTimestamp: registro.timestampMs ? Math.floor(registro.timestampMs / 1000) : undefined,
+  };
+}
+
+/** Mensagens de uma conversa, da mais nova para a mais antiga. */
+export async function listarMensagens(sessionId, jid, limite = 50, antesDeMs) {
+  const registros = await obterStoreZapo().session(sessionId).messages.listByThread(jid, limite, antesDeMs);
+  return registros.map(paraMensagemApi);
+}
+
+/** Uma mensagem pelo ID (ou null). */
+export async function obterMensagem(sessionId, id) {
+  const registro = await obterStoreZapo().session(sessionId).messages.getById(id);
+  return registro ? paraMensagemApi(registro) : null;
+}
+
+/** Chats paginados, com busca opcional por nome ou jid. */
+export async function listarChats(sessionId, { page = 1, limit = 50, search = "" } = {}) {
+  const params = [sessionId];
+  let filtro = "";
+  if (search) {
+    params.push(`%${search}%`);
+    filtro = `AND (name ILIKE $2 OR jid ILIKE $2)`;
+  }
+  const where = `WHERE session_id = $1 ${filtro}`;
+  const [{ rows }, { rows: total }] = await Promise.all([
+    execute(
+      `SELECT jid, name, unread_count, archived, pinned, mute_end_ms, marked_as_unread
+         FROM ${T("threads")} ${where}
+        ORDER BY pinned DESC NULLS LAST, jid
+        LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+      [...params, limit, (page - 1) * limit],
+    ),
+    execute(`SELECT COUNT(*) AS total FROM ${T("threads")} ${where}`, params),
+  ]);
+  const totalChats = Number(total[0]?.total) || 0;
+  return { page, limit, total: totalChats, pages: Math.ceil(totalChats / limit), data: rows };
+}
+
+/** Todos os contatos da sessão, por nome. */
+export async function listarContatos(sessionId) {
+  const { rows } = await execute(
+    `SELECT jid, display_name, push_name, lid, phone_number, username
+       FROM ${T("contacts")} WHERE session_id = $1
+      ORDER BY COALESCE(display_name, push_name, jid)`,
+    [sessionId],
+  );
+  return rows;
+}
+
+/** Totais usados na tela de configuração da sessão. */
+export async function estatisticasSessao(sessionId) {
+  const contar = async (tabela, extra = "") => {
+    const { rows } = await execute(`SELECT COUNT(*) AS total FROM ${T(tabela)} WHERE session_id = $1 ${extra}`, [sessionId]);
+    return Number(rows[0]?.total) || 0;
+  };
+  try {
+    const [mensagens, enviadas, contatos, chats, grupos] = await Promise.all([
+      contar("messages"),
+      contar("messages", "AND from_me = TRUE"),
+      contar("contacts"),
+      contar("threads"),
+      contar("threads", "AND jid LIKE '%@g.us'"),
+    ]);
+    return {
+      mensagens: [{ total_mensagens: mensagens, mensagens_enviadas: enviadas, mensagens_recebidas: mensagens - enviadas }],
+      contatos: [{ total_contatos: contatos }],
+      chats: [{ total_chats: chats, chats_grupo: grupos, chats_privados: chats - grupos }],
+      grupos: [{ total_grupos: grupos }],
+    };
+  } catch (erro) {
+    logger.error(`Erro ao buscar estatísticas da sessão ${sessionId}: ${erro?.message || erro}`);
+    return {
+      mensagens: { total_mensagens: 0, mensagens_enviadas: 0, mensagens_recebidas: 0 },
+      contatos: { total_contatos: 0 },
+      chats: { total_chats: 0, chats_grupo: 0, chats_privados: 0 },
+      grupos: { total_grupos: 0 },
+    };
   }
 }

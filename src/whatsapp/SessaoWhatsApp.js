@@ -18,7 +18,7 @@ import { HttpsProxyAgent } from "https-proxy-agent";
 import { ProxyAgent } from "undici";
 import config from "../config/env.js";
 import logger from "../utils/logger.js";
-import { criarLoggerZapo } from "./logger.js";
+import { criarLoggerZapo } from "./utils.js";
 import { iniciarLimpezaStore, pararLimpezaStore } from "./store.js";
 import { converterConteudo } from "./conteudo.js";
 import { criarErroConexao, CODIGO_DESCONECTADO, CODIGO_DESLOGADO, MENSAGEM_LOGOUT_INTENCIONAL, ligarEventosZapo, registrarMapaLid } from "./eventos.js";
@@ -125,7 +125,6 @@ export class SessaoWhatsApp {
    */
   async iniciar() {
     const proxy = this.proxyUrl ? this.#criarProxy(this.proxyUrl) : undefined;
-    const guardarHistorico = process.env.ZAPO_STORE_HISTORICO === "true";
 
     this.client = new WaClient(
       {
@@ -137,8 +136,8 @@ export class SessaoWhatsApp {
         version: versaoParaTexto(config.versao),
         proxy,
         markOnlineOnConnect: false,
-        // Histórico só é útil se a zapo estiver guardando (ZAPO_STORE_HISTORICO).
-        history: { enabled: guardarHistorico, requireFullSync: guardarHistorico && config.sync_sessions },
+        // A zapo guarda mensagens, chats e contatos sozinha; o histórico completo vem se SYNC_SESSIONS=true.
+        history: { enabled: true, requireFullSync: config.sync_sessions },
         keepAliveIntervalMs: 10000,
       },
       criarLoggerZapo({ sessionId: this.sessionId }),
@@ -262,7 +261,7 @@ export class SessaoWhatsApp {
     const id = idPersonalizado || gerarIdMensagem();
     const resultado = await this.client.message.send(destino, mensagemProto, { id });
     const mensagem = this.#montarMensagemEnviada(destino, resultado?.id || id, mensagemProto);
-    return mensagem.key.id;
+    return mensagem;
   }
 
   /** Monta o objeto retornado ao enviar e emite o evento "append" (emitOwnEvents). */

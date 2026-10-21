@@ -1,13 +1,11 @@
 import express from "express";
 import authenticateApiKey from "../middleware/auth.js";
 import WhatsAppService from "../services/WhatsAppService.js";
-import Store from "../models/Store.js";
 
 import logger from "../utils/logger.js";
-import Chats from "../models/chats.js";
+import { listarChats, listarMensagens, obterMensagem } from "../whatsapp/store.js";
 import { sendMessage } from "../services/messageService.js";
 import { sendButton, sendCarousel, sendinteractiveMessage, sendList } from "../services/buttonsService.js";
-import Message from "../models/Message.js";
 
 const router = express.Router();
 
@@ -371,9 +369,9 @@ router.post("/mark-read", authenticateApiKey, async (req, res) => {
 router.get("/messages", authenticateApiKey, async (req, res) => {
   try {
     const sessionId = req.headers["apikey"];
-    const { jid, limit = 50, offset = 0 } = req.query;
+    const { jid, limit = 50, offset = 0 } = req.query; // "before" (ms) pagina para trás
 
-    const messages = await Store.getMessages(sessionId, jid, parseInt(limit), parseInt(offset));
+    const messages = await listarMensagens(sessionId, jid, parseInt(limit), req.query.before ? Number(req.query.before) : undefined);
 
     res.json({
       success: true,
@@ -408,12 +406,7 @@ router.get("/chats", authenticateApiKey, async (req, res) => {
       });
     }
 
-    const result = await Chats.FindChatsAll({
-      sessionId,
-      page,
-      limit,
-      search
-    });
+    const result = await listarChats(sessionId, { page, limit, search });
 
     res.json(result);
 
@@ -440,7 +433,7 @@ router.delete("/delete/:id_message", authenticateApiKey, async (req, res) => {
       });
     }
 
-    const get_message = await Message.getMessage(sessao.apikey, id_message);
+    const get_message = await obterMensagem(sessao.apikey, id_message);
 
     if (!get_message) {
       return res.json({
@@ -451,10 +444,10 @@ router.delete("/delete/:id_message", authenticateApiKey, async (req, res) => {
     }
 
     const key = {
-      id: get_message.mensagem_id,
-      remoteJid: get_message.remotejid,
-      fromMe: get_message.fromme ? true : false,
-      participant: get_message.participant || undefined,
+      id: get_message.key.id,
+      remoteJid: get_message.key.remoteJid,
+      fromMe: get_message.key.fromMe,
+      participant: get_message.key.participant,
     };
     const sock = WhatsAppService.sockets.get(sessao.apikey)
     if (!sock) {
@@ -465,7 +458,7 @@ router.delete("/delete/:id_message", authenticateApiKey, async (req, res) => {
       });
     }
 
-    const delete_msg = await sock.sendMessage(get_message.remotejid, { delete: key });
+    const delete_msg = await sock.sendMessage(key.remoteJid, { delete: key });
     if (!delete_msg) {
       return res.json({
         success: false,

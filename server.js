@@ -40,7 +40,6 @@ import modifyTable from "./src/config/verificardb.js";
 import WhatsAppService from "./src/services/WhatsAppService.js";
 import Session from "./src/models/Session.js";
 import { checkAndInitDatabase } from "./gerardb.js";
-import { startWorkers } from "./src/services/workers/index.js";
 
 
 const app = express();
@@ -146,8 +145,6 @@ async function startServer() {
       await checkAndInitDatabase();
 
       logger.info("✅ Iniciando Flash API - WhatsApp Multi-Session");
-      startWorkers()
-
 
       //iniciando as sessões de WhatsApp
       WhatsAppService.initialize();

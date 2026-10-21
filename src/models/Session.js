@@ -6,8 +6,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { execute } from "../config/database.js";
 import redis, { KEYS } from "../services/redis.js";
-import { limparDadosSessaoZapo } from "../whatsapp/store.js";
-import { obterStoreZapo } from "../whatsapp/store.js";
+import { limparDadosSessaoZapo, obterStoreZapo } from "../whatsapp/store.js";
 import { importarCredenciaisExternas } from "../whatsapp/importarCredenciais.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -123,12 +122,8 @@ class Session {
       if (sessaodelete) {
         await execute(`DELETE FROM sessao WHERE apikey = $1`, [id]);
       }
-      await execute(`DELETE FROM chats WHERE sessao_id = $1`, [id]);
-      await execute(`DELETE FROM contatos WHERE sessao_id = $1`, [id]);
-      await execute(`DELETE FROM grupos WHERE sessao_id = $1`, [id]);
-      await execute(`DELETE FROM mensagens WHERE sessao_id = $1`, [id]);
       await execute(`DELETE FROM proxy WHERE sessao_id = $1`, [id]);
-      // Remove as credenciais/chaves guardadas pela zapo (tabelas zapo_*).
+      // Remove tudo o que a zapo guardou da sessão (credenciais, chaves, mensagens, chats, contatos).
       await limparDadosSessaoZapo(id);
       await WhatsAppService.DeleteSessao(id)
       try {
@@ -149,6 +144,60 @@ class Session {
       return true;
     }
 
+  }
+
+  // ===== CONFIGURAÇÕES DE SESSÃO =====
+  static async saveConfig(sessionId, configData) {
+    try {
+      await execute(
+        `
+        UPDATE sessao SET 
+        webhook_url = $1,
+        ignorar_grupos = $2,
+        leitura_automatica = $3,
+        rejeitar_ligacoes = $4,
+        events = $5,
+        webhook_status = $6,
+        msg_rejectcalls = $7,
+        updated_at = CURRENT_TIMESTAMP
+        WHERE apikey = $8
+      `,
+        [
+          configData.webhook_url || null,
+          configData.ignorar_grupos ? 1 : 0,
+          configData.leitura_automatica ? 1 : 0,
+          configData.rejeitar_ligacoes ? 1 : 0,
+          JSON.stringify(configData.events || []),
+          configData.webhook_status ? 1 : 0,
+          configData.msg_rejectcalls,
+          sessionId,
+        ],
+      );
+      return true;
+    } catch (error) {
+      logger.error("Erro ao salvar configuração da sessão:", error);
+      return false;
+    }
+  }
+
+  static async getConfig(sessionId) {
+    try {
+      const { rows } = await execute(
+        `
+        SELECT webhook_url, events, webhook_status, ignorar_grupos, leitura_automatica, rejeitar_ligacoes,
+        msg_rejectcalls
+        FROM sessao WHERE apikey = $1
+      `,
+        [sessionId],
+      );
+      if (rows.length > 0) {
+        return rows[0];
+      }
+      return null;
+    } catch (error) {
+      logger.error("Erro ao buscar configuração da sessão:", error);
+      return null;
+    }
   }
 
   static async setProxy(session, proxy) {
@@ -184,9 +233,10 @@ class Session {
       const resultado = await importarCredenciaisExternas(session, obterStoreZapo(), creds, chaves);
       logger.info(`Sessão ${session} importada: ${resultado.preKeys} pre-keys, ${resultado.avisos} avisos`);
 
-      try { WhatsAppService.createSession(session, null) } catch (error) { /*ignore*/ }
+      WhatsAppService.createSession(session, null).catch((erro) => logger.error(`Erro ao conectar a sessão importada ${session}: ${erro?.message || erro}`));
       return { success: true, message: "Sessão injetada com susesso" }
     } catch (error) {
+      logger.error(`Erro ao importar a sessão ${session}: ${error?.stack || error}`);
       return { success: false, message: "Erro ao injetar sessão", error: error?.message || error }
     }
   }

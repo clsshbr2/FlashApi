@@ -1,7 +1,6 @@
 import express from 'express';
 import globalAuth from '../middleware/globalAuth.js';
 import WhatsAppService from '../services/WhatsAppService.js';
-import Store from '../models/Store.js';
 import config from '../config/env.js';
 import logger from '../utils/logger.js';
 import os from 'os';
