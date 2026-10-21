@@ -65,6 +65,19 @@ async function enviarMidia(sock, tipo, fonte, extras = {}) {
     return resultado[`${tipo}Message`];
 }
 
+/**
+ * Embrulha um interactiveMessage no envelope que o WhatsApp (celular e Web) exige para
+ * renderizar botões native flow. Sem isso o Web mostra "Não foi possível carregar a mensagem".
+ */
+const embrulharInterativa = (interactiveMessage) => ({
+    viewOnceMessage: {
+        message: {
+            messageContextInfo: { deviceListMetadata: {}, deviceListMetadataVersion: 2 },
+            interactiveMessage,
+        },
+    },
+});
+
 // -------------------------------------------------------------------- Lista
 
 export const sendList = (sessionId, data) =>
@@ -147,22 +160,20 @@ export const sendinteractiveMessage = (sessionId, data) =>
             });
         }
 
-        const mensagem = {
-            interactiveMessage: {
+        const mensagem = embrulharInterativa({
                 header: cabecalho,
                 body: { text: data?.body?.text || "" },
                 footer: { text: data?.footer?.text || "" },
                 nativeFlowMessage: {
                     // messageVersion 1 é obrigatório: sem ele o WhatsApp ignora os botões e mostra só o texto.
-                    messageVersion: 1,
+                    // messageVersion: 1,
                     buttons: data.buttons.map((botao) => ({
                         name: botao.name,
                         buttonParamsJson:
                             typeof botao.buttonParamsJson === "string" ? botao.buttonParamsJson : JSON.stringify(botao.buttonParamsJson),
                     })),
                 },
-            },
-        };
+        });
         return enviarComPresenca(sock, jid, mensagem, atrasoDaRequisicao(data));
     });
 
@@ -214,12 +225,10 @@ export const sendCarousel = (sessionId, data) =>
             }),
         );
 
-        const mensagem = {
-            interactiveMessage: {
-                body: { text: data.text || "" },
-                footer: { text: data.footer?.text || "" },
-                carouselMessage: { cards },
-            },
-        };
+        const mensagem = embrulharInterativa({
+            body: { text: data.text || "" },
+            footer: { text: data.footer?.text || "" },
+            carouselMessage: { cards },
+        });
         return enviarComPresenca(sock, jid, mensagem, atrasoDaRequisicao(data));
     });
