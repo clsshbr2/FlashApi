@@ -147,7 +147,11 @@ async function startServer() {
       logger.info("✅ Iniciando Flash API - WhatsApp Multi-Session");
 
       //iniciando as sessões de WhatsApp
-      WhatsAppService.initialize();
+      if (config.auto_iniciar_sessoes) {
+        WhatsAppService.initialize();
+      } else {
+        logger.warn("AUTO_INICIAR_SESSOES=false: as sessões salvas NÃO foram reconectadas");
+      }
     });
   } catch (error) {
     logger.error(error);

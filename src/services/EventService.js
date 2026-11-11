@@ -6,6 +6,7 @@ import WebSocketService from "./WebSocketService.js";
 import { sendMessage } from "./messageService.js";
 import redis, { KEYS } from "./redis.js";
 import config from "../config/env.js";
+import { criarErroConexao } from "../whatsapp/eventos.js";
 import { limparDadosSessaoZapo } from "../whatsapp/store.js";
 import logger from "../utils/logger.js";
 
@@ -95,18 +96,20 @@ async function connection(sessionId, update) {
                 code = await sock.requestPairingCode(numero);
                 logger.info(`Código de pareamento gerado para a sessão ${sessionId}`);
             } catch (error) {
-                const motivo = error?.message || String(error);
-                logger.error(`Erro ao gerar código de pareamento (sessão ${sessionId}): ${motivo}`);
-                sock.erroPareamento = /429|rate-overlimit/i.test(motivo)
-                    ? "O WhatsApp limitou os pedidos de código (429). Aguarde alguns minutos ou conecte pelo QR Code."
-                    : `Erro ao gerar o código: ${motivo}`;
+                logger.error(`Erro ao gerar código de pareamento (sessão ${sessionId}): ${error?.message || error}`);
+                // requestPairingCode troca o segredo ADV antes de falhar: o QR atual ficou desatualizado e
+                // escaneá-lo dá "pair-success HMAC validation failed". Reinicia o ciclo para gerar um QR coerente.
+                logger.warn(`Sessão ${sessionId}: reiniciando a conexão para gerar um QR Code válido`);
+                void sock.end(criarErroConexao("Falha ao pedir código de pareamento", 408));
+                return;
             }
         }
 
         logger.info(`Qrcode sessão ${sessionId}`);
         // Renovações do QR não trazem código novo: não apaga o que já foi gerado.
         if (code) getsessao.code = code;
-        getsessao.qrcode = await QRCode.toDataURL(qr);
+        // Com código gerado o segredo ADV foi trocado: este QR já não vale; use o código.
+        getsessao.qrcode = code ? null : await QRCode.toDataURL(qr);
         getsessao.status = "qr_ready";
         void updateSessao(sessionId, getsessao);
     }
