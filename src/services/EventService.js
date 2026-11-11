@@ -87,28 +87,16 @@ async function connection(sessionId, update) {
             const numero = sock.numeroParaCodigo;
             sock.numeroParaCodigo = null;
 
-            // O WhatsApp limita os pedidos de código (429 rate-overlimit) e o bloqueio dura minutos:
-            // não insiste enquanto o bloqueio não passou.
-            const bloqueadoAte = WhatsAppService.bloqueioCodigo.get(sessionId) || 0;
-            if (Date.now() < bloqueadoAte) {
-                const minutos = Math.ceil((bloqueadoAte - Date.now()) / 60000);
-                sock.erroPareamento = `O WhatsApp limitou os pedidos de código. Aguarde ~${minutos} min ou conecte pelo QR Code.`;
-                logger.warn(`Sessão ${sessionId}: pedido de código ignorado (limite do WhatsApp, ~${minutos} min)`);
-            } else {
-                try {
-                    logger.info(`Pedindo código de pareamento (sessão ${sessionId})`);
-                    code = await sock.requestPairingCode(numero);
-                    logger.info(`Código de pareamento gerado para a sessão ${sessionId}`);
-                } catch (error) {
-                    const motivo = error?.message || String(error);
-                    logger.error(`Erro ao gerar código de pareamento (sessão ${sessionId}): ${motivo}`);
-                    if (/429|rate-overlimit/i.test(motivo)) {
-                        WhatsAppService.bloqueioCodigo.set(sessionId, Date.now() + 10 * 60 * 1000);
-                        sock.erroPareamento = "O WhatsApp limitou os pedidos de código (429). Aguarde ~10 min sem tentar de novo ou conecte pelo QR Code.";
-                    } else {
-                        sock.erroPareamento = `Erro ao gerar o código: ${motivo}`;
-                    }
-                }
+            try {
+                logger.info(`Pedindo código de pareamento (sessão ${sessionId})`);
+                code = await sock.requestPairingCode(numero);
+                logger.info(`Código de pareamento gerado para a sessão ${sessionId}`);
+            } catch (error) {
+                const motivo = error?.message || String(error);
+                logger.error(`Erro ao gerar código de pareamento (sessão ${sessionId}): ${motivo}`);
+                sock.erroPareamento = /429|rate-overlimit/i.test(motivo)
+                    ? "O WhatsApp limitou os pedidos de código (429). Aguarde alguns minutos ou conecte pelo QR Code."
+                    : `Erro ao gerar o código: ${motivo}`;
             }
         }
 

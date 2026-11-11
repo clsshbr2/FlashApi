@@ -26,8 +26,6 @@ class WhatsAppService {
   /** Quantidade de eventos de conexão por sessão (proteção contra loop de reconexão) */
   static limitReconnect = new Map();
   static redis = redis;
-  /** sessionId -> instante (ms) até o qual não se pede código de pareamento (limite 429 do WhatsApp) */
-  static bloqueioCodigo = new Map();
   /** true durante o desligamento da API */
   static desligando = false;
 
