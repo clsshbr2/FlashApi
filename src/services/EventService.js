@@ -36,7 +36,7 @@ const EVENTOS_GRUPO = [
 ];
 
 // Razões de fechamento em que a zapo orienta NÃO reconectar (docs: guides/errors e guides/reconnection).
-const RAZOES_FATAIS = /stream_error_replaced|stream_error_device_removed|stream_error_force_logout|failure_banned|failure_locked|failure_client_too_old|failure_bad_user_agent|primary_identity_key_change/;
+const RAZOES_FATAIS = /stream_error_device_removed|stream_error_force_logout|failure_banned|failure_locked|failure_client_too_old|failure_bad_user_agent|primary_identity_key_change/;
 
 const nomePublicado = (evento) => evento.replace(/[.-]/g, "_");
 
@@ -51,8 +51,10 @@ const tipoMensagem = (message) => {
     return Object.keys(message)[0] || null;
 };
 
+const filasDeStatus = new Map(); // sessionId -> última gravação em andamento
+
 /** Grava no Redis e no banco o estado atual da sessão. */
-async function updateSessao(sessionId, sessao) {
+async function gravarSessao(sessionId, sessao) {
     await redis.set(KEYS().sessao(sessionId), sessao);
     await Session.update(sessionId, {
         status: sessao.status,
@@ -60,6 +62,42 @@ async function updateSessao(sessionId, sessao) {
         phone_number: sessao.numero,
         code: sessao.code,
     });
+}
+
+/**
+ * Grava o estado da sessão EM ORDEM. As chamadas vêm de eventos sem `await` (connecting, qr, open...) e, ao
+ * iniciar várias sessões juntas, uma gravação antiga podia terminar depois da nova e deixar o banco com
+ * "connecting" mesmo com a sessão conectada. Cada gravação espera a anterior da mesma sessão e usa uma cópia.
+ */
+function updateSessao(sessionId, sessao) {
+    const copia = { ...sessao };
+    const anterior = filasDeStatus.get(sessionId) || Promise.resolve();
+    const atual = anterior.catch(() => { }).then(() => gravarSessao(sessionId, copia));
+    filasDeStatus.set(sessionId, atual);
+    return atual
+        .catch((erro) => logger.error(`Erro ao gravar o status da sessão ${sessionId}: ${erro?.message || erro}`))
+        .finally(() => { if (filasDeStatus.get(sessionId) === atual) filasDeStatus.delete(sessionId); });
+}
+
+/**
+ * Confere as sessões realmente conectadas nesta instância e corrige o status no banco/Redis se estiver diferente
+ * (ex.: outra gravação sobrescreveu "connected"). Chamada periodicamente pelo server.js.
+ */
+export async function sincronizarStatusSessoes() {
+    for (const [sessionId, sock] of WhatsAppService.sockets) {
+        try {
+            if (!sock.conectado) continue;
+            const linha = await Session.findById(sessionId);
+            if (!linha || linha.status === "connected") continue;
+            logger.info(`Sessão ${sessionId}: está conectada mas o status era "${linha.status}"; corrigindo`);
+            const sessao = (await redis.get(KEYS().sessao(sessionId))) ?? linha;
+            sessao.status = "connected";
+            sessao.numero = sock.user?.id?.split(":")[0] || sessao.numero;
+            await updateSessao(sessionId, sessao);
+        } catch (erro) {
+            logger.warn(`Erro ao sincronizar o status da sessão ${sessionId}: ${erro?.message || erro}`);
+        }
+    }
 }
 
 /** Trata `connection.update`: QR Code, conexão aberta e reconexão/remoção. */
@@ -71,7 +109,8 @@ async function connection(sessionId, update) {
     const sock = WhatsAppService.sockets.get(sessionId);
     if (!sock) return;
 
-    const getsessao = await WhatsAppService.GetSessao(sessionId);
+    // Se o Redis perdeu a sessão, usa a linha do banco em vez de ignorar o evento (senão o status nunca atualiza).
+    const getsessao = (await WhatsAppService.GetSessao(sessionId)) ?? (await Session.findById(sessionId));
     if (!getsessao) return;
 
     if (qr) {
@@ -120,8 +159,8 @@ async function connection(sessionId, update) {
     }
 
     if (connection === "open") {
-        const numero = sock.user.id.split(":")[0] || null;
-        logger.info(`Sessão ${sessionId} Conectada numero: ${numero} Nome: ${sock.user.name}`);
+        const numero = sock.user?.id?.split(":")[0] || getsessao.numero || null;
+        logger.info(`Sessão ${sessionId} Conectada numero: ${numero} Nome: ${sock.user?.name}`);
         getsessao.status = "connected";
         getsessao.numero = numero;
         getsessao.qrcode = null;
@@ -136,6 +175,15 @@ async function connection(sessionId, update) {
 
         // Desligamento da API (deploy/restart): não reconecta nem mexe no estado da sessão.
         if (WhatsAppService.desligando) return;
+
+        // "stream_error_replaced": as mesmas credenciais abriram em OUTRA instância (que está conectada agora).
+        // Não grava "disconnected": isso sobrescreveria, no banco compartilhado, o "connected" da instância que
+        // está funcionando. Também não reconecta (a zapo orienta não reconectar nesse caso) e mantém as credenciais.
+        if (/stream_error_replaced/.test(String(new Boom(lastDisconnect?.error).output?.payload?.message))) {
+            logger.warn(`Sessão ${sessionId}: conexão substituída por outra instância — não reconecta nem altera o status`);
+            WhatsAppService.sockets.delete(sessionId);
+            return;
+        }
 
         // Proteção contra loop de reconexão. Só desiste de reconectar: NUNCA apaga as credenciais, senão uma
         // falha passageira (rede, DNS ou proxy ainda indisponíveis logo após o deploy) forçaria novo QR Code.
