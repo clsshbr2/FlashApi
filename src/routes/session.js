@@ -423,9 +423,13 @@ router.delete("/delete/:sessionId", globalAuth.authenticateGlobalApiKey, async (
 //Desconectar sessão
 router.delete("/desconect/", authenticateApiKey, async (req, res) => {
   try {
-    const sock = await WhatsAppService.sockets.get(req.sessao.apikey)
-    sock.logout();
-    Session.delete(req.sessao.id, false)
+    const sock = WhatsAppService.sockets.get(req.sessao.apikey)
+    if (sock) {
+      // O logout emite "Intentional Logout"; o handler de conexão remove a sessão e limpa os dados da zapo.
+      await sock.logout();
+    } else {
+      await Session.delete(req.sessao.apikey, false)
+    }
 
     return res.status(200).json({
       success: true,

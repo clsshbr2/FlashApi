@@ -6,6 +6,7 @@ import WebSocketService from "./WebSocketService.js";
 import { sendMessage } from "./messageService.js";
 import redis, { KEYS } from "./redis.js";
 import config from "../config/env.js";
+import { limparDadosSessaoZapo } from "../whatsapp/store.js";
 import logger from "../utils/logger.js";
 
 // Mensagens que não são publicadas (controle interno do WhatsApp).
@@ -139,6 +140,9 @@ async function connection(sessionId, update) {
             await Session.delete(sessionId, false);
             return;
         }
+
+        // Aparelho desvinculado pelo celular (401): as credenciais guardadas não servem mais; limpa para gerar novo QR.
+        if (erro.statusCode == 401) await limparDadosSessaoZapo(sessionId);
 
         logger.info(erro.statusCode == 515 ? `Status 515 Reiniciando sessão: ${sessionId}` : `Reconectando sessão: ${sessionId}`);
         getsessao.status = "connecting";
