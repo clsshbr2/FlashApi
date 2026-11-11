@@ -28,6 +28,19 @@ async function obterSessaoConectada(sessionId) {
 }
 
 /**
+ * Opcional (`"wrapper": true` no corpo): embrulha o interactiveMessage em viewOnceMessage, o envelope que alguns
+ * clientes (ex.: iPhone/Web) exigem para mostrar os botões. Por padrão envia direto, sem envelope.
+ */
+const comEnvelope = (mensagem, data) =>
+    data?.wrapper === true
+        ? {
+            viewOnceMessage: {
+                message: { messageContextInfo: { deviceListMetadata: {}, deviceListMetadataVersion: 2 }, ...mensagem },
+            },
+        }
+        : mensagem;
+
+/**
  * Envia o proto simulando "digitando" antes e "pausado" depois.
  * Retorna o id da mensagem enviada.
  */
@@ -165,7 +178,7 @@ export const sendinteractiveMessage = (sessionId, data) =>
             }
         };
 
-        return enviarComPresenca(sock, jid, mensagem, atrasoDaRequisicao(data));
+        return enviarComPresenca(sock, jid, comEnvelope(mensagem, data), atrasoDaRequisicao(data));
     });
 
 // ----------------------------------------------------------------- Carrossel
@@ -241,5 +254,5 @@ export const sendCarousel = (sessionId, data) =>
             }
         };
 
-        return enviarComPresenca(sock, jid, mensagem, atrasoDaRequisicao(data));
+        return enviarComPresenca(sock, jid, comEnvelope(mensagem, data), atrasoDaRequisicao(data));
     });
