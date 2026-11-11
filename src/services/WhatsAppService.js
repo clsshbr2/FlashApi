@@ -26,6 +26,8 @@ class WhatsAppService {
   /** Quantidade de eventos de conexão por sessão (proteção contra loop de reconexão) */
   static limitReconnect = new Map();
   static redis = redis;
+  /** true durante o desligamento da API */
+  static desligando = false;
 
   //Serviço de WebSocket
   static SetWebSocketService(service) {
@@ -127,6 +129,7 @@ class WhatsAppService {
    * as chaves que ainda estão em memória (write-behind) e fecha o pool do store.
    */
   static async encerrarTodas(timeoutMs = 10000) {
+    this.desligando = true; // impede reconexões automáticas durante o desligamento
     const desligar = Promise.allSettled([...this.sockets.values()].map((sock) => sock.client?.disconnect?.()));
     await Promise.race([desligar, this.delay(timeoutMs)]);
     await encerrarStoreZapo();

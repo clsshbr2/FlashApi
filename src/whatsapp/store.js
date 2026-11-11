@@ -122,6 +122,8 @@ export async function limparDadosSessaoZapo(sessionId) {
 /** Encerra o pool do store (usado no desligamento da aplicação). */
 export async function encerrarStoreZapo() {
   try {
+    // Destrói os pacotes de cada sessão e o backend (grava o que ainda estiver pendente).
+    await storeUnico?.destroy();
     await resultadoPg?.destroy();
   } catch {
     // ignora erros no desligamento

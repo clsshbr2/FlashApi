@@ -62,15 +62,7 @@ async function updateSessao(sessionId, sessao) {
 async function connection(sessionId, update) {
     const { connection, lastDisconnect, qr } = update;
 
-    const countConnect = WhatsAppService.limitReconnect.get(sessionId) || 0;
     const count = WhatsAppService.countQrcode.get(sessionId) || 0;
-
-    if (countConnect >= 10) {
-        logger.info("Limite de Conexão atingido");
-        Session.delete(sessionId, false);
-        return;
-    }
-    WhatsAppService.limitReconnect.set(sessionId, countConnect + 1);
 
     const sock = WhatsAppService.sockets.get(sessionId);
     if (!sock) return;
@@ -130,6 +122,22 @@ async function connection(sessionId, update) {
 
     if (connection === "close") {
         try { sock.ev.removeAllListeners(); sock.end(); } catch { }
+
+        // Desligamento da API (deploy/restart): não reconecta nem mexe no estado da sessão.
+        if (WhatsAppService.desligando) return;
+
+        // Proteção contra loop de reconexão. Só desiste de reconectar: NUNCA apaga as credenciais, senão uma
+        // falha passageira (rede, DNS ou proxy ainda indisponíveis logo após o deploy) forçaria novo QR Code.
+        const tentativas = (WhatsAppService.limitReconnect.get(sessionId) || 0) + 1;
+        WhatsAppService.limitReconnect.set(sessionId, tentativas);
+        if (tentativas > 10) {
+            logger.warn(`Sessão ${sessionId}: limite de tentativas de reconexão atingido (credenciais mantidas)`);
+            WhatsAppService.sockets.delete(sessionId);
+            const sessaoParada = await WhatsAppService.GetSessao(sessionId);
+            if (sessaoParada) { sessaoParada.status = "disconnected"; void updateSessao(sessionId, sessaoParada); }
+            return;
+        }
+
         const erro = new Boom(lastDisconnect?.error).output;
         logger.info("sessão desconectado motivo: ", erro?.payload);
         getsessao.status = "disconnected";
@@ -147,7 +155,9 @@ async function connection(sessionId, update) {
         logger.info(erro.statusCode == 515 ? `Status 515 Reiniciando sessão: ${sessionId}` : `Reconectando sessão: ${sessionId}`);
         getsessao.status = "connecting";
         void updateSessao(sessionId, getsessao);
-        await WhatsAppService.delay(3000);
+        // Espera crescente: 3s, 6s, 9s... (máx. 30s) para dar tempo da rede/proxy voltarem.
+        await WhatsAppService.delay(Math.min(3000 * tentativas, 30000));
+        if (WhatsAppService.desligando) return;
         return WhatsAppService.createSession(sessionId);
     }
 }
