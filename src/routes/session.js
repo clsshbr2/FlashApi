@@ -296,7 +296,13 @@ router.put("/conectar_sessao", authenticateApiKey, async (req, res) => {
 //Reniciar uma sessão
 router.put("/restart", authenticateApiKey, async (req, res) => {
   const sock = await WhatsAppService.sockets.get(req.sessao.apikey)
-  try { sock.end() } catch (error) { }
+  if (sock) {
+    try { sock.end() } catch (error) { }
+  } else {
+    // Sem conexão ativa (ex.: derrubada por outra instância): cria a conexão de novo.
+    WhatsAppService.limitReconnect.set(req.sessao.apikey, 0)
+    WhatsAppService.createSession(req.sessao.apikey, null).catch((erro) => logger.error(`Erro ao reiniciar a sessão: ${erro?.message || erro}`))
+  }
   return res.status(200).json({
     success: true,
     message: "Sessão reniciada com sucesso",

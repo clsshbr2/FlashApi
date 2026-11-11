@@ -34,6 +34,9 @@ const EVENTOS_GRUPO = [
     "group-participants.update", "group.join-request", "group.member-tag.update",
 ];
 
+// Razões de fechamento em que a zapo orienta NÃO reconectar (docs: guides/errors e guides/reconnection).
+const RAZOES_FATAIS = /stream_error_replaced|stream_error_device_removed|stream_error_force_logout|failure_banned|failure_locked|failure_client_too_old|failure_bad_user_agent|primary_identity_key_change/;
+
 const nomePublicado = (evento) => evento.replace(/[.-]/g, "_");
 
 /** Tipo principal da mensagem, atravessando efêmera / visualização única. */
@@ -157,20 +160,22 @@ async function connection(sessionId, update) {
         // Aparelho desvinculado pelo celular (401): as credenciais guardadas não servem mais; limpa para gerar novo QR.
         if (erro.statusCode == 401) await limparDadosSessaoZapo(sessionId);
 
-        // "stream_error_replaced": o WhatsApp derrubou esta conexão porque OUTRA conexão da mesma sessão abriu
-        // (outra instância da API, ex.: container antigo durante o deploy, ou um ambiente local usando o mesmo banco).
-        // Reconectar em segundos derrubaria a outra de volta e as duas ficariam brigando. Espera bastante, com
-        // variação aleatória, para a outra instância terminar de sair (ou assumir de vez).
-        const substituida = /stream_error_replaced/.test(String(erro.payload?.message));
-        if (substituida) {
-            logger.warn(`Sessão ${sessionId}: conexão substituída por outra instância; nova tentativa em ~30-45s`);
+        // Razões fatais segundo a documentação da zapo: reconectar não resolve (ou piora). Em especial
+        // "stream_error_replaced": as MESMAS credenciais abriram em outro lugar (outra instância da API, ex.:
+        // container antigo no deploy ou ambiente local no mesmo banco). Reconectar derrubaria a outra de volta e
+        // as duas ficariam brigando. Mantém as credenciais; reconecte depois via PUT /session/restart ou conectar_sessao.
+        const motivoFechamento = String(erro.payload?.message);
+        if (RAZOES_FATAIS.test(motivoFechamento)) {
+            logger.warn(`Sessão ${sessionId}: ${motivoFechamento} — não reconecta automaticamente (credenciais mantidas)`);
+            WhatsAppService.sockets.delete(sessionId);
+            return;
         }
 
         logger.info(erro.statusCode == 515 ? `Status 515 Reiniciando sessão: ${sessionId}` : `Reconectando sessão: ${sessionId}`);
         getsessao.status = "connecting";
         void updateSessao(sessionId, getsessao);
         // Espera crescente: 3s, 6s, 9s... (máx. 30s) para dar tempo da rede/proxy voltarem.
-        await WhatsAppService.delay(substituida ? 30000 + Math.random() * 15000 : Math.min(3000 * tentativas, 30000));
+        await WhatsAppService.delay(Math.min(3000 * tentativas, 30000));
         if (WhatsAppService.desligando) return;
         // Alguém (ex.: o usuário via API) já recriou a conexão enquanto esperávamos: não cria outra.
         if (WhatsAppService.sockets.get(sessionId) !== sock) return;
