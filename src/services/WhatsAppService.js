@@ -42,7 +42,20 @@ class WhatsAppService {
     logger.info(`Iniciando ${sessoes.length} Sessões..`);
 
     const limite = pLimit(15);
-    await Promise.allSettled(sessoes.map((s) => limite(() => this.createSession(s.apikey, null))));
+    await Promise.allSettled(
+      sessoes.map((s) =>
+        limite(async () => {
+          // Diagnóstico: mostra se as credenciais da sessão estão no banco antes de reconectar.
+          try {
+            const creds = await obterStoreZapo().session(s.apikey).auth.load();
+            logger.info(`Sessão ${s.apikey}: credenciais no banco: ${creds?.meJid ? `sim (${creds.meJid})` : creds ? "sim (sem pareamento)" : "NÃO"}`);
+          } catch (erro) {
+            logger.warn(`Sessão ${s.apikey}: não foi possível ler as credenciais: ${erro?.message || erro}`);
+          }
+          return this.createSession(s.apikey, null);
+        }),
+      ),
+    );
     logger.info("Todas as sessões foram iniciadas");
   }
 

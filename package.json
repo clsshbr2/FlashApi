@@ -15,7 +15,7 @@
     "@apidevtools/swagger-parser": "^12.0.0",
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@hapi/boom": "^9.1.4",
-    "@zapo-js/store-postgres": "^1.2.0",
+    "@zapo-js/store-postgres": "1.2.0",
     "axios": "^1.6.2",
     "bcrypt": "^5.1.1",
     "connect-redis": "^9.0.0",
@@ -45,9 +45,9 @@
     "undici": "^7.16.0",
     "uuid": "^9.0.1",
     "wa-sticker-formatter": "^4.4.4",
-    "wa-store-migrate": "^0.1.1",
+    "wa-store-migrate": "0.1.1",
     "ws": "^8.14.2",
-    "zapo-js": "^1.10.0"
+    "zapo-js": "1.10.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.2",
