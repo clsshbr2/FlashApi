@@ -95,6 +95,9 @@ export function pararLimpezaStore(sessionId) {
  */
 export async function limparDadosSessaoZapo(sessionId) {
   try {
+    // Libera o pacote de store que a zapo mantém em cache para a sessão. Sem isso, ao reconectar com o
+    // mesmo sessionId ela reaproveita as credenciais antigas (já apagadas do banco) e a sessão não conecta.
+    if (storeUnico) await storeUnico.session(sessionId).destroy();
     // Descobre dinamicamente as tabelas da zapo que possuem a coluna session_id.
     const { rows } = await execute(
       `SELECT DISTINCT table_name
