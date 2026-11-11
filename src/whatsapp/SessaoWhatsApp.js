@@ -132,7 +132,9 @@ export class SessaoWhatsApp {
         sessionId: this.sessionId,
         // Nome que aparece em "Aparelhos conectados" no celular.
         deviceBrowser: config.sessao_phone_name,
-        deviceOsDisplayName: config.sessao_phone,
+        // No pareamento por código o WhatsApp valida o nome do aparelho ("Chrome (SO)"): um SO inventado
+        // pode fazer a notificação não aparecer no celular. Nesse caso usa o SO real (padrão da zapo).
+        deviceOsDisplayName: this.numeroParaCodigo ? undefined : config.sessao_phone,
         version: versaoParaTexto(config.versao),
         proxy,
         markOnlineOnConnect: false,
