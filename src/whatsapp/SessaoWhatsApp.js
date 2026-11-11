@@ -152,10 +152,6 @@ export class SessaoWhatsApp {
       }
     });
 
-    // A zapo só aceita pedir o código de pareamento depois de "auth_pairing_required"
-    // (pedir antes dá "companion hello iq failed (400: bad-request)").
-    this.pareamentoPronto = new Promise((resolver) => this.client.once("auth_pairing_required", resolver));
-
     ligarEventosZapo(this);
     iniciarLimpezaStore(this.sessionId);
 
@@ -180,13 +176,15 @@ export class SessaoWhatsApp {
     };
   }
 
-  /** Pareamento por código (alternativa ao QR). Chamar com a conexão aguardando pareamento. */
+  /**
+   * Pareamento por código (alternativa ao QR). Chamar quando o 1º QR chegar (`connection.update` com `qr`):
+   * é o sinal de que o servidor está pronto. "auth_pairing_required" NÃO serve de sinal: a zapo só o emite
+   * depois que o código já foi pedido (renovação), então esperar por ele só atrasa o código.
+   */
   async requestPairingCode(numero) {
     const digitos = somenteDigitos(numero);
     // Evita gastar o estado de pareamento (e quebrar o QR) com um número vazio.
     if (digitos.length < 8) throw new Error("Número inválido para pareamento por código");
-    // Espera o servidor ficar pronto para o pareamento (no máximo 15s).
-    await Promise.race([this.pareamentoPronto, new Promise((resolver) => setTimeout(resolver, 15000))]);
     return this.client.auth.requestPairingCode(digitos);
   }
 

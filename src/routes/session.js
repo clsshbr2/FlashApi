@@ -257,7 +257,12 @@ router.put("/conectar_sessao", authenticateApiKey, async (req, res) => {
 
     const conect = await WhatsAppService.createSession(req.sessao.apikey, numero)
     await WhatsAppService.delay(4000);
-    const sessao = await WhatsAppService.GetSessao(req.sessao.apikey)
+    let sessao = await WhatsAppService.GetSessao(req.sessao.apikey)
+    // Pareamento por código: espera o código ser gerado (até ~10s a mais).
+    for (let i = 0; numero && sessao && !sessao.code && i < 10; i++) {
+      await WhatsAppService.delay(1000);
+      sessao = await WhatsAppService.GetSessao(req.sessao.apikey)
+    }
     if (!sessao) {
       return res.status(500).json({
         success: false,
