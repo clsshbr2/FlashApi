@@ -23,6 +23,7 @@ import { RedisStore } from "connect-redis";
 import redis from "./src/services/redis.js";
 
 import config from "./src/config/env.js";
+import { sincronizarStatusSessoes } from "./src/services/EventService.js";
 import WebSocketService from "./src/services/WebSocketService.js";
 
 import logger from "./src/utils/logger.js";
@@ -149,6 +150,7 @@ async function startServer() {
       //iniciando as sessões de WhatsApp
       if (config.auto_iniciar_sessoes) {
         WhatsAppService.initialize();
+        setInterval(() => sincronizarStatusSessoes(), 30000).unref();
       } else {
         logger.warn("AUTO_INICIAR_SESSOES=false: as sessões salvas NÃO foram reconectadas");
       }
