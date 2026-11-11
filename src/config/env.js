@@ -93,6 +93,8 @@ const config = {
   //Temp message
   apiversao: process.env.VERSAO || '1.0.4',
   sync_sessions: process.env.SYNC_SESSIONS == 'false' ? false : true,
+  // false = não reconecta as sessões salvas ao iniciar (use em ambiente local que compartilha o banco com a produção)
+  auto_iniciar_sessoes: process.env.AUTO_INICIAR_SESSOES == 'false' ? false : true,
 
 
   ignore_boadcast: process.env.IGNORE_BROADCAST == 'false' ? false : true,

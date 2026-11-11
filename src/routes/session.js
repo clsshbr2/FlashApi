@@ -259,18 +259,9 @@ router.put("/conectar_sessao", authenticateApiKey, async (req, res) => {
     await WhatsAppService.delay(4000);
     let sessao = await WhatsAppService.GetSessao(req.sessao.apikey)
     // Pareamento por código: espera o código ser gerado (até ~10s a mais).
-    const sockNovo = () => WhatsAppService.sockets.get(req.sessao.apikey)
-    for (let i = 0; numero && sessao && !sessao.code && !sockNovo()?.erroPareamento && i < 10; i++) {
+    for (let i = 0; numero && sessao && !sessao.code && i < 10; i++) {
       await WhatsAppService.delay(1000);
       sessao = await WhatsAppService.GetSessao(req.sessao.apikey)
-    }
-    const erroPareamento = numero && !sessao?.code ? sockNovo()?.erroPareamento : null
-    if (erroPareamento) {
-      return res.status(429).json({
-        success: false,
-        message: erroPareamento,
-        data: sessao
-      });
     }
     if (!sessao) {
       return res.status(500).json({
