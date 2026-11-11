@@ -94,6 +94,7 @@ async function connection(sessionId, update) {
             const numero = sock.numeroParaCodigo;
             sock.numeroParaCodigo = null;
             try {
+                logger.info(`Pedindo código de pareamento (sessão ${sessionId})`);
                 code = await sock.requestPairingCode(numero);
                 logger.info(`Código de pareamento gerado para a sessão ${sessionId}`);
             } catch (error) {
@@ -102,7 +103,8 @@ async function connection(sessionId, update) {
         }
 
         logger.info(`Qrcode sessão ${sessionId}`);
-        getsessao.code = code;
+        // Renovações do QR não trazem código novo: não apaga o que já foi gerado.
+        if (code) getsessao.code = code;
         getsessao.qrcode = await QRCode.toDataURL(qr);
         getsessao.status = "qr_ready";
         void updateSessao(sessionId, getsessao);
