@@ -34,6 +34,7 @@ services:
     image: flashconect/flash-api:v1.0.6
     container_name: flash-api
     restart: always
+    stop_grace_period: 30s # tempo para desconectar as sessões e gravar tudo antes de encerrar
 
     depends_on:
       - postgres

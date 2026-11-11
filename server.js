@@ -159,7 +159,10 @@ async function startServer() {
 // Graceful shutdown
 process.on("SIGTERM", () => {
   // fecha conexões e (no provider zapo) grava as chaves pendentes antes de sair
-  server.close(() => WhatsAppService.encerrarTodas().finally(() => process.exit(0)));
+  // Não espera o server.close(): conexões abertas (WebSocket/keep-alive) o seguram até o Docker matar o processo
+  // (SIGKILL) antes de a zapo desconectar e gravar o que está pendente.
+  server.close();
+  WhatsAppService.encerrarTodas().finally(() => process.exit(0));
 });
 
 process.on("SIGINT", () => {
