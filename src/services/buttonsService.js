@@ -27,6 +27,19 @@ async function obterSessaoConectada(sessionId) {
     return sock;
 }
 
+/** buttonParamsJson como texto; no botão de copiar (cta_copy) garante o "id" que o iOS exige. */
+function parametrosDoBotao(botao) {
+    const bruto = typeof botao.buttonParamsJson === "string" ? botao.buttonParamsJson : JSON.stringify(botao.buttonParamsJson);
+    if (botao.name !== "cta_copy") return bruto;
+    try {
+        const params = JSON.parse(bruto);
+        if (params && params.id === undefined) params.id = `copy_${Date.now()}`;
+        return JSON.stringify(params);
+    } catch {
+        return bruto;
+    }
+}
+
 /**
  * Opcional (`"wrapper": true` no corpo): embrulha o interactiveMessage em viewOnceMessage, o envelope que alguns
  * clientes (ex.: iPhone/Web) exigem para mostrar os botões. Por padrão envia direto, sem envelope.
@@ -171,8 +184,7 @@ export const sendinteractiveMessage = (sessionId, data) =>
                     // messageVersion: 1,
                     buttons: data.buttons.map((botao) => ({
                         "name": botao.name,
-                        "buttonParamsJson":
-                            typeof botao.buttonParamsJson === "string" ? botao.buttonParamsJson : JSON.stringify(botao.buttonParamsJson),
+                        "buttonParamsJson": parametrosDoBotao(botao),
                     })),
                 },
             }
@@ -194,7 +206,8 @@ function botaoDaAcao(acao, varios = false) {
         case "call":
             return { name: "cta_call", buttonParamsJson: json({ display_text: acao.text, phone_number: acao.phone }) };
         case "copy":
-            return { name: "cta_copy", buttonParamsJson: json({ display_text: acao.text, copy_code: acao.code }) };
+            // O cliente (principalmente iOS) espera o "id" nos parâmetros do botão de copiar.
+            return { name: "cta_copy", buttonParamsJson: json({ display_text: acao.text, id: acao.id || `copy_${Date.now()}`, copy_code: acao.code }) };
         case "list":
             return {
                 name: "single_select",
