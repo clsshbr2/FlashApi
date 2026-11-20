@@ -41,17 +41,27 @@ function parametrosDoBotao(botao) {
 }
 
 /**
- * Opcional (`"wrapper": true` no corpo): embrulha o interactiveMessage em viewOnceMessage, o envelope que alguns
- * clientes (ex.: iPhone/Web) exigem para mostrar os botões. Por padrão envia direto, sem envelope.
+ * Envelope opcional ("wrapper" no corpo), para clientes que não mostram os botões sem ele (ex.: iPhone):
+ *  - true | "viewOnce": viewOnceMessage + messageContextInfo. Funciona no iPhone, mas o seu aparelho mostra
+ *    "Você enviou uma mensagem de visualização única de outro dispositivo".
+ *  - "contexto": só messageContextInfo (deviceListMetadata) no nível superior, sem envelope.
+ *  - "ephemeral": ephemeralMessage + messageContextInfo (não marca como visualização única).
+ * Sem o campo, envia direto, sem envelope.
  */
-const comEnvelope = (mensagem, data) =>
-    data?.wrapper === true
-        ? {
-            viewOnceMessage: {
-                message: { messageContextInfo: { deviceListMetadata: {}, deviceListMetadataVersion: 2 }, ...mensagem },
-            },
-        }
-        : mensagem;
+const CONTEXTO_DISPOSITIVOS = { deviceListMetadata: {}, deviceListMetadataVersion: 2 };
+const comEnvelope = (mensagem, data) => {
+    const tipo = data?.wrapper === true ? "viewOnce" : data?.wrapper;
+    switch (tipo) {
+        case "viewOnce":
+            return { viewOnceMessage: { message: { messageContextInfo: CONTEXTO_DISPOSITIVOS, ...mensagem } } };
+        case "ephemeral":
+            return { ephemeralMessage: { message: { messageContextInfo: CONTEXTO_DISPOSITIVOS, ...mensagem } } };
+        case "contexto":
+            return { messageContextInfo: CONTEXTO_DISPOSITIVOS, ...mensagem };
+        default:
+            return mensagem;
+    }
+};
 
 /**
  * Envia o proto simulando "digitando" antes e "pausado" depois.
@@ -180,8 +190,13 @@ export const sendinteractiveMessage = (sessionId, data) =>
                 body: { text: data?.body?.text || "" },
                 footer: { text: data?.footer?.text || "" },
                 nativeFlowMessage: {
-                    // messageVersion 1 é obrigatório: sem ele o WhatsApp ignora os botões e mostra só o texto.
-                    // messageVersion: 1,
+                    // messageVersion 1 é o valor do exemplo oficial da zapo (alguns clientes, como o iOS, podem
+                    // ignorar os botões sem ele). Para testar sem o campo, envie "messageVersion": null no corpo.
+                    ...(data.messageVersion === null ? {} : { messageVersion: data.messageVersion ?? 1 }),
+                    // Opcional: parâmetros extras do fluxo, repassados como vierem ("messageParamsJson").
+                    ...(data.messageParamsJson !== undefined
+                        ? { messageParamsJson: typeof data.messageParamsJson === "string" ? data.messageParamsJson : JSON.stringify(data.messageParamsJson) }
+                        : {}),
                     buttons: data.buttons.map((botao) => ({
                         "name": botao.name,
                         "buttonParamsJson": parametrosDoBotao(botao),
