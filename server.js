@@ -21,6 +21,7 @@ import config from "./src/config/env.js";
 import { sincronizarStatusSessoes } from "./src/services/EventService.js";
 import WebhookService from "./src/services/WebhookService.js";
 import WebSocketService from "./src/services/WebSocketService.js";
+import { criarServidorChamadas } from "./src/services/ChamadaAoVivoService.js";
 
 import logger from "./src/utils/logger.js";
 
@@ -77,20 +78,19 @@ const ioredisAdapter = {
   mget: (...keys) => redis.client.mget(...keys),
 };
 
-//Sistema de sessão (persistida no Redis)
-app.use(
-  session({
-    store: new RedisStore({ client: ioredisAdapter }),
-    secret: config.manager_senha_admin,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      secure: config.protocol == "https" ? true : false,
-      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 dias
-    },
-  }),
-);
+//Sistema de sessão (persistida no Redis). Também autentica o WebSocket /ws/call.
+const sessionMiddleware = session({
+  store: new RedisStore({ client: ioredisAdapter }),
+  secret: config.manager_senha_admin,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    secure: config.protocol == "https" ? true : false,
+    maxAge: 1000 * 60 * 60 * 24 * 7, // 7 dias
+  },
+});
+app.use(sessionMiddleware);
 
 
 // Routes
@@ -105,9 +105,20 @@ app.use("/api/config", configRoutes);
 app.use("/api/system", systemRoutes);
 app.use("/manager", managerRoutes);
 
-// WebSocket server
-const wss = new WebSocketServer({ server, path: "/ws", maxPayload: 200 * 1024 * 1024 });
+// WebSocket servers: /ws (eventos) e /ws/call (áudio das chamadas ao vivo pelo painel).
+// Com dois servidores no mesmo HTTP, cada um recusaria (400) o caminho do outro; por isso
+// ficam em noServer e um único "upgrade" entrega cada conexão ao servidor certo.
+const wss = new WebSocketServer({ noServer: true, maxPayload: 200 * 1024 * 1024 });
 const WebSocket = new WebSocketService(wss);
+const chamadasAoVivo = criarServidorChamadas({ sessionMiddleware });
+
+server.on("upgrade", (req, socket, head) => {
+  const { pathname } = new URL(req.url, "http://localhost");
+  if (pathname === "/ws") return wss.handleUpgrade(req, socket, head, (ws) => wss.emit("connection", ws, req));
+  if (pathname === "/ws/call") return chamadasAoVivo.tratarUpgrade(req, socket, head);
+  socket.write("HTTP/1.1 404 Not Found\r\n\r\n");
+  socket.destroy();
+});
 
 // Conexão websocket
 WhatsAppService.SetWebSocketService(WebSocket);

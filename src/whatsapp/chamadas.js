@@ -87,14 +87,21 @@ export function resumoChamada(chamada) {
 }
 
 /**
- * Controla as chamadas que a API inicia: tempo para atender, encerrar ao fim do áudio,
- * duração máxima e limpeza do arquivo temporário. Também publica os eventos.
+ * Controla as chamadas da sessão:
+ *  - com áudio gravado (rota /api/call/start): tempo para atender, desligar ao fim do áudio,
+ *    duração máxima e limpeza do arquivo temporário;
+ *  - ao vivo (painel /manager/call): liga ou atende e troca áudio com um "ouvinte"
+ *    (a conexão WebSocket do atendente), que recebe estados e a voz do contato.
+ * Também publica os eventos "call" e "call.update".
  */
 export class GerenciadorChamadas {
   /** @param socket SessaoWhatsApp */
   constructor(socket) {
     this.socket = socket;
-    this.controles = new Map(); // callId -> { arquivo, timers[], encerrarAoTerminar }
+    // callId -> { arquivo?, timers[], encerrarAoTerminar?, aoVivo?, ouvinte?, limiteAgendado? }
+    this.controles = new Map();
+    // Painéis abertos nesta sessão, avisados quando chega uma ligação
+    this.paineis = new Set();
   }
 
   get voip() {
@@ -119,17 +126,31 @@ export class GerenciadorChamadas {
         isGroup: Boolean(chamada.isGroupCall),
         groupJid: chamada.groupJid,
       }]);
-      emitir("call.update", resumoChamada(chamada));
+      const resumo = resumoChamada(chamada);
+      emitir("call.update", resumo);
+      for (const painel of this.paineis) painel.chamadaRecebida?.(resumo);
     });
 
     client.on("voip_call_state", (chamada) => {
-      emitir("call.update", resumoChamada(chamada));
+      const resumo = resumoChamada(chamada);
+      emitir("call.update", resumo);
+      this.controles.get(chamada.callId)?.ouvinte?.estado?.(resumo);
       if (chamada.stateData?.state === "active") this.#aoConectar(chamada.callId);
     });
 
     client.on("voip_call_ended", (chamada) => {
-      emitir("call.update", resumoChamada(chamada));
+      const resumo = resumoChamada(chamada);
+      emitir("call.update", resumo);
+      this.controles.get(chamada.callId)?.ouvinte?.estado?.(resumo);
+      // Uma ligação recebida que acabou sem ser atendida também some dos painéis
+      for (const painel of this.paineis) painel.chamadaEncerrada?.(resumo);
       this.#limpar(chamada.callId);
+    });
+
+    // Voz do contato: 960 amostras Float32 (60 ms a 16 kHz) para o atendente
+    client.on("voip_call_inbound_audio", ({ call, pcm }) => {
+      const controle = this.controles.get(call?.callId);
+      if (controle?.aoVivo) controle.ouvinte?.audio?.(pcm);
     });
 
     client.on("voip_call_outbound_audio_finished", (chamada) => {
@@ -146,16 +167,32 @@ export class GerenciadorChamadas {
     });
   }
 
+  #garantirLivre(exceto) {
+    const ativas = this.voip.getCalls().filter((c) => c.stateData?.state !== "ended" && c.callId !== exceto);
+    if (ativas.length > 0) {
+      const ocupado = new Error("Já existe uma chamada em andamento nesta sessão");
+      ocupado.chamadaOcupada = true;
+      throw ocupado;
+    }
+  }
+
+  #agendarTempoParaAtender(callId, controle, segundos) {
+    controle.timers.push(setTimeout(() => {
+      const estado = this.voip.getCall(callId)?.stateData?.state;
+      if (estado && estado !== "active" && estado !== "ended") this.encerrar(callId, "Timeout");
+    }, segundos * 1000));
+  }
+
   /**
    * Liga para `jid` e toca o áudio quando atenderem.
    * @returns resumo da chamada (state "initiating"/"ringing")
    */
   async ligarComAudio(jid, arquivoWav, { tempoParaAtenderS = config.callRingTimeoutSeconds, encerrarAoTerminar = true } = {}) {
-    const ativas = this.voip.getCalls().filter((c) => c.stateData?.state !== "ended");
-    if (ativas.length > 0) {
-      const ocupado = new Error("Já existe uma chamada em andamento nesta sessão");
-      ocupado.chamadaOcupada = true;
-      throw ocupado;
+    try {
+      this.#garantirLivre();
+    } catch (erro) {
+      fs.unlink(arquivoWav, () => {});
+      throw erro;
     }
 
     let callId;
@@ -168,21 +205,59 @@ export class GerenciadorChamadas {
 
     const controle = { arquivo: arquivoWav, timers: [], encerrarAoTerminar };
     this.controles.set(callId, controle);
-
-    // Ninguém atendeu a tempo: cancela a chamada
-    controle.timers.push(setTimeout(() => {
-      const estado = this.voip.getCall(callId)?.stateData?.state;
-      if (estado && estado !== "active" && estado !== "ended") this.encerrar(callId, "Timeout");
-    }, tempoParaAtenderS * 1000));
-
+    this.#agendarTempoParaAtender(callId, controle, tempoParaAtenderS);
     return resumoChamada(this.voip.getCall(callId)) || { callId };
+  }
+
+  /**
+   * Liga para `jid` em modo ao vivo. `ouvinte` = { estado(resumo), audio(Float32Array) }.
+   */
+  async ligarAoVivo(jid, ouvinte) {
+    this.#garantirLivre();
+    const callId = await this.voip.startCall({ peerJid: jid });
+    const controle = { aoVivo: true, ouvinte, timers: [] };
+    this.controles.set(callId, controle);
+    this.#agendarTempoParaAtender(callId, controle, config.callRingTimeoutSeconds);
+    return resumoChamada(this.voip.getCall(callId)) || { callId };
+  }
+
+  /** Atende uma ligação recebida em modo ao vivo. */
+  async atenderAoVivo(callId, ouvinte) {
+    const chamada = this.voip.getCall(callId);
+    if (!chamada || chamada.stateData?.state === "ended") throw new Error("Ligação não encontrada ou já encerrada");
+    this.#garantirLivre(callId);
+    this.controles.set(callId, { aoVivo: true, ouvinte, timers: [] });
+    await this.voip.acceptCall(callId);
+    return resumoChamada(this.voip.getCall(callId));
+  }
+
+  /**
+   * Envia a voz do atendente (Float32 16 kHz mono). Se a fila passar do limite do plugin,
+   * descarta o trecho: numa conversa, perder 60 ms é melhor do que acumular atraso.
+   * @returns ms de áudio na fila, ou -1 se descartado / chamada não ativa
+   */
+  alimentar(callId, pcm) {
+    const controle = this.controles.get(callId);
+    if (!controle?.aoVivo || !controle.externoAtivo) return -1;
+    if (this.voip.getLiveBufferMs(callId) >= this.voip.getFeedWatermarksMs().pauseMs) return -1;
+    return this.voip.feedLiveAudio(callId, pcm);
+  }
+
+  mutar(callId, mudo) {
+    this.voip.setMute(callId, Boolean(mudo));
   }
 
   #aoConectar(callId) {
     const controle = this.controles.get(callId);
     if (!controle || controle.limiteAgendado) return;
     controle.limiteAgendado = true;
-    controle.timers.push(setTimeout(() => this.encerrar(callId, "UserEnded"), config.callMaxDurationSeconds * 1000));
+    if (controle.aoVivo) {
+      // a partir daqui a voz enviada vem do atendente (feedLiveAudio)
+      this.voip.setExternalAudioMode(callId, true);
+      controle.externoAtivo = true;
+    }
+    const limite = controle.aoVivo ? config.callLiveMaxDurationSeconds : config.callMaxDurationSeconds;
+    controle.timers.push(setTimeout(() => this.encerrar(callId, "UserEnded"), limite * 1000));
   }
 
   async encerrar(callId, motivo = "UserEnded") {
@@ -205,11 +280,18 @@ export class GerenciadorChamadas {
     return resumoChamada(this.voip.getCall(callId));
   }
 
+  /** O atendente fechou o painel: encerra as chamadas ao vivo dele. */
+  async desligarDoOuvinte(ouvinte) {
+    for (const [callId, controle] of this.controles) {
+      if (controle.ouvinte === ouvinte) await this.encerrar(callId).catch(() => {});
+    }
+  }
+
   #limpar(callId) {
     const controle = this.controles.get(callId);
     if (!controle) return;
     controle.timers.forEach(clearTimeout);
-    fs.unlink(controle.arquivo, () => {});
+    if (controle.arquivo) fs.unlink(controle.arquivo, () => {});
     this.controles.delete(callId);
   }
 

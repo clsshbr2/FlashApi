@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Chamadas | Flash API</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link href="/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+    <link href="/css/futuristic-theme.css" rel="stylesheet" />
+    <link href="/css/call.css" rel="stylesheet" />
+  </head>
+
+  <body class="panel-page dashboard-page call-page">
+    <nav class="navbar navbar-dark bg-black border-bottom border-primary">
+      <div class="container-fluid">
+        <span class="navbar-brand text-primary fw-bold">
+          <i class="bi bi-lightning-charge-fill me-1"></i> Flash API
+          <span class="text-secondary fw-normal ms-2 d-none d-sm-inline">Chamadas</span>
+        </span>
+        <div class="d-flex align-items-center gap-2">
+          <a href="/manager/dashboard" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i> Painel</a>
+          <a href="/manager/logout" class="btn btn-sm btn-danger"><i class="bi bi-box-arrow-right me-1"></i> Sair</a>
+        </div>
+      </div>
+    </nav>
+
+    <main class="call-main">
+      <div id="avisoHttps" class="call-alert" hidden>
+        <i class="bi bi-shield-exclamation me-1"></i>
+        O navegador só libera o microfone em <strong>HTTPS</strong> (ou em localhost). Abra o painel por um endereço https:// para falar nas ligações.
+      </div>
+
+      <% if (!chamadasAtivas) { %>
+      <div class="call-alert">
+        <i class="bi bi-telephone-x me-1"></i>
+        As chamadas estão desativadas. Defina <code>ENABLE_CALLS=true</code> no <code>.env</code> e reinicie a API.
+      </div>
+      <% } %>
+
+      <section class="call-card">
+        <% if (modo === 'admin') { %>
+        <label class="call-field">
+          <span>Sessão</span>
+          <select id="sessao" class="form-select">
+            <% sessoes.forEach(function (s) { %>
+            <option value="<%= s.apikey %>"><%= s.nome %></option>
+            <% }) %>
+          </select>
+        </label>
+        <% } %>
+
+        <div class="call-conn">
+          <span id="conexaoPonto" class="call-dot"></span>
+          <span id="conexaoTexto" class="text-muted small">Conectando…</span>
+        </div>
+
+        <!-- Ligação recebida -->
+        <div id="recebendo" class="call-incoming" hidden>
+          <div>
+            <div class="call-incoming-label"><i class="bi bi-telephone-inbound-fill me-1"></i> Ligação recebida</div>
+            <div id="recebendoDe" class="call-number"></div>
+          </div>
+          <div class="d-flex gap-2">
+            <button type="button" id="atender" class="btn btn-success"><i class="bi bi-telephone-fill me-1"></i> Atender</button>
+            <button type="button" id="recusar" class="btn btn-outline-danger"><i class="bi bi-telephone-x-fill me-1"></i> Recusar</button>
+          </div>
+        </div>
+
+        <!-- Fazer ligação -->
+        <form id="formLigar" class="call-dial">
+          <label class="call-field">
+            <span>Número</span>
+            <input type="tel" id="numero" class="form-control form-control-lg" placeholder="5511999999999" autocomplete="off" required />
+          </label>
+          <button type="submit" id="ligar" class="btn btn-primary btn-lg"><i class="bi bi-telephone-outbound-fill me-1"></i> Ligar</button>
+        </form>
+
+        <!-- Em chamada -->
+        <div id="emChamada" class="call-active" hidden>
+          <div class="call-number" id="chamadaCom"></div>
+          <div class="call-status"><span id="chamadaEstado">Chamando…</span> <span id="chamadaTempo" class="call-timer"></span></div>
+          <div class="call-meter" title="Nível do seu microfone"><div id="nivelMic"></div></div>
+          <div class="d-flex justify-content-center gap-3 mt-3">
+            <button type="button" id="mudo" class="btn btn-outline-secondary btn-lg" aria-pressed="false"><i class="bi bi-mic-fill me-1"></i> Mudo</button>
+            <button type="button" id="desligar" class="btn btn-danger btn-lg"><i class="bi bi-telephone-x-fill me-1"></i> Desligar</button>
+          </div>
+        </div>
+
+        <p id="mensagem" class="call-message" role="status"></p>
+      </section>
+
+      <p class="call-tip">
+        <i class="bi bi-headphones me-1"></i>
+        Use fone de ouvido: sem ele, o contato pode ouvir o próprio eco. Fechar esta página encerra a ligação.
+      </p>
+    </main>
+
+    <script src="/js/call.js"></script>
+  </body>
+</html>
