@@ -1275,15 +1275,39 @@
                         "method": "GET",
                         "header": [],
                         "url": {
-                            "raw": "{{baseUrl}}/contact/list",
+                            "raw": "{{baseUrl}}/contact/list?filter=conversas&search=&page=1&limit=100",
                             "host": [
                                 "{{baseUrl}}"
                             ],
                             "path": [
                                 "contact",
                                 "list"
+                            ],
+                            "query": [
+                                {
+                                    "key": "filter",
+                                    "value": "conversas",
+                                    "description": "conversas | agenda | todos"
+                                },
+                                {
+                                    "key": "search",
+                                    "value": "",
+                                    "description": "nome, número ou username",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "page",
+                                    "value": "1",
+                                    "description": "opcional; sem page devolve tudo"
+                                },
+                                {
+                                    "key": "limit",
+                                    "value": "100",
+                                    "description": "1 a 1000"
+                                }
                             ]
-                        }
+                        },
+                        "description": "filter: conversas (padrão, só quem tem conversa) | agenda (salvos no celular) | todos (tudo que a zapo guardou, inclui membros de grupos). search e page/limit são opcionais."
                     },
                     "response": []
                 },
