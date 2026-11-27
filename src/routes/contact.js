@@ -43,49 +43,36 @@ router.get("/list", authenticateApiKey, async (req, res) => {
   }
 });
 
+// Foto de perfil de um contato (ou grupo). Aceita número puro, @s.whatsapp.net, @lid e @g.us.
+// Sempre responde uma imagem: sem foto, foto oculta pela privacidade ou sessão offline -> imagem padrão.
 router.get("/avatar/:apikey/:jid", async (req, res) => {
+  const imagemPadrao = () => res.sendFile(path.resolve("public/images/image.png"));
+  const { apikey, jid } = req.params;
+
+  const sock = WhatsAppService.getSocket(apikey);
+  if (!sock?.client || !jid) return imagemPadrao();
+
+  // Alta resolução primeiro; a miniatura só quando a consulta respondeu sem foto.
+  // Se o WhatsApp recusou (sem foto / privacidade), não insiste: seria uma consulta a mais à toa.
+  let url;
   try {
-    const apiKey = req.params.apikey;
-    const jid = req.params.jid;
-    if (!apiKey) {
-      return res.status(400).json({
-        success: false,
-        message: "ApiKey é obrigatória",
-      });
-    }
-    if (!jid) {
-      return res.status(400).json({
-        success: false,
-        message: "JID é obrigatório",
-      });
-    }
-    const sock = WhatsAppService.getSocket(apiKey);
-
-    if (!sock?.client) {
-      return res.sendFile(path.resolve("public/images/image.png"));
-    }
-    const jidformat = jid.includes('@s.whatsapp.net') ? jid : jid + "@s.whatsapp.net"
-
-    // Tenta a foto em alta resolução e, se não houver, a miniatura.
-    let url;
-    try {
-      url = await sock.client.profile.getProfilePicture(jid + "@s.whatsapp.net", "image")
-    } catch {
-
-    }
-    if (!url.url) return res.sendFile(path.resolve("public/images/image.png"));
-
-    const response = await axios.get(url.url, {
-      responseType: "stream",
-      timeout: 5000,
-    });
-
-    res.setHeader("Content-Type", "image/jpeg");
-    response.data.pipe(res);
+    url = await sock.profilePictureUrl(jid, "image");
+    if (!url) url = await sock.profilePictureUrl(jid, "preview");
   } catch (error) {
-    // Sem foto (ou privacidade) é comum; mostra a imagem padrão e registra o motivo.
-    logger.debug(`Avatar indisponível (${req.params.jid}): ${error?.message || error}`);
-    return res.sendFile(path.resolve("public/images/image.png"));
+    logger.debug(`Avatar indisponível (${jid}): ${error?.message || error}`);
+    return imagemPadrao();
+  }
+  if (!url) return imagemPadrao();
+
+  try {
+    const resposta = await axios.get(url, { responseType: "stream", timeout: 5000 });
+    res.setHeader("Content-Type", resposta.headers["content-type"] || "image/jpeg");
+    // O navegador guarda a foto por 1 hora: telas recarregadas não consultam o WhatsApp de novo.
+    res.setHeader("Cache-Control", "private, max-age=3600");
+    resposta.data.pipe(res);
+  } catch (error) {
+    logger.debug(`Falha ao baixar o avatar (${jid}): ${error?.message || error}`);
+    return imagemPadrao();
   }
 });
 
