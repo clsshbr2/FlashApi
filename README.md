@@ -4,7 +4,7 @@
 
 # ⚡ Flash API
 
-### API REST Multi-Sessão para WhatsApp, construída sobre o Baileys
+### API REST Multi-Sessão para WhatsApp, construída sobre a zapo-js
 
 Gerencie centenas de instâncias do WhatsApp de forma independente, com autenticação por API Key, Webhooks, WebSocket, painel administrativo e persistência em PostgreSQL + Redis.
 
@@ -12,12 +12,13 @@ Gerencie centenas de instâncias do WhatsApp de forma independente, com autentic
 
 [![Node.js](https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
 [![Express](https://img.shields.io/badge/Express-4.x-000000?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com/)
-[![Baileys](https://img.shields.io/badge/Baileys-WhiskeySockets-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)](https://github.com/WhiskeySockets/Baileys)
+[![zapo-js](https://img.shields.io/badge/zapo--js-WhatsApp_Web-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)](https://github.com/vinikjkkj/zapo)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16+-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Redis](https://img.shields.io/badge/Redis-7-DC382D?style=for-the-badge&logo=redis&logoColor=white)](https://redis.io/)
 [![Docker](https://img.shields.io/badge/Docker-ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](#-licença)
-[![Version](https://img.shields.io/badge/version-1.0.6-blueviolet?style=for-the-badge)](https://github.com/clsshbr2/FlashApi/releases/tag/v1.0.6)
+[![Version](https://img.shields.io/badge/version-1.0.8-blueviolet?style=for-the-badge)](#-novidades-da-versão-108)
+[![Apoie com Pix](https://img.shields.io/badge/Apoie_com-Pix-32BCAD?style=for-the-badge&logo=pix&logoColor=white)](#-apoie-o-projeto)
 
 </div>
 
@@ -26,6 +27,7 @@ Gerencie centenas de instâncias do WhatsApp de forma independente, com autentic
 ## 📚 Sumário
 
 - [Sobre o Projeto](#-sobre-o-projeto)
+- [Novidades da versão 1.0.8](#-novidades-da-versão-108)
 - [Principais Recursos](#-principais-recursos)
 - [Arquitetura](#-arquitetura)
 - [Fluxo de Funcionamento](#-fluxo-de-funcionamento)
@@ -45,6 +47,9 @@ Gerencie centenas de instâncias do WhatsApp de forma independente, com autentic
   - [Mensagens (Chat)](#mensagens-chat)
   - [Contatos](#contatos)
   - [Grupos](#grupos)
+  - [Perfil](#perfil)
+  - [Privacidade](#privacidade)
+  - [Chamadas de Voz](#chamadas-de-voz)
   - [Configurações](#configurações)
   - [Sistema](#sistema)
 - [Exemplos de Uso](#-exemplos-de-uso)
@@ -55,23 +60,44 @@ Gerencie centenas de instâncias do WhatsApp de forma independente, com autentic
 - [Roadmap](#-roadmap)
 - [FAQ](#-faq)
 - [Contribuindo](#-contribuindo)
+- [Apoie o Projeto](#-apoie-o-projeto)
 - [Licença](#-licença)
 
 ---
 
 ## 🧭 Sobre o Projeto
 
-**Flash API** é uma API RESTful escrita em **Node.js (ESM)** que expõe o protocolo do WhatsApp Web através da biblioteca [**Baileys**](https://github.com/WhiskeySockets/Baileys), permitindo criar e administrar **múltiplas sessões (instâncias) de WhatsApp** simultaneamente através de uma **API Key** exclusiva por sessão.
+**Flash API** é uma API RESTful escrita em **Node.js (ESM)** que expõe o protocolo do WhatsApp Web através da biblioteca [**zapo-js**](https://github.com/vinikjkkj/zapo), permitindo criar e administrar **múltiplas sessões (instâncias) de WhatsApp** simultaneamente através de uma **API Key** exclusiva por sessão.
+
+> 📘 Detalhes da integração com o WhatsApp (arquitetura, banco, eventos e manutenção) em [`docs/WHATSAPP_ZAPO.md`](docs/WHATSAPP_ZAPO.md).
 
 O projeto foi pensado para cenários de **multi-tenant/multi-atendimento**, oferecendo:
 
 - Criação de sessões via QR Code ou pareamento por número de telefone;
-- Persistência de credenciais e chaves da sessão em **PostgreSQL**;
-- Fila e cache de alta performance com **Redis**;
+- Persistência automática pela **zapo** em **PostgreSQL**: credenciais, chaves, mensagens, chats e contatos (a API não grava nada manualmente);
+- Cache de sessões e do painel com **Redis**;
 - Notificações em tempo real via **Webhook HTTP** e/ou **WebSocket**;
 - Um **painel web (Manager)** para acompanhar e administrar as sessões visualmente.
 
 > ⚠️ Este projeto não é afiliado, endossado ou de qualquer forma oficialmente conectado ao WhatsApp Inc./Meta. Use com responsabilidade e em conformidade com os Termos de Serviço do WhatsApp.
+
+---
+
+## 🆕 Novidades da versão 1.0.8
+
+| Área                     | O que mudou                                                                                                                                                       |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 🚀 **Estabilidade**      | zapo-js **1.12.2**. Sessões não desistem de reconectar: após 10 tentativas rápidas, tentam a cada 5 min e avisam pelo `connection_update`.                         |
+| 🔔 **Webhooks**          | Eventos que falham em todas as tentativas vão para uma **fila no Redis** e são reenviados depois (1, 2, 4… até 30 min). Nada se perde com o seu servidor fora do ar. |
+| 👥 **Grupos**            | Entrar por link de convite, prévia do convite, aprovar/recusar pedidos de entrada, mensagens temporárias, quem pode adicionar membros e **comunidades**.             |
+| 🙋 **Perfil**            | Nome, recado e foto da conta (qualquer imagem, convertida automaticamente), foto de grupos, **@username** e perfil comercial.                                       |
+| 🔒 **Privacidade**       | Visto por último, online, foto, recado, confirmação de leitura, grupos, ligações, listas de exceção e contatos bloqueados.                                        |
+| 📞 **Chamadas de voz**   | Ligar e **tocar um áudio** quando atenderem, e **chamadas ao vivo pelo painel** com o microfone do navegador. Opcional (`ENABLE_CALLS=true`).                       |
+| 🧪 **Testador**          | Página estilo Postman no painel (`/manager/api-tester`) com **todas** as rotas, gerada a partir da coleção Postman.                                                |
+| 🛠️ **Suporte**           | `POST /api/contact/resync-session` refaz a criptografia com um contato e corrige o **"Aguardando mensagem"**.                                                      |
+| 🧹 **Limpeza**           | Dependências sem uso removidas e todos os `console.log` trocados pelo logger.                                                                                     |
+
+> ⚠️ **Mudança de comportamento:** `GET /api/contact/list` agora traz **só quem tem conversa com a conta** (antes vinham milhares de membros de grupos). Para a lista completa, use `?filter=todos`. Veja [Contatos](#contatos).
 
 ---
 
@@ -83,12 +109,14 @@ O projeto foi pensado para cenários de **multi-tenant/multi-atendimento**, ofer
 | 🔑 **Autenticação em 2 níveis**            | `GLOBAL_API_KEY` para operações administrativas (criar/listar/remover sessões) e `apikey` por sessão para operações de mensageria.                                                                             |
 | 📱 **Conexão via QR Code ou Pairing Code** | Suporte a conexão tradicional por QR Code ou por número de telefone.                                                                                                                                           |
 | 💬 **Envio completo de mensagens**         | Texto, imagem, vídeo, áudio (convertido para Opus/OGG automaticamente via `ffmpeg`), documento, localização, contato, figurinha (sticker), reação, enquete, listas, botões, mensagens interativas e carrossel. |
-| 👥 **Gestão de Grupos**                    | Criar, listar, atualizar participantes/descrição/assunto, configurar permissões e gerar/revogar links de convite.                                                                                              |
-| 👤 **Gestão de Contatos**                  | Listagem, verificação de números no WhatsApp, bloqueio/desbloqueio e conversão de LID para JID.                                                                                                                |
-| 🔔 **Webhooks configuráveis**              | Webhook global (via `.env`) ou por sessão, com lista de eventos customizável e tentativas de reenvio configuráveis.                                                                                            |
+| 👥 **Gestão de Grupos**                    | Criar, listar, atualizar participantes/descrição/assunto, permissões, links de convite, entrar por convite, pedidos de entrada, mensagens temporárias e comunidades.                                            |
+| 👤 **Gestão de Contatos**                  | Listagem com filtro (conversas, agenda ou todos), busca e paginação; verificação de números, bloqueio, LID → JID e reparo da criptografia ("Aguardando mensagem").                                              |
+| 🙋 **Perfil e Privacidade**                | Nome, recado, foto, @username e perfil comercial da conta; todas as opções de privacidade do WhatsApp e listas de exceção.                                                                                     |
+| 📞 **Chamadas de voz** _(opcional)_         | Ligar e tocar um áudio gravado, ou falar ao vivo pelo painel com o microfone do navegador.                                                                                                                     |
+| 🔔 **Webhooks configuráveis**              | Webhook global (via `.env`) ou por sessão, com lista de eventos customizável, tentativas de reenvio e **fila no Redis** para eventos que falharem.                                                              |
 | 🔌 **WebSocket nativo**                    | Canal bidirecional (`/ws`) para consumo de eventos em tempo real sem long-polling.                                                                                                                             |
-| 🗄️ **Persistência híbrida**                | PostgreSQL para dados estruturados (sessões, mensagens, contatos, grupos) e Redis para sessões, cache e filas de credenciais/chaves.                                                                           |
-| 🖥️ **Painel Web (Manager)**                | Dashboard EJS com login de administrador/usuário para visualizar e operar sessões sem usar a API diretamente.                                                                                                  |
+| 🗄️ **Persistência pela zapo**              | A zapo guarda sozinha credenciais, chaves, mensagens, chats e contatos no PostgreSQL (tabelas `zapo_*`); a API só consulta. O Redis guarda o estado das sessões, o cache e a sessão do painel.                 |
+| 🖥️ **Painel Web (Manager)**                | Dashboard EJS com login de administrador/usuário para operar sessões, **testador de endpoints** estilo Postman com todas as rotas e **painel de chamadas** ao vivo.                                            |
 | 🌍 **Suporte a Proxy**                     | Roteamento de conexões por proxy HTTP/HTTPS/SOCKS4/SOCKS5 por sessão.                                                                                                                                          |
 | 🧹 **Auto-limpeza de sessões**             | Remoção automática de sessões desconectadas após um tempo configurável.                                                                                                                                        |
 | 🐳 **Docker-ready**                        | `Dockerfile` e `docker-compose.yml` prontos, orquestrando API + PostgreSQL + Redis.                                                                                                                            |
@@ -98,7 +126,7 @@ O projeto foi pensado para cenários de **multi-tenant/multi-atendimento**, ofer
 
 ## 🏗️ Arquitetura
 
-A Flash API segue uma arquitetura em camadas (routes → services → models → banco de dados), com Redis atuando como camada de cache/sessão e barramento de filas entre a API e o worker que processa as credenciais do Baileys.
+A Flash API segue uma arquitetura em camadas (routes → services → models → banco de dados), com a **zapo** persistindo tudo da conta no PostgreSQL e o Redis atuando como camada de cache/sessão.
 
 ```mermaid
 flowchart TB
@@ -106,19 +134,21 @@ flowchart TB
 
     subgraph FlashAPI["Flash API (Node.js)"]
         API --> MW["Middlewares<br/>auth.js / globalAuth.js / helmet / cors"]
-        MW --> Routes["Rotas<br/>session · chat · contact · group · config · system"]
-        Routes --> Services["Services<br/>BaileysService · messageService · buttonsService"]
-        Services --> Baileys["@whiskeysockets/baileys<br/>(conexão WhatsApp Web)"]
+        MW --> Routes["Rotas<br/>session · chat · contact · group · profile · privacy · call · config · system"]
+        Routes --> Services["Services<br/>WhatsAppService · messageService · buttonsService"]
+        Services --> Zapo["zapo-js<br/>(conexão WhatsApp Web)"]
         Services --> WSService["WebSocketService"]
         Manager["Manager Web (EJS)<br/>/manager/*"] --> Routes
     end
 
-    Services <-->|sessões, filas, cache| Redis[(Redis)]
-    Services <-->|sessões, mensagens, grupos, contatos| Postgres[(PostgreSQL)]
+    Services <-->|estado das sessões, cache| Redis[(Redis)]
+    Services <-->|dados das sessões, proxies| Postgres[(PostgreSQL)]
+    Zapo <-->|credenciais, chaves, mensagens, chats, contatos| Postgres
 
     WSService -->|eventos em tempo real| WSClients["Clientes WebSocket<br/>/ws"]
+    Manager -->|áudio das chamadas ao vivo| WSCall["WebSocket /ws/call"]
     Services -->|POST evento| Webhook["Webhook externo<br/>(HTTP callback)"]
-    Baileys <-->|Protocolo WhatsApp Web| WhatsApp(["WhatsApp"])
+    Zapo <-->|Protocolo WhatsApp Web| WhatsApp(["WhatsApp"])
 ```
 
 ---
@@ -131,7 +161,7 @@ Fluxo típico de criação e uso de uma sessão:
 sequenceDiagram
     participant U as Usuário/Integração
     participant A as Flash API
-    participant B as Baileys Service
+    participant B as WhatsApp Service
     participant W as WhatsApp
 
     U->>A: POST /api/session/create_sessao (GLOBAL_API_KEY)
@@ -172,12 +202,14 @@ FlashApi/
 ├── public/                     # Arquivos estáticos servidos pela API
 │   ├── css/                    # Estilos do painel Manager
 │   ├── images/                 # Imagens (banner, avatar padrão etc.)
-│   └── js/                     # Scripts front-end do painel
+│   └── js/                     # Scripts do painel (api-tester.js, call.js, call-audio-worklet.js…)
 │
 ├── views/                      # Views EJS do painel administrativo (Manager)
-│   ├── index.ejs
-│   ├── user.ejs
-│   └── dashboard.ejs
+│   ├── index.ejs               # Login
+│   ├── user.ejs                # Painel do cliente
+│   ├── dashboard.ejs           # Painel do administrador
+│   ├── api-tester.ejs          # Testador de endpoints (estilo Postman)
+│   └── call.ejs                # Chamadas ao vivo pelo navegador
 │
 ├── supabase/
 │   └── migrations/
@@ -195,30 +227,39 @@ FlashApi/
     │
     ├── models/
     │   ├── ApiKey.js
-    │   ├── Session.js
-    │   ├── Contatos.js
-    │   ├── Grupos.js
-    │   ├── Message.js
-    │   ├── chats.js
-    │   └── Store.js
+    │   └── Session.js              # Sessões, configuração, proxy e importação de credenciais
     │
     ├── routes/
     │   ├── session.js            # Ciclo de vida das sessões (criar, conectar, status, deletar…)
     │   ├── chat.js                # Envio de mensagens e leitura de conversas
-    │   ├── contact.js             # Contatos: listar, checar, bloquear
-    │   ├── group.js               # Grupos: criar, administrar, convites
+    │   ├── contact.js             # Contatos: listar, checar, bloquear, reparar criptografia
+    │   ├── group.js               # Grupos: criar, administrar, convites, pedidos, comunidades
+    │   ├── profile.js             # Perfil da conta: nome, recado, foto, @username, comercial
+    │   ├── privacy.js             # Privacidade e contatos bloqueados
+    │   ├── call.js                # Chamadas de voz com áudio gravado
+    │   ├── rotaSessao.js          # Esqueleto comum das rotas (sessão conectada + erros)
     │   ├── config.js              # Configurações da sessão (webhook, proxy, dados gerais)
     │   ├── system.js              # Status/monitoramento do sistema
-    │   └── manager.js             # Login e dashboard do painel web
+    │   └── manager.js             # Login, dashboard, testador e painel de chamadas
     │
     ├── services/
-    │   ├── BaileysService.js       # Núcleo de integração com o Baileys (conexão, eventos, QR)
-    │   ├── WebSocketService.js     # Broadcast de eventos via WebSocket
+    │   ├── WhatsAppService.js      # Gerencia as sessões (criar, reconectar, proxy, desligar)
+    │   ├── WebSocketService.js     # Broadcast de eventos via WebSocket (/ws)
+    │   ├── WebhookService.js       # Envio de webhooks + fila de reenvio no Redis
+    │   ├── ChamadaAoVivoService.js # WebSocket /ws/call: áudio das chamadas ao vivo do painel
     │   ├── messageService.js       # Montagem/envio de mensagens (mídia, texto, localização…)
     │   ├── buttonsService.js       # Botões, listas, mensagens interativas e carrossel
     │   ├── redis.js                # Cliente Redis (ioredis)
-    │   ├── usePostgresAuthStore.js # Auth store do Baileys persistido em PostgreSQL
-    │   └── workers/                # Workers assíncronos (ex.: processamento de filas)
+    │   └── EventService.js         # Liga os eventos da sessão a webhooks e WebSocket (+ conexão e rejeição de chamadas)
+    │
+    ├── whatsapp/                   # Camada de integração com a zapo-js
+    │   ├── SessaoWhatsApp.js       # Uma conexão: envio, grupos, contatos, mídia, presença
+    │   ├── conteudo.js             # Corpo da requisição -> conteúdo da zapo
+    │   ├── eventos.js              # Eventos da zapo -> eventos publicados pela API
+    │   ├── store.js                # Store PostgreSQL da zapo + consultas (mensagens, chats, contatos)
+    │   ├── chamadas.js             # Plugin de chamadas (@zapo-js/voip): áudio gravado e ao vivo
+    │   ├── importarCredenciais.js  # Importa a sessão enviada pela extensão do navegador
+    │   └── utils.js                # JIDs, base64, mídia por URL e adaptador do logger
     │
     └── utils/
         ├── logger.js               # Logger (pino) com formatação amigável
@@ -235,7 +276,7 @@ FlashApi/
 | -------------------------------------------------------------------- | --------------------------------------------- |
 | [Node.js 20+](https://nodejs.org/)                                   | Runtime JavaScript (ESM — `"type": "module"`) |
 | [Express 4](https://expressjs.com/)                                  | Framework HTTP/REST                           |
-| [@whiskeysockets/baileys](https://github.com/WhiskeySockets/Baileys) | Cliente WhatsApp Web (multi-device)           |
+| [zapo-js](https://github.com/vinikjkkj/zapo) | Cliente WhatsApp Web (multi-device)           |
 | [ws](https://github.com/websockets/ws)                               | Servidor WebSocket nativo                     |
 | [EJS](https://ejs.co/)                                               | Template engine do painel Manager             |
 | [PostgreSQL](https://www.postgresql.org/) (`pg`)                     | Banco de dados relacional principal           |
@@ -245,12 +286,13 @@ FlashApi/
 
 | Categoria           | Pacotes                                                                                           |
 | ------------------- | ------------------------------------------------------------------------------------------------- |
-| Segurança           | `helmet`, `cors`, `bcrypt`, `jsonwebtoken`, `express-session`, `connect-redis`                    |
+| Segurança           | `helmet`, `cors`, `bcrypt`, `express-session`, `connect-redis`                                    |
 | Validação           | `joi`                                                                                             |
-| Mídia               | `@ffmpeg-installer/ffmpeg`, `fluent-ffmpeg`*, `wa-sticker-formatter`, `qrcode`, `qrcode-terminal` |
-| HTTP/Proxy          | `axios`, `https-proxy-agent`, `undici`, `link-preview-js`                                         |
-| Documentação/Testes | `swagger-jsdoc`, `swagger-ui-express`, `@apidevtools/swagger-parser`                              |
-| Utilitários         | `uuid`, `moment-timezone`, `node-cache`, `systeminformation`, `pino`, `pino-pretty`               |
+| Mídia               | `@ffmpeg-installer/ffmpeg`, `fluent-ffmpeg`*, `wa-sticker-formatter`, `qrcode`                    |
+| Chamadas de voz     | `@zapo-js/voip`, `@roamhq/wrtc`, `libmlow-wasm-fork` (carregados só com `ENABLE_CALLS=true`)      |
+| HTTP/Proxy          | `axios`, `https-proxy-agent`, `undici`                                                            |
+| Documentação        | `swagger-jsdoc`, `swagger-ui-express`                                                             |
+| Utilitários         | `uuid`, `moment-timezone`, `p-limit`, `systeminformation`, `pino`, `pino-pretty`                  |
 | Dev                 | `nodemon`, `prettier`, `prettier-plugin-ejs`                                                      |
 
 <sub>* `fluent-ffmpeg` é utilizado no código-fonte para conversão de áudio para Opus/OGG — recomenda-se adicioná-lo explicitamente ao `package.json` caso não esteja listado na sua versão local.</sub>
@@ -334,9 +376,10 @@ Todas as variáveis abaixo devem ser definidas em um arquivo `.env` na raiz do p
 | `PROTOCOLO`         | `http`              | Protocolo utilizado (`http` \| `https`)                                            |
 | `PORT`              | `3000`              | Porta da API                                                                       |
 | `LOG_LEVEL`         | `info`              | Nível de log da aplicação (`fatal`,`error`,`warn`,`info`,`debug`,`trace`,`silent`) |
-| `BAILEYS_LOG_LEVEL` | `LOG_LEVEL`         | Nível de log específico do Baileys                                                 |
+| `WA_LOG_LEVEL`      | `LOG_LEVEL`         | Nível de log da zapo (aceita também o antigo `BAILEYS_LOG_LEVEL`)                  |
 | `VERSAO`            | `1.0.4`             | Versão exibida pela API                                                            |
-| `SYNC_SESSIONS`     | `true`              | Sincroniza automaticamente todas as sessões salvas ao iniciar                      |
+| `SYNC_SESSIONS`     | `true`              | Pede o histórico completo ao conectar (a zapo guarda mensagens, chats e contatos)  |
+| `AUTO_INICIAR_SESSOES` | `true`           | Reconecta todas as sessões salvas ao subir a API. **Use `false` em máquinas de teste que apontam para o banco de produção**, senão as sessões brigam com a instância no ar |
 | `TZ`                | `America/Sao_Paulo` | Timezone da aplicação                                                              |
 | `NODE_ENV`          | `development`       | Ambiente de execução (`development` \| `production`)                               |
 
@@ -377,12 +420,33 @@ Todas as variáveis abaixo devem ser definidas em um arquivo `.env` na raiz do p
 | `GLOBAL_WEBHOOK_ATTEMPTS` | `4`       | Tentativas de reenvio em caso de falha             |
 | `GLOBAL_WEBHOOK_EVENTS`   | _(todos)_ | Lista de eventos enviados, separados por vírgula   |
 
+### Fila de reenvio de webhooks
+
+Vale para o webhook global e para os webhooks das sessões. Quando todas as tentativas imediatas falham (rede, timeout ou HTTP 5xx), o evento vai para uma fila no Redis e é reenviado depois, com espera crescente (1, 2, 4, 8… até 30 min). Respostas 4xx não são repetidas.
+
+| Variável                     | Padrão  | Descrição                                       |
+| ---------------------------- | ------- | ----------------------------------------------- |
+| `WEBHOOK_QUEUE_ENABLED`      | `true`  | Liga/desliga a fila de reenvio                  |
+| `WEBHOOK_QUEUE_MAX_ATTEMPTS` | `12`    | Reenvios pela fila antes de descartar o evento  |
+| `WEBHOOK_QUEUE_MAX_SIZE`     | `10000` | Máximo de eventos guardados na fila             |
+
 ### WebSocket Global
 
 | Variável                  | Padrão               | Descrição                                      |
 | ------------------------- | -------------------- | ---------------------------------------------- |
 | `ENABLE_WEBSOCKET`        | `false`              | Habilita o broadcast global via WebSocket      |
 | `GLOBAL_WEBSOCKET_SECRET` | _(chave de exemplo)_ | Chave usada para autenticar clientes WebSocket |
+
+### Chamadas de Voz
+
+| Variável                         | Padrão  | Descrição                                                                                 |
+| -------------------------------- | ------- | ----------------------------------------------------------------------------------------- |
+| `ENABLE_CALLS`                   | `false` | Habilita as chamadas (`/api/call` e o painel `/manager/call`). Reinicie a API ao mudar    |
+| `CALL_RING_TIMEOUT_SECONDS`      | `45`    | Tempo esperando o contato atender antes de desistir                                       |
+| `CALL_MAX_DURATION_SECONDS`      | `300`   | Duração máxima de uma chamada com áudio gravado                                           |
+| `CALL_LIVE_MAX_DURATION_SECONDS` | `3600`  | Duração máxima de uma chamada ao vivo pelo painel                                         |
+
+> Com `ENABLE_CALLS=true`, as ligações recebidas passam pelo plugin de chamadas. O evento `call` e a rejeição automática continuam funcionando normalmente.
 
 ### Banco de Dados
 
@@ -456,9 +520,8 @@ npm start
 Ao subir, a API automaticamente:
 
 1. Verifica a conexão com o PostgreSQL e cria o banco/tabelas caso não existam (`gerardb.js` + `verificardb.js`);
-2. Inicializa os _workers_ internos (`startWorkers()`);
-3. Sincroniza as sessões salvas (se `SYNC_SESSIONS=true`);
-4. Inicia o servidor HTTP + WebSocket na porta configurada.
+2. Reconecta as sessões salvas (a zapo retoma as credenciais do PostgreSQL, sem novo QR Code);
+3. Inicia o servidor HTTP + WebSocket na porta configurada.
 
 ```text
 🚀 Flash API rodando na porta 3000
@@ -476,9 +539,30 @@ Quando `MANAGER=true`, um painel web fica disponível para login e acompanhament
 | `GET /manager/login`     | Tela de login                                                                                                  |
 | `POST /manager/login`    | Autenticação (usuário/senha definidos em `LOGIN_MANAGER_ADMIN` / `LOGIN_MANAGER_USER` / `SENHA_MANAGER_ADMIN`) |
 | `GET /manager/dashboard` | Dashboard com status das sessões (requer sessão autenticada)                                                   |
+| `GET /manager/api-tester`| Testador de endpoints estilo Postman                                                                           |
+| `GET /manager/call`      | Chamadas ao vivo pelo navegador (requer `ENABLE_CALLS=true`)                                                   |
 | `GET /manager/logout`    | Encerra a sessão do painel                                                                                     |
 
 A sessão do painel é persistida no **Redis** via `express-session` + `connect-redis`.
+
+### Testar endpoints
+
+A página `/manager/api-tester` lista **todas** as rotas da API, montadas a partir do `postman_collection.json` (rota nova adicionada ao Postman aparece sozinha).
+
+- Busca por nome ou rota; pastas iguais às do Postman; rotas que exigem a apikey global aparecem com 🔒.
+- Corpo JSON com botão **Formatar**, aba de parâmetros (`:id_message`…) e envio com **Ctrl+Enter**.
+- Resposta com status, tempo, tamanho, JSON formatado (imagens são exibidas) e botões **Copiar** e **cURL**.
+- Variáveis: `{{apikey}}` vem da sessão; `{{RemoteJid}}` vem do campo "Número de teste".
+- **Cliente** usa a apikey da própria sessão. **Admin** escolhe a sessão e usa a apikey global nas rotas 🔒.
+- A coleção é entregue à página **sem** as variáveis do arquivo, para não expor a apikey global.
+
+### Chamadas ao vivo
+
+Com `ENABLE_CALLS=true`, a página `/manager/call` permite ao atendente **ligar** ou **atender** e falar pelo microfone do navegador (com mudo, desligar e aviso de ligação recebida). O áudio trafega pelo WebSocket `/ws/call`, autenticado pelo login do painel.
+
+- O navegador só libera o microfone em **HTTPS** (ou `localhost`).
+- Use fone de ouvido para evitar eco.
+- Fechar a página encerra a ligação.
 
 ---
 
@@ -544,7 +628,7 @@ Rotas em `src/routes/chat.js` — todas exigem o header `apikey` da sessão.
 | `POST`   | `/api/chat/send-carouselMessage`    | Envia carrossel de cards                               |
 | `POST`   | `/api/chat/typing`                  | Simula "digitando…" / "gravando áudio…"                |
 | `POST`   | `/api/chat/mark-read`               | Marca mensagens como lidas                             |
-| `GET`    | `/api/chat/messages`                | Lista mensagens de uma conversa                        |
+| `GET`    | `/api/chat/messages`                | Lista mensagens de uma conversa (`jid`, `limit`, `before` em ms) |
 | `GET`    | `/api/chat/chats`                   | Lista conversas da sessão                              |
 | `DELETE` | `/api/chat/delete/:id_message`      | Apaga uma mensagem                                     |
 | `POST`   | `/api/chat/midiaToBase64`           | Converte mídia de uma mensagem recebida em base64      |
@@ -553,13 +637,22 @@ Rotas em `src/routes/chat.js` — todas exigem o header `apikey` da sessão.
 
 Rotas em `src/routes/contact.js`.
 
-| Método | Endpoint                           | Descrição                                |
-| ------ | ---------------------------------- | ---------------------------------------- |
-| `GET`  | `/api/contact/list`                | Lista contatos da sessão                 |
-| `GET`  | `/api/contact/avatar/:apikey/:jid` | Foto de perfil de um contato             |
-| `POST` | `/api/contact/check`               | Verifica se um número existe no WhatsApp |
-| `POST` | `/api/contact/block`               | Bloqueia/desbloqueia um contato          |
-| `POST` | `/api/contact/lid-to-jid`          | Converte identificador LID em JID        |
+| Método | Endpoint                           | Descrição                                                                 |
+| ------ | ---------------------------------- | ------------------------------------------------------------------------- |
+| `GET`  | `/api/contact/list`                | Lista contatos da sessão (filtro, busca e paginação — ver abaixo)         |
+| `GET`  | `/api/contact/avatar/:apikey/:jid` | Foto de perfil de um contato                                              |
+| `POST` | `/api/contact/check`               | Verifica se um número existe no WhatsApp                                  |
+| `POST` | `/api/contact/block`               | Bloqueia/desbloqueia um contato                                           |
+| `POST` | `/api/contact/lid-to-jid`          | Converte identificador LID em JID                                         |
+| `POST` | `/api/contact/resync-session`      | Refaz a criptografia com um contato (`{ jid, mode: "force" \| "identity" }`) — corrige "Aguardando mensagem" |
+
+**Parâmetros de `GET /api/contact/list`** (todos opcionais):
+
+| Parâmetro | Valores                              | Descrição                                                                                       |
+| --------- | ------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| `filter`  | `conversas` (padrão) · `agenda` · `todos` | Só quem tem conversa · só salvos na agenda do celular · tudo o que a zapo guardou (inclui membros de grupos) |
+| `search`  | texto                                | Busca por nome, número ou @username                                                              |
+| `page` / `limit` | `page=1&limit=100`            | Paginação (`limit` de 1 a 1000). Sem `page`, devolve tudo; com `page`, a resposta traz `pages`    |
 
 ### Grupos
 
@@ -577,6 +670,79 @@ Rotas em `src/routes/group.js`.
 | `POST` | `/api/group/up-setting`                     | Atualiza configurações (quem pode enviar mensagens/editar dados) |
 | `GET`  | `/api/group/group-Invite/:groupJid`         | Gera link de convite                                             |
 | `GET`  | `/api/group/group-Invite-revogar/:groupJid` | Revoga o link de convite atual                                   |
+| `POST` | `/api/group/invite-info`                    | Prévia de um convite sem entrar (`{ link }` ou `{ code }`)       |
+| `POST` | `/api/group/join`                           | Entra pelo convite; `status` = `joined` ou `pending` (aguardando aprovação) |
+| `POST` | `/api/group/requests`                       | Lista pedidos de entrada pendentes (`{ groupJid }`)              |
+| `POST` | `/api/group/requests-update`                | Aprova ou recusa pedidos (`{ groupJid, participants, action: "approve" \| "reject" }`) |
+| `POST` | `/api/group/ephemeral`                      | Mensagens temporárias (`expiration`: `0`, `86400`, `604800`, `7776000`) |
+| `POST` | `/api/group/member-add-mode`                | Quem adiciona membros (`mode`: `admin_add` \| `all_member_add`)  |
+| `POST` | `/api/group/community/create`               | Cria uma comunidade                                              |
+| `POST` | `/api/group/community/subgroups`            | Lista os grupos de uma comunidade                                |
+| `POST` | `/api/group/community/link`                 | Vincula/desvincula grupos (`action`: `link` \| `unlink`)         |
+| `POST` | `/api/group/community/deactivate`           | Desativa uma comunidade                                          |
+
+### Perfil
+
+Rotas em `src/routes/profile.js` — header `apikey` da sessão.
+
+| Método   | Endpoint                          | Descrição                                                                                     |
+| -------- | --------------------------------- | --------------------------------------------------------------------------------------------- |
+| `GET`    | `/api/profile/me`                 | Dados da conta: id, nome, recado, foto e @username                                            |
+| `PUT`    | `/api/profile/name`               | Nome exibido (`{ name }`, até 25 caracteres)                                                  |
+| `PUT`    | `/api/profile/status`             | Recado (`{ status }`, até 139 caracteres)                                                     |
+| `PUT`    | `/api/profile/picture`            | Foto da conta, ou do grupo com `groupJid` (`{ image }`: URL, data URI ou base64; convertida para JPEG quadrado) |
+| `DELETE` | `/api/profile/picture`            | Remove a foto da conta (ou do grupo com `groupJid`)                                           |
+| `POST`   | `/api/profile/contact-status`     | Recado de um contato (`{ jid }`)                                                              |
+| `GET`    | `/api/profile/username`           | @username da conta                                                                            |
+| `POST`   | `/api/profile/username/check`     | Verifica se um @username está livre (com sugestões)                                           |
+| `PUT`    | `/api/profile/username`           | Define o @username (409 com sugestões se indisponível)                                        |
+| `DELETE` | `/api/profile/username`           | Remove o @username                                                                            |
+| `POST`   | `/api/profile/username/resolve`   | Descobre a conta de um @username                                                              |
+| `POST`   | `/api/profile/business`           | Perfil comercial de um contato (sem `jid`, o da própria conta)                                |
+| `PUT`    | `/api/profile/business`           | Edita o perfil comercial (somente WhatsApp Business)                                          |
+
+### Privacidade
+
+Rotas em `src/routes/privacy.js` — header `apikey` da sessão.
+
+| Método | Endpoint                             | Descrição                                                                                         |
+| ------ | ------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| `GET`  | `/api/privacy`                       | Configurações atuais e os valores aceitos por cada uma                                            |
+| `PUT`  | `/api/privacy`                       | Altera uma ou várias: `{ "lastSeen": "contacts", "online": "match_last_seen", "readReceipts": "none" }` |
+| `GET`  | `/api/privacy/disallowed/:setting`   | Lista de exceção de uma categoria ("meus contatos, exceto...")                                    |
+| `PUT`  | `/api/privacy/disallowed`            | Altera a lista de exceção (`{ setting, add: [...], remove: [...] }`)                              |
+| `GET`  | `/api/privacy/blocklist`             | Contatos bloqueados                                                                               |
+
+Configurações disponíveis: `readReceipts`, `lastSeen`, `online`, `profilePicture`, `about`, `groupAdd`, `callAdd`, `messages`, `defenseMode`, `linkedProfiles`, `pix`.
+
+### Chamadas de Voz
+
+Rotas em `src/routes/call.js` — header `apikey` da sessão. Requer `ENABLE_CALLS=true`.
+
+| Método | Endpoint              | Descrição                                                                 |
+| ------ | --------------------- | ------------------------------------------------------------------------- |
+| `POST` | `/api/call/start`     | Liga e toca um áudio quando o contato atender                             |
+| `POST` | `/api/call/end`       | Encerra uma chamada (`{ callId }`)                                        |
+| `GET`  | `/api/call/list`      | Chamadas acompanhadas pela sessão                                         |
+| `GET`  | `/api/call/:callId`   | Status de uma chamada                                                     |
+
+Corpo de `POST /api/call/start`:
+
+```json
+{
+  "jid": "5511999999999",
+  "audio": "https://seusite.com/audios/aviso.mp3",
+  "ringTimeoutSeconds": 45,
+  "hangupAfterAudio": true
+}
+```
+
+- `audio` aceita **URL** (link direto para o arquivo), **data URI** ou **base64** — mp3, ogg/opus, wav, m4a. O áudio é validado e convertido **antes** de ligar.
+- Com `hangupAfterAudio: true`, a ligação cai ~1,5 s após o fim do áudio. Ninguém atendeu em `ringTimeoutSeconds`? A chamada é cancelada.
+- Uma chamada por vez por sessão (a segunda recebe **409**). Somente áudio (sem vídeo) e somente 1:1.
+- O andamento chega pelo evento **`call_update`** (`state`, `endReason`, `durationSecs`, `audioFinished`).
+
+> Para falar **ao vivo**, use o painel [`/manager/call`](#chamadas-ao-vivo).
 
 ### Configurações
 
@@ -650,6 +816,25 @@ curl -X POST http://localhost:3000/api/chat/send-image \
       }'
 ```
 
+### Listar só os contatos com conversa (paginado)
+
+```bash
+curl "http://localhost:3000/api/contact/list?filter=conversas&page=1&limit=100" \
+  -H "apikey: APIKEY_DA_SESSAO"
+```
+
+### Ligar e tocar um áudio
+
+```bash
+curl -X POST http://localhost:3000/api/call/start \
+  -H "Content-Type: application/json" \
+  -H "apikey: APIKEY_DA_SESSAO" \
+  -d '{
+        "jid": "5511999999999",
+        "audio": "https://seusite.com/audios/aviso.mp3"
+      }'
+```
+
 ### Exemplo em Node.js (axios)
 
 ```javascript
@@ -711,7 +896,18 @@ Formato do payload recebido:
 
 Principais eventos disponíveis (configuráveis via `GLOBAL_WEBHOOK_EVENTS` ou por sessão em `events`):
 
-`connection_update` · `qr_updated` · `creds_update` · `messages_upsert` · `messages_update` · `messages_delete` · `messages_reaction` · `message_receipt_update` · `chats_upsert` · `chats_update` · `chats_delete` · `contacts_upsert` · `contacts_update` · `groups_upsert` · `groups_update` · `group_participants_update` · `presence_update` · `call` · `labels_edit` · `blocklist_update` · entre outros.
+`connection_update` · `qr_updated` · `creds_update` · `messages_upsert` · `messages_update` · `messages_delete` · `messages_reaction` · `message_receipt_update` · `chats_upsert` · `chats_update` · `chats_delete` · `contacts_upsert` · `contacts_update` · `groups_upsert` · `groups_update` · `group_participants_update` · `presence_update` · `call` · `call_update` · `labels_edit` · `blocklist_update` · entre outros.
+
+**Eventos novos ou ampliados na 1.0.8:**
+
+- `call_update`: andamento das chamadas de voz (`callId`, `peerJid`, `direction`, `state`, `endReason`, `durationSecs`, `audioFinished`).
+- `connection_update` com o campo `reconnect`: enviado quando a sessão passa a tentar reconectar a cada 5 minutos.
+
+```json
+{ "connection": "close", "reconnect": { "mode": "slow", "attempts": 10, "nextAttemptInMs": 300000, "nextAttemptAt": "…", "reason": "…" } }
+```
+
+**Entrega garantida:** se o seu endpoint estiver fora do ar ou responder 5xx, o evento fica na fila do Redis e é reenviado depois (veja [Fila de reenvio de webhooks](#fila-de-reenvio-de-webhooks)).
 
 ---
 
@@ -758,6 +954,7 @@ const ws = new WebSocket("ws://localhost:3000/ws", [], {
       "blocklist_update",
 
       "call",
+      "call_update",
 
       "labels_edit",
       "labels_association",
@@ -784,22 +981,30 @@ ws.onmessage = (event) => {
 
 Habilite com `ENABLE_WEBSOCKET=true` e proteja o canal com `GLOBAL_WEBSOCKET_SECRET`.
 
+> O WebSocket `/ws/call` é outro canal, usado só pelo painel de chamadas ao vivo (áudio), e é autenticado pelo login do painel.
+
 ---
 
 ## 📬 Coleção Postman
 
-O repositório inclui `postman_collection.json` com todos os endpoints documentados e prontos para uso. Basta importar no Postman/Insomnia e configurar as variáveis de ambiente (`base_url`, `apikey`, `global_api_key`).
+O repositório inclui `postman_collection.json` com todos os endpoints documentados e prontos para uso. Basta importar no Postman/Insomnia e configurar as variáveis: `baseUrl` (ex.: `http://localhost:3000/api`), `apikey` (sessão), `apikeyGlobal` e `RemoteJid` (número de teste).
+
+> A mesma coleção alimenta o [testador de endpoints](#testar-endpoints) do painel. Ao criar uma rota, adicione-a na coleção e ela aparece nos dois lugares.
+>
+> ⚠️ Não publique a coleção com valores reais nas variáveis (principalmente `apikeyGlobal`).
 
 ---
 
 ## ⚠️ Limitações Conhecidas
 
-- 🔸 Depende diretamente da engenharia reversa do protocolo WhatsApp Web feita pelo **Baileys** — mudanças no WhatsApp podem exigir atualização da dependência.
+- 🔸 Depende diretamente da engenharia reversa do protocolo WhatsApp Web feita pela **zapo-js** — mudanças no WhatsApp podem exigir atualização da dependência.
 - 🔸 Não é uma solução oficial/homologada pela Meta; o uso em desacordo com os Termos de Serviço do WhatsApp pode resultar em banimento do número.
 - 🔸 Conversão de áudio depende de `ffmpeg` (via `@ffmpeg-installer/ffmpeg`), o que pode aumentar o tempo de build da imagem Docker.
 - 🔸 Não há suíte de testes automatizados configurada (`npm test` é um placeholder).
 - 🔸 A geração de QR Code é limitada por sessão (`LIMITE_QRCODE`) para evitar rate-limit do WhatsApp.
 - 🔸 O painel Manager utiliza sessão simples com usuário/senha em variáveis de ambiente — recomenda-se reforçar a segurança (proxy reverso com HTTPS, IP allowlist) antes de expor publicamente.
+- 🔸 **Chamadas:** somente áudio (sem vídeo), 1:1 e uma chamada por vez por sessão. O painel de chamadas ao vivo exige HTTPS para liberar o microfone.
+- 🔸 As chamadas usam o módulo nativo `@roamhq/wrtc` (Linux x64 com glibc, como a imagem `node` oficial). Imagens Alpine/ARM podem exigir build próprio.
 
 ---
 
@@ -822,7 +1027,7 @@ O repositório inclui `postman_collection.json` com todos os endpoints documenta
 <details>
 <summary><b>Preciso pagar para usar a API oficial do WhatsApp?</b></summary>
 <br>
-Não. A Flash API utiliza o <b>Baileys</b>, que se conecta via WhatsApp Web (multi-device), sem custos oficiais do WhatsApp Business API. Ainda assim, o uso é por sua conta e risco quanto aos Termos de Serviço do WhatsApp.
+Não. A Flash API utiliza a <b>zapo-js</b>, que se conecta via WhatsApp Web (multi-device), sem custos oficiais do WhatsApp Business API. Ainda assim, o uso é por sua conta e risco quanto aos Termos de Serviço do WhatsApp.
 </details>
 
 <details>
@@ -834,7 +1039,7 @@ Não há um limite fixo imposto pelo código além do <code>LIMITE_QRCODE</code>
 <details>
 <summary><b>A API funciona sem PostgreSQL ou Redis?</b></summary>
 <br>
-Não. Ambos são obrigatórios: o PostgreSQL armazena sessões, mensagens, contatos e grupos; o Redis gerencia cache, sessão do painel Manager e a fila de chaves de autenticação do Baileys.
+Não. Ambos são obrigatórios: o PostgreSQL guarda as sessões da API e tudo o que a zapo persiste (credenciais, chaves, mensagens, chats e contatos); o Redis guarda o estado das sessões, o cache e a sessão do painel Manager.
 </details>
 
 <details>
@@ -846,7 +1051,25 @@ Configure um <b>Webhook</b> (global ou por sessão) para receber os eventos via 
 <details>
 <summary><b>Posso usar um número de WhatsApp Business?</b></summary>
 <br>
-Sim, o Baileys suporta contas padrão e Business. O comportamento pode variar conforme recursos exclusivos do WhatsApp Business (catálogo, mensagens automáticas nativas etc.).
+Sim, a zapo-js suporta contas padrão e Business. O comportamento pode variar conforme recursos exclusivos do WhatsApp Business (catálogo, mensagens automáticas nativas etc.).
+</details>
+
+<details>
+<summary><b>Por que a lista de contatos veio menor depois de atualizar?</b></summary>
+<br>
+A partir da 1.0.8, <code>GET /api/contact/list</code> traz só quem tem conversa com a conta. A zapo guarda todo contato que "vê" (inclusive membros de todos os grupos), por isso antes vinham milhares de pessoas. Para o comportamento antigo, use <code>?filter=todos</code>; para os salvos no celular, <code>?filter=agenda</code>.
+</details>
+
+<details>
+<summary><b>Um contato aparece como "Aguardando mensagem". Como resolver?</b></summary>
+<br>
+Chame <code>POST /api/contact/resync-session</code> com <code>{ "jid": "5511999999999" }</code>. Se o contato trocou de celular ou reinstalou o WhatsApp, use <code>"mode": "identity"</code>. As próximas mensagens usam a sessão de criptografia nova.
+</details>
+
+<details>
+<summary><b>O que coloco no campo <code>audio</code> da chamada?</b></summary>
+<br>
+Um link direto para o arquivo (mp3, ogg, wav, m4a), um data URI ou o arquivo em base64. Uma dica: tudo o que está na pasta <code>public/</code> é servido pela API, então <code>public/audios/aviso.mp3</code> fica disponível em <code>http://SEU-SERVIDOR:3000/audios/aviso.mp3</code>.
 </details>
 
 <details>
@@ -875,6 +1098,20 @@ Contribuições são muito bem-vindas! Para colaborar:
 - Evite incluir credenciais reais, tokens ou dados sensíveis em commits.
 
 Encontrou um bug ou tem uma sugestão? Abra uma **Issue** no repositório.
+
+---
+
+## 💖 Apoie o Projeto
+
+A Flash API é gratuita e de código aberto. Se ela ajuda você ou a sua empresa, considere contribuir com qualquer valor: isso mantém o projeto atualizado e com novos recursos.
+
+**Chave Pix (aleatória):**
+
+```
+d47cd9b2-072a-4856-a830-427ee4fc2dde
+```
+
+Outras formas de apoiar: deixe uma ⭐ no repositório, indique o projeto para outras pessoas e reporte bugs.
 
 ---
 

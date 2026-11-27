@@ -38,21 +38,7 @@ class RedisClient {
       // uso geral: lpush, llen, etc
       this.workerClient = this.createClient();
 
-      // uso exclusivo: para salvamento de sessão
-      this.lidMap = this.createClient();
 
-      this.blockingClients = {
-        // uso exclusivo: brpop/blpop de salvamento de key sessão
-        authKey: this.createClient(),
-        // uso exclusivo: brpop/blpop de salvamento de Messagem
-        message: this.createClient(),
-        // uso exclusivo: brpop/blpop de salvamento de Message
-        contato: this.createClient(),
-        // uso exclusivo: brpop/blpop de salvamento de Contatos
-        util: this.createClient(),
-        // uso exclusivo: brpop/blpop de salvamento de Chats
-        chat: this.createClient()
-      };
 
       this.client.on("connect", () => logger.info("✅ Conectado ao Redis"));
 
@@ -70,7 +56,6 @@ class RedisClient {
       });
 
       this.client.on("error", (err) => {
-        console.log(err);
         this.wasDisconnected = true;
         logger.error("❌ Erro no Redis:", err.message);
         // Não encerra o processo, deixa o retryStrategy lidar com reconexão
@@ -107,7 +92,7 @@ class RedisClient {
 
       return foundKeys;
     } catch (err) {
-      console.error(`Erro ao varrer chaves com padrão ${pattern}:`, err);
+      logger.error(`Erro ao varrer chaves com padrão ${pattern}:`, err);
       return [];
     }
   }
@@ -126,7 +111,7 @@ class RedisClient {
         await this.client.set(key, data);
       }
     } catch (err) {
-      console.error(`Erro ao definir chave ${key}:`, err);
+      logger.error(`Erro ao definir chave ${key}:`, err);
     }
   }
 
@@ -146,7 +131,7 @@ class RedisClient {
 
       return sessions;
     } catch (err) {
-      console.error("Erro ao buscar sessões:", err);
+      logger.error("Erro ao buscar sessões:", err);
       return [];
     }
   }
@@ -157,7 +142,7 @@ class RedisClient {
       const data = await this.client.get(key);
       return data ? JSON.parse(data) : null;
     } catch (err) {
-      console.error(`Erro ao buscar chave ${key}:`, err);
+      logger.error(`Erro ao buscar chave ${key}:`, err);
       return null;
     }
   }
@@ -167,7 +152,7 @@ class RedisClient {
     try {
       await this.client.del(key);
     } catch (err) {
-      console.error(`Erro ao deletar chave ${key}:`, err);
+      logger.error(`Erro ao deletar chave ${key}:`, err);
     }
   }
 
@@ -176,7 +161,7 @@ class RedisClient {
     try {
       return await this.client.exists(key);
     } catch (err) {
-      console.error(`Erro ao verificar chave ${key}:`, err);
+      logger.error(`Erro ao verificar chave ${key}:`, err);
       return false;
     }
   }
@@ -186,7 +171,7 @@ class RedisClient {
     try {
       return await this.scanKeys(pattern);
     } catch (err) {
-      console.error(`Erro ao buscar chaves com padrão ${pattern}:`, err);
+      logger.error(`Erro ao buscar chaves com padrão ${pattern}:`, err);
       return [];
     }
   }
@@ -198,7 +183,7 @@ class RedisClient {
         await this.client.del(...keys);
       }
     } catch (err) {
-      console.error(`Erro ao deletar chaves:`, err);
+      logger.error(`Erro ao deletar chaves:`, err);
     }
   }
 
@@ -212,14 +197,7 @@ class RedisClient {
 export const KEYS = () => ({
 
   sessao: (sessaoId) => `sessao:${sessaoId}`, //Key para salvar sessão
-  pre_keys: () => `queue:authkeys`,  //Key para salvar pre-key de sessão
   lid_map: (botId, id) => `lid-mapping:${botId}:${id}`,   //Key de lid_map
-
-  Store_contatos: () => `queue:contatos`, //key de cache de contatos
-  Store_chats: () => `queue:chats`, //key de cache de vhats
-  Store_mensagens: () => `queue:mensagens`, //key de cache de messages
-
-  queue_util: () => `queue:util`, //key de cache para outros
 
   grupos_cache: (sessaoId) => `grupos:${sessaoId}`
 

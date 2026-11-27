@@ -1,12 +1,13 @@
-import { BufferJSON } from "@whiskeysockets/baileys";
 import config from "../config/env.js";
-import BaileysService from "../services/BaileysService.js";
+import WhatsAppService from "../services/WhatsAppService.js";
 import logger from "../utils/logger.js";
 import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
 import { execute } from "../config/database.js";
 import redis, { KEYS } from "../services/redis.js";
+import { limparDadosSessaoZapo, obterStoreZapo } from "../whatsapp/store.js";
+import { importarCredenciaisExternas } from "../whatsapp/importarCredenciais.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -59,7 +60,7 @@ class Session {
 
         const sqlProxy = `INSERT INTO proxy (${proxyColunas.join(", ")}) VALUES (${placeholdersProxy})`
         await execute(sqlProxy, proxyValues);
-      } catch (error) { console.log(error) }
+      } catch (error) { logger.error("Erro ao salvar o proxy da sessão:", error) }
       return addsessao;
 
     } catch (error) {
@@ -121,21 +122,18 @@ class Session {
       if (sessaodelete) {
         await execute(`DELETE FROM sessao WHERE apikey = $1`, [id]);
       }
-      await execute(`DELETE FROM wa_session_keys WHERE sessao_id = $1`, [id]);
-      await execute(`DELETE FROM chats WHERE sessao_id = $1`, [id]);
-      await execute(`DELETE FROM contatos WHERE sessao_id = $1`, [id]);
-      await execute(`DELETE FROM grupos WHERE sessao_id = $1`, [id]);
-      await execute(`DELETE FROM mensagens WHERE sessao_id = $1`, [id]);
       await execute(`DELETE FROM proxy WHERE sessao_id = $1`, [id]);
-      await BaileysService.DeleteSessao(id)
+      // Remove tudo o que a zapo guardou da sessão (credenciais, chaves, mensagens, chats, contatos).
+      await limparDadosSessaoZapo(id);
+      await WhatsAppService.DeleteSessao(id)
       try {
-        const sock = BaileysService.sockets.get(id);
+        const sock = WhatsAppService.sockets.get(id);
         sock?.end();
       } catch (error) { }
       finally {
-        BaileysService.sockets.delete(id);
-        BaileysService.countQrcode.delete(id);
-        BaileysService.limitReconnect.delete(id);
+        WhatsAppService.sockets.delete(id);
+        WhatsAppService.countQrcode.delete(id);
+        WhatsAppService.limitReconnect.delete(id);
       }
       await execute(`UPDATE sessao SET status = $1 WHERE apikey = $2`, ['disconnected', id])
 
@@ -146,6 +144,60 @@ class Session {
       return true;
     }
 
+  }
+
+  // ===== CONFIGURAÇÕES DE SESSÃO =====
+  static async saveConfig(sessionId, configData) {
+    try {
+      await execute(
+        `
+        UPDATE sessao SET 
+        webhook_url = $1,
+        ignorar_grupos = $2,
+        leitura_automatica = $3,
+        rejeitar_ligacoes = $4,
+        events = $5,
+        webhook_status = $6,
+        msg_rejectcalls = $7,
+        updated_at = CURRENT_TIMESTAMP
+        WHERE apikey = $8
+      `,
+        [
+          configData.webhook_url || null,
+          configData.ignorar_grupos ? 1 : 0,
+          configData.leitura_automatica ? 1 : 0,
+          configData.rejeitar_ligacoes ? 1 : 0,
+          JSON.stringify(configData.events || []),
+          configData.webhook_status ? 1 : 0,
+          configData.msg_rejectcalls,
+          sessionId,
+        ],
+      );
+      return true;
+    } catch (error) {
+      logger.error("Erro ao salvar configuração da sessão:", error);
+      return false;
+    }
+  }
+
+  static async getConfig(sessionId) {
+    try {
+      const { rows } = await execute(
+        `
+        SELECT webhook_url, events, webhook_status, ignorar_grupos, leitura_automatica, rejeitar_ligacoes,
+        msg_rejectcalls
+        FROM sessao WHERE apikey = $1
+      `,
+        [sessionId],
+      );
+      if (rows.length > 0) {
+        return rows[0];
+      }
+      return null;
+    } catch (error) {
+      logger.error("Erro ao buscar configuração da sessão:", error);
+      return null;
+    }
   }
 
   static async setProxy(session, proxy) {
@@ -168,39 +220,26 @@ class Session {
     return rows[0] || {};
   }
 
-  static async GetCreds(session) {
-    const { rows } = await execute(`SELECT value_json FROM wa_session_keys WHERE sessao_id = $1`, [session]);
-    return rows[0] || null;
-  }
-
-  static async setCreds(session, value_json) {
+  /**
+   * Importa uma sessão do WhatsApp Web (enviada pela extensão) para a zapo
+   * e conecta a sessão. Apaga qualquer credencial anterior dessa sessão.
+   */
+  static async setCreds(session, creds, chaves = []) {
     try {
-      /** @type {import("@whiskeysockets/baileys").WASocket} */
-      const sock = BaileysService.sockets.get(session);
-      const { rows } = await execute(`SELECT value_json, key_id FROM wa_session_keys WHERE sessao_id = $1 AND key_id = $2`, [session, 'creds']);
-      if (rows.length > 0) {
-        if (sock) { }
-        await this.delete(session, false)
-        try { sock.end(); } catch (error) { /*ignore*/ }
-      }
-      const teste = await execute(
-        `INSERT INTO wa_session_keys (value_json, sessao_id, key_id) VALUES ($1, $2, $3)`,
-        [JSON.stringify(value_json), session, 'creds'],
-      );
+      const sock = WhatsAppService.sockets.get(session);
+      await this.delete(session, false); // limpa credenciais antigas e encerra o socket
+      try { await sock?.end(); } catch (error) { /*ignore*/ }
 
-      if (teste.rowCount > 0) {
-        try { BaileysService.createSession(session, null) } catch (error) { /*ignore*/ }
-        return { success: true, message: "Sessão injetada com susesso" }
-      } else {
-        return { success: false, message: "Erro ao injetar sessão" }
-      }
+      const resultado = await importarCredenciaisExternas(session, obterStoreZapo(), creds, chaves);
+      logger.info(`Sessão ${session} importada: ${resultado.preKeys} pre-keys, ${resultado.avisos} avisos`);
+
+      WhatsAppService.createSession(session, null).catch((erro) => logger.error(`Erro ao conectar a sessão importada ${session}: ${erro?.message || erro}`));
+      return { success: true, message: "Sessão injetada com susesso" }
     } catch (error) {
-      return { success: false, message: "Erro ao injetar sessão", error }
+      logger.error(`Erro ao importar a sessão ${session}: ${error?.stack || error}`);
+      return { success: false, message: "Erro ao injetar sessão", error: error?.message || error }
     }
-
   }
-
-
 
 }
 

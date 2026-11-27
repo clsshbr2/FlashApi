@@ -1,12 +1,14 @@
 import express from "express";
 import authenticateApiKey from "../middleware/auth.js";
-import BaileysService from "../services/BaileysService.js";
-import Store from "../models/Store.js";
+import WhatsAppService from "../services/WhatsAppService.js";
+import { FILTROS_CONTATOS, listarContatos } from "../whatsapp/store.js";
 import logger from "../utils/logger.js";
 import fs from "fs";
 import util from "util";
 import Session from "../models/Session.js";
 import path from "path";
+import axios from "axios";
+import { rotaSessao } from "./rotaSessao.js";
 
 const router = express.Router();
 
@@ -14,14 +16,25 @@ router.get("/list", authenticateApiKey, async (req, res) => {
   try {
     const sessionId = req.headers["apikey"];
 
-    const SoJids = await Store.getContacts(sessionId);
+    // filter: conversas (padrão) | agenda | todos — ver FILTROS_CONTATOS
+    const filtro = String(req.query.filter || "conversas").toLowerCase();
+    if (!(filtro in FILTROS_CONTATOS)) {
+      return res.status(400).json({ success: false, message: `filter deve ser: ${Object.keys(FILTROS_CONTATOS).join(", ")}` });
+    }
+    const busca = String(req.query.search || "").trim();
+    // Paginação só quando "page" é informado (sem ela, devolve tudo como antes)
+    const page = req.query.page ? Math.max(1, parseInt(req.query.page, 10) || 1) : undefined;
+    const limit = Math.min(1000, Math.max(1, parseInt(req.query.limit, 10) || 100));
+
+    const { contatos, total } = await listarContatos(sessionId, { filtro, busca, page, limit });
     res.json({
       success: true,
-      total: SoJids.length,
-      contacts: SoJids,
+      filter: filtro,
+      total,
+      ...(page ? { page, limit, pages: Math.ceil(total / limit) } : {}),
+      contacts: contatos,
     });
   } catch (error) {
-    console.log(error);
     logger.error("Erro ao listar contatos:", error);
     res.status(500).json({
       success: false,
@@ -46,22 +59,32 @@ router.get("/avatar/:apikey/:jid", async (req, res) => {
         message: "JID é obrigatório",
       });
     }
-    const sock = BaileysService.getSocket(apiKey);
+    const sock = WhatsAppService.getSocket(apiKey);
 
-    if (!sock?.user?.id) {
+    if (!sock?.client) {
       return res.sendFile(path.resolve("public/images/image.png"));
     }
+    const jidformat = jid.includes('@s.whatsapp.net') ? jid : jid + "@s.whatsapp.net"
 
-    const url = await sock.profilePictureUrl(jid, "image");
+    // Tenta a foto em alta resolução e, se não houver, a miniatura.
+    let url;
+    try {
+      url = await sock.client.profile.getProfilePicture(jid + "@s.whatsapp.net", "image")
+    } catch {
 
-    const response = await axios.get(url, {
+    }
+    if (!url.url) return res.sendFile(path.resolve("public/images/image.png"));
+
+    const response = await axios.get(url.url, {
       responseType: "stream",
       timeout: 5000,
     });
 
     res.setHeader("Content-Type", "image/jpeg");
     response.data.pipe(res);
-  } catch {
+  } catch (error) {
+    // Sem foto (ou privacidade) é comum; mostra a imagem padrão e registra o motivo.
+    logger.debug(`Avatar indisponível (${req.params.jid}): ${error?.message || error}`);
     return res.sendFile(path.resolve("public/images/image.png"));
   }
 });
@@ -84,8 +107,7 @@ router.post("/check", authenticateApiKey, async (req, res) => {
         message: "numbers deve ser string"
       });
     }
-    /** @type {import("@whiskeysockets/baileys").WASocket} */
-    const sock = await BaileysService.sockets.get(sessionId)
+    const sock = await WhatsAppService.sockets.get(sessionId)
     if (!sock) {
       return res.status(500).json({
         success: false,
@@ -126,8 +148,7 @@ router.post("/block", authenticateApiKey, async (req, res) => {
       });
     }
 
-    /** @type {import("@whiskeysockets/baileys").WASocket} */
-    const sock = await BaileysService.sockets.get(sessionId)
+    const sock = await WhatsAppService.sockets.get(sessionId)
     if (!sock) {
       return res.status(400).json({
         success: false,
@@ -163,7 +184,7 @@ router.post("/lid-to-jid", authenticateApiKey, async (req, res) => {
     }
 
     const lidlimpo = lid.split("@")[0];
-    const mapping = await BaileysService.redis.get(BaileysService.keys.lid_map(sessionId, lidlimpo));
+    const mapping = await WhatsAppService.redis.get(WhatsAppService.keys.lid_map(sessionId, lidlimpo));
     if (!mapping) {
       return res.status(404).json({
         success: false,
@@ -185,5 +206,16 @@ router.post("/lid-to-jid", authenticateApiKey, async (req, res) => {
     });
   }
 });
+
+// Suporte: refaz a sessão de criptografia com um contato (corrige "Aguardando mensagem" / falha ao decifrar).
+// mode: "force" (padrão, recria mantendo a identidade) | "identity" (contato trocou de aparelho/reinstalou).
+router.post("/resync-session", authenticateApiKey, rotaSessao(async ({ req, sock, erroValidacao }) => {
+  const { jid, mode = "force" } = req.body || {};
+  if (!jid) return erroValidacao("jid é obrigatório");
+  if (String(jid).endsWith("@g.us")) return erroValidacao("Informe o contato, não o grupo (a sessão é por pessoa)");
+  if (!["force", "identity"].includes(mode)) return erroValidacao('mode deve ser "force" ou "identity"');
+  await sock.resyncSignalSession(jid, mode);
+  return { message: "Sessão de criptografia refeita. As próximas mensagens com este contato usam a sessão nova." };
+}, "Erro ao refazer a sessão de criptografia"));
 
 export default router;

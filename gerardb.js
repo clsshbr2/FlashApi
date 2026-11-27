@@ -22,7 +22,7 @@ export async function checkAndInitDatabase() {
   } = process.env;
 
   if (!DB_HOST || !DB_USER || !DB_DATABASE) {
-    console.error('⚠️ Variáveis de ambiente do banco obrigatórias faltando!');
+    logger.error('⚠️ Variáveis de ambiente do banco obrigatórias faltando!');
     process.exit(1);
   }
 
@@ -73,8 +73,7 @@ export async function checkAndInitDatabase() {
 
     logger.info('Script SQL executado com sucesso! Banco pronto para uso.');
   } catch (error) {
-    console.log(error)
-    logger.error('Erro ao preparar o banco:');
+    logger.error('Erro ao preparar o banco:', error);
   } finally {
     if (client) await client.end();
   }

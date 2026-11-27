@@ -1,13 +1,8 @@
 process.on("uncaughtException", (err) => {
-  console.error("❌ Erro global:", err.message);
-
-  if (err.stack) {
-    const lines = err.stack.split("\n");
-    console.error("📍 Origem provável:", lines);
-  }
+  logger.error("❌ Erro global (uncaughtException):", err);
 });
-process.on("unhandledRejection", (reason, promise) => {
-  console.error("❌ Rejeição não tratada (unhandledRejection):", reason);
+process.on("unhandledRejection", (reason) => {
+  logger.error("❌ Rejeição não tratada (unhandledRejection):", reason instanceof Error ? reason : { motivo: String(reason) });
 });
 
 import express from "express";
@@ -23,7 +18,10 @@ import { RedisStore } from "connect-redis";
 import redis from "./src/services/redis.js";
 
 import config from "./src/config/env.js";
+import { sincronizarStatusSessoes } from "./src/services/EventService.js";
+import WebhookService from "./src/services/WebhookService.js";
 import WebSocketService from "./src/services/WebSocketService.js";
+import { criarServidorChamadas } from "./src/services/ChamadaAoVivoService.js";
 
 import logger from "./src/utils/logger.js";
 
@@ -32,15 +30,17 @@ import sessionRoutes from "./src/routes/session.js";
 import chatRoutes from "./src/routes/chat.js";
 import contactRoutes from "./src/routes/contact.js";
 import groupRoutes from "./src/routes/group.js";
+import profileRoutes from "./src/routes/profile.js";
+import privacyRoutes from "./src/routes/privacy.js";
+import callRoutes from "./src/routes/call.js";
 import configRoutes from "./src/routes/config.js";
 import systemRoutes from "./src/routes/system.js";
 import managerRoutes from "./src/routes/manager.js";
 import { execSync } from "child_process";
 import modifyTable from "./src/config/verificardb.js";
-import BaileysService from "./src/services/BaileysService.js";
+import WhatsAppService from "./src/services/WhatsAppService.js";
 import Session from "./src/models/Session.js";
 import { checkAndInitDatabase } from "./gerardb.js";
-import { startWorkers } from "./src/services/workers/index.js";
 
 
 const app = express();
@@ -78,20 +78,19 @@ const ioredisAdapter = {
   mget: (...keys) => redis.client.mget(...keys),
 };
 
-//Sistema de sessão (persistida no Redis)
-app.use(
-  session({
-    store: new RedisStore({ client: ioredisAdapter }),
-    secret: config.manager_senha_admin,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      secure: config.protocol == "https" ? true : false,
-      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 dias
-    },
-  }),
-);
+//Sistema de sessão (persistida no Redis). Também autentica o WebSocket /ws/call.
+const sessionMiddleware = session({
+  store: new RedisStore({ client: ioredisAdapter }),
+  secret: config.manager_senha_admin,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    secure: config.protocol == "https" ? true : false,
+    maxAge: 1000 * 60 * 60 * 24 * 7, // 7 dias
+  },
+});
+app.use(sessionMiddleware);
 
 
 // Routes
@@ -99,16 +98,30 @@ app.use("/api/session", sessionRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/contact", contactRoutes);
 app.use("/api/group", groupRoutes);
+app.use("/api/profile", profileRoutes);
+app.use("/api/privacy", privacyRoutes);
+app.use("/api/call", callRoutes);
 app.use("/api/config", configRoutes);
 app.use("/api/system", systemRoutes);
 app.use("/manager", managerRoutes);
 
-// WebSocket server
-const wss = new WebSocketServer({ server, path: "/ws", maxPayload: 200 * 1024 * 1024 });
+// WebSocket servers: /ws (eventos) e /ws/call (áudio das chamadas ao vivo pelo painel).
+// Com dois servidores no mesmo HTTP, cada um recusaria (400) o caminho do outro; por isso
+// ficam em noServer e um único "upgrade" entrega cada conexão ao servidor certo.
+const wss = new WebSocketServer({ noServer: true, maxPayload: 200 * 1024 * 1024 });
 const WebSocket = new WebSocketService(wss);
+const chamadasAoVivo = criarServidorChamadas({ sessionMiddleware });
+
+server.on("upgrade", (req, socket, head) => {
+  const { pathname } = new URL(req.url, "http://localhost");
+  if (pathname === "/ws") return wss.handleUpgrade(req, socket, head, (ws) => wss.emit("connection", ws, req));
+  if (pathname === "/ws/call") return chamadasAoVivo.tratarUpgrade(req, socket, head);
+  socket.write("HTTP/1.1 404 Not Found\r\n\r\n");
+  socket.destroy();
+});
 
 // Conexão websocket
-BaileysService.SetWebSocketService(WebSocket);
+WhatsAppService.SetWebSocketService(WebSocket);
 
 // Global error handler
 app.use((err, req, res, next) => {
@@ -122,8 +135,7 @@ app.use((err, req, res, next) => {
 });
 
 app.post("/teste", (req, res) => {
-  console.log("Webhook recebido:");
-  console.log(req.body);
+  logger.info("Webhook de teste recebido", { body: req.body });
 
   res.json({
     success: true,
@@ -140,17 +152,31 @@ app.get("/", (req, res) => {
 // Initialize database and start server
 async function startServer() {
   try {
+    if (config.enableGlobalWebhook && !config.globalWebhookUrl) {
+      logger.warn("⚠️ GLOBAL_WEBHOOK_URL não configurada, mas webhook global está habilitado");
+    }
+    if (config.globalApiKey === "default-api-key-change-me" && config.isProduction) {
+      logger.error("❌ GLOBAL_API_KEY deve ser alterada em produção!");
+      process.exit(1);
+    }
+
     server.listen(PORT, "0.0.0.0", async () => {
       logger.info(`🚀 Flash API rodando na porta ${PORT}`);
       //Criar banco de dados
       await checkAndInitDatabase();
 
       logger.info("✅ Iniciando Flash API - WhatsApp Multi-Session");
-      startWorkers()
 
+      // Reenvio dos webhooks que falharam (fila no Redis)
+      WebhookService.iniciarWorker();
 
-      //iniciando serviços da baileys
-      BaileysService.initialize();
+      //iniciando as sessões de WhatsApp
+      if (config.auto_iniciar_sessoes) {
+        WhatsAppService.initialize();
+        setInterval(() => sincronizarStatusSessoes(), 30000).unref();
+      } else {
+        logger.warn("AUTO_INICIAR_SESSOES=false: as sessões salvas NÃO foram reconectadas");
+      }
     });
   } catch (error) {
     logger.error(error);
@@ -161,11 +187,16 @@ async function startServer() {
 
 // Graceful shutdown
 process.on("SIGTERM", () => {
-  server.close(() => process.exit(0)); // fecha conexões antes de sair
+  // fecha conexões e (no provider zapo) grava as chaves pendentes antes de sair
+  // Não espera o server.close(): conexões abertas (WebSocket/keep-alive) o seguram até o Docker matar o processo
+  // (SIGKILL) antes de a zapo desconectar e gravar o que está pendente.
+  server.close();
+  WhatsAppService.encerrarTodas().finally(() => process.exit(0));
 });
 
 process.on("SIGINT", () => {
-  process.exit(0); // sai na hora, sem fechar nada
+  // espera a zapo gravar as chaves pendentes no banco antes de sair
+  WhatsAppService.encerrarTodas().finally(() => process.exit(0));
 });
 startServer();
 

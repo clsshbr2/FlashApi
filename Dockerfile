@@ -5,7 +5,7 @@ FROM node:24.14.0
 WORKDIR /app
 
 # Copia os arquivos para o container
-COPY package*.json ./
+COPY package*.json .npmrc ./
 
 # Remover node_modules
 RUN rm -rf node_modules
@@ -20,4 +20,5 @@ COPY . .
 EXPOSE 3000
 
 # Comando para iniciar o app
-CMD ["npm", "run", "start"]
+# "exec" faz o node virar o PID 1: recebe o SIGTERM do `docker stop` e desconecta as sessões antes de sair
+CMD ["sh", "-c", "node gerardb.js && exec node server.js"]

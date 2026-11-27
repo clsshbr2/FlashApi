@@ -1,16 +1,16 @@
 import express from "express";
 import authenticateApiKey from "../middleware/auth.js";
-import BaileysService from "../services/BaileysService.js";
-import Store from "../models/Store.js";
+import WhatsAppService from "../services/WhatsAppService.js";
 import logger from "../utils/logger.js";
 import redis, { KEYS } from "../services/redis.js";
+import { rotaSessao } from "./rotaSessao.js";
 
 const router = express.Router();
 const GROUP_LIST_CACHE_TTL_SECONDS = 6 * 60;
 
 async function getignorarGrupo(req, res, next) {
   const sessionId = req.headers["apikey"];
-  const getsessao = await BaileysService.redis.get(`sessao:${sessionId}`);
+  const getsessao = await WhatsAppService.redis.get(`sessao:${sessionId}`);
   if (getsessao && getsessao.ignorar_grupos) {
     return res.status(400).json({ success: false, message: "A sessão está configurada para ignorar grupos" });
   }
@@ -31,8 +31,7 @@ router.get("/list", authenticateApiKey, getignorarGrupo, async (req, res) => {
 
       });
     }
-    /** @type {import("@whiskeysockets/baileys").WASocket} */
-    const sock = BaileysService.sockets.get(sessao.apikey);
+    const sock = WhatsAppService.sockets.get(sessao.apikey);
     if (!sock) {
       return res.status(400).json({
         success: false,
@@ -72,8 +71,7 @@ router.post("/info", authenticateApiKey, getignorarGrupo, async (req, res) => {
       });
     }
 
-    /** @type {import("@whiskeysockets/baileys").WASocket} */
-    const sock = BaileysService.sockets.get(sessao.apikey);
+    const sock = WhatsAppService.sockets.get(sessao.apikey);
     if (!sock) {
       return res.status(400).json({
         success: false,
@@ -114,8 +112,7 @@ router.post("/create", authenticateApiKey, getignorarGrupo, async (req, res) => 
       });
     }
 
-    /** @type {import("@whiskeysockets/baileys").WASocket} */
-    const sock = BaileysService.sockets.get(sessao.apikey);
+    const sock = WhatsAppService.sockets.get(sessao.apikey);
     if (!sock) {
       return res.status(400).json({
         success: false,
@@ -158,8 +155,7 @@ router.post("/update-description", authenticateApiKey, getignorarGrupo, async (r
       });
     }
 
-    /** @type {import("@whiskeysockets/baileys").WASocket} */
-    const sock = BaileysService.sockets.get(sessao.apikey);
+    const sock = WhatsAppService.sockets.get(sessao.apikey);
     if (!sock) {
       return res.status(400).json({
         success: false,
@@ -209,8 +205,7 @@ router.post("/ParticipantsUpdate", authenticateApiKey, getignorarGrupo, async (r
       });
     }
 
-    /** @type {import("@whiskeysockets/baileys").WASocket} */
-    const sock = BaileysService.sockets.get(sessao.apikey);
+    const sock = WhatsAppService.sockets.get(sessao.apikey);
     if (!sock) {
       return res.status(400).json({
         success: false,
@@ -283,8 +278,7 @@ router.post("/leave", authenticateApiKey, getignorarGrupo, async (req, res) => {
       });
     }
 
-    /** @type {import("@whiskeysockets/baileys").WASocket} */
-    const sock = BaileysService.sockets.get(sessao.apikey);
+    const sock = WhatsAppService.sockets.get(sessao.apikey);
     if (!sock) {
       return res.status(400).json({
         success: false,
@@ -320,8 +314,7 @@ router.post("/update-subject", authenticateApiKey, getignorarGrupo, async (req, 
       });
     }
 
-    /** @type {import("@whiskeysockets/baileys").WASocket} */
-    const sock = BaileysService.sockets.get(sessao.apikey);
+    const sock = WhatsAppService.sockets.get(sessao.apikey);
     if (!sock) {
       return res.status(400).json({
         success: false,
@@ -364,8 +357,7 @@ router.post("/up-setting", authenticateApiKey, getignorarGrupo, async (req, res)
       });
     }
 
-    /** @type {import("@whiskeysockets/baileys").WASocket} */
-    const sock = BaileysService.sockets.get(sessao.apikey);
+    const sock = WhatsAppService.sockets.get(sessao.apikey);
     if (!sock) {
       return res.status(400).json({
         success: false,
@@ -373,7 +365,7 @@ router.post("/up-setting", authenticateApiKey, getignorarGrupo, async (req, res)
       });
     }
     const result = await sock.groupSettingUpdate(groupJid, setting)
-    console.log(result)
+    logger.debug(`Configuração do grupo ${groupJid} alterada (${setting})`, { result });
     await redis.del(KEYS().grupos_cache(sessao.apikey));
 
     res.json({
@@ -402,8 +394,7 @@ router.get("/group-Invite/:groupJid", authenticateApiKey, getignorarGrupo, async
       });
     }
 
-    /** @type {import("@whiskeysockets/baileys").WASocket} */
-    const sock = BaileysService.sockets.get(sessao.apikey);
+    const sock = WhatsAppService.sockets.get(sessao.apikey);
     if (!sock) {
       return res.status(400).json({
         success: false,
@@ -445,8 +436,7 @@ router.get("/group-Invite-revogar/:groupJid", authenticateApiKey, getignorarGrup
       });
     }
 
-    /** @type {import("@whiskeysockets/baileys").WASocket} */
-    const sock = BaileysService.sockets.get(sessao.apikey);
+    const sock = WhatsAppService.sockets.get(sessao.apikey);
     if (!sock) {
       return res.status(400).json({
         success: false,
@@ -475,5 +465,123 @@ router.get("/group-Invite-revogar/:groupJid", authenticateApiKey, getignorarGrup
     });
   }
 });
+
+// =============================================================================
+// Convites, pedidos de entrada, configurações extras e comunidades
+// =============================================================================
+
+const DURACOES_TEMPORARIAS = [0, 86400, 604800, 7776000];
+
+/** Aceita o código puro ou o link inteiro (https://chat.whatsapp.com/<codigo>). */
+function extrairCodigoConvite({ code, link } = {}) {
+  const valor = String(code || link || "").trim();
+  const doLink = valor.match(/chat\.whatsapp\.com\/(?:invite\/)?([A-Za-z0-9_-]+)/i);
+  const codigo = doLink ? doLink[1] : valor;
+  return /^[A-Za-z0-9_-]{10,}$/.test(codigo) ? codigo : null;
+}
+
+const limparCacheGrupos = (apikey) => redis.del(KEYS().grupos_cache(apikey));
+
+// Prévia de um convite (nome, tamanho, se exige aprovação) sem entrar no grupo
+router.post("/invite-info", authenticateApiKey, getignorarGrupo, rotaSessao(async ({ req, sock, erroValidacao }) => {
+  const codigo = extrairCodigoConvite(req.body);
+  if (!codigo) return erroValidacao("Informe code ou link do convite válido");
+  return { group: await sock.groupGetInviteInfo(codigo) };
+}, "Erro ao consultar convite"));
+
+// Entrar em um grupo pelo link/código de convite
+router.post("/join", authenticateApiKey, getignorarGrupo, rotaSessao(async ({ req, sock, erroValidacao }) => {
+  const codigo = extrairCodigoConvite(req.body);
+  if (!codigo) return erroValidacao("Informe code ou link do convite válido");
+  const { status, groupJid } = await sock.groupAcceptInvite(codigo);
+  await limparCacheGrupos(req.sessao.apikey);
+  return {
+    status,
+    groupJid,
+    message: status === "pending" ? "Pedido de entrada enviado; aguardando aprovação de um admin" : "Entrou no grupo com sucesso",
+  };
+}, "Erro ao entrar no grupo"));
+
+// Listar pedidos de entrada pendentes (grupos com aprovação de admin)
+router.post("/requests", authenticateApiKey, getignorarGrupo, rotaSessao(async ({ req, sock, erroValidacao }) => {
+  const { groupJid } = req.body || {};
+  if (!groupJid) return erroValidacao("groupJid é obrigatório");
+  const requests = await sock.groupRequestParticipantsList(groupJid);
+  return { total: requests.length, requests };
+}, "Erro ao listar pedidos de entrada"));
+
+// Aprovar ou recusar pedidos de entrada
+router.post("/requests-update", authenticateApiKey, getignorarGrupo, rotaSessao(async ({ req, sock, erroValidacao }) => {
+  const { groupJid, participants, action } = req.body || {};
+  if (!groupJid) return erroValidacao("groupJid é obrigatório");
+  if (!Array.isArray(participants) || participants.length === 0) return erroValidacao("participants deve ser um array com ao menos um número/jid");
+  if (!["approve", "reject"].includes(action)) return erroValidacao('action deve ser "approve" ou "reject"');
+  await sock.groupRequestParticipantsUpdate(groupJid, participants, action);
+  await limparCacheGrupos(req.sessao.apikey);
+  return { message: action === "approve" ? "Pedidos aprovados" : "Pedidos recusados" };
+}, "Erro ao atualizar pedidos de entrada"));
+
+// Mensagens temporárias do grupo
+router.post("/ephemeral", authenticateApiKey, getignorarGrupo, rotaSessao(async ({ req, sock, erroValidacao }) => {
+  const { groupJid } = req.body || {};
+  const expiration = Number(req.body?.expiration);
+  if (!groupJid) return erroValidacao("groupJid é obrigatório");
+  if (!DURACOES_TEMPORARIAS.includes(expiration)) {
+    return erroValidacao(`expiration deve ser um destes valores (segundos): ${DURACOES_TEMPORARIAS.join(", ")}`);
+  }
+  await sock.groupToggleEphemeral(groupJid, expiration);
+  return { message: expiration ? "Mensagens temporárias ativadas" : "Mensagens temporárias desativadas" };
+}, "Erro ao alterar mensagens temporárias"));
+
+// Quem pode adicionar membros
+router.post("/member-add-mode", authenticateApiKey, getignorarGrupo, rotaSessao(async ({ req, sock, erroValidacao }) => {
+  const { groupJid, mode } = req.body || {};
+  if (!groupJid) return erroValidacao("groupJid é obrigatório");
+  if (!["admin_add", "all_member_add"].includes(mode)) return erroValidacao('mode deve ser "admin_add" ou "all_member_add"');
+  await sock.groupMemberAddMode(groupJid, mode);
+  return { message: "Configuração atualizada" };
+}, "Erro ao alterar quem pode adicionar membros"));
+
+// --------------------------------------------------------------- Comunidades
+
+router.post("/community/create", authenticateApiKey, getignorarGrupo, rotaSessao(async ({ req, sock, erroValidacao }) => {
+  const { subject, description, membershipApprovalMode, allowNonAdminSubGroupCreation } = req.body || {};
+  if (!subject) return erroValidacao("subject é obrigatório");
+  if (membershipApprovalMode && !["open", "request_required"].includes(membershipApprovalMode)) {
+    return erroValidacao('membershipApprovalMode deve ser "open" ou "request_required"');
+  }
+  const community = await sock.communityCreate(subject, {
+    description: description || undefined,
+    membershipApprovalMode,
+    allowNonAdminSubGroupCreation: typeof allowNonAdminSubGroupCreation === "boolean" ? allowNonAdminSubGroupCreation : undefined,
+  });
+  await limparCacheGrupos(req.sessao.apikey);
+  return { community };
+}, "Erro ao criar comunidade"));
+
+router.post("/community/subgroups", authenticateApiKey, getignorarGrupo, rotaSessao(async ({ req, sock, erroValidacao }) => {
+  const { communityJid } = req.body || {};
+  if (!communityJid) return erroValidacao("communityJid é obrigatório");
+  return await sock.communitySubGroups(communityJid);
+}, "Erro ao listar subgrupos da comunidade"));
+
+// Vincular ou desvincular grupos existentes de uma comunidade
+router.post("/community/link", authenticateApiKey, getignorarGrupo, rotaSessao(async ({ req, sock, erroValidacao }) => {
+  const { communityJid, groups, action = "link", removeOrphanedMembers } = req.body || {};
+  if (!communityJid) return erroValidacao("communityJid é obrigatório");
+  if (!Array.isArray(groups) || groups.length === 0) return erroValidacao("groups deve ser um array com ao menos um groupJid");
+  if (!["link", "unlink"].includes(action)) return erroValidacao('action deve ser "link" ou "unlink"');
+  const resultado = await sock.communityLinkGroups(communityJid, groups, action, { removeOrphanedMembers: Boolean(removeOrphanedMembers) });
+  await limparCacheGrupos(req.sessao.apikey);
+  return resultado;
+}, "Erro ao vincular grupos à comunidade"));
+
+router.post("/community/deactivate", authenticateApiKey, getignorarGrupo, rotaSessao(async ({ req, sock, erroValidacao }) => {
+  const { communityJid } = req.body || {};
+  if (!communityJid) return erroValidacao("communityJid é obrigatório");
+  await sock.communityDeactivate(communityJid);
+  await limparCacheGrupos(req.sessao.apikey);
+  return { message: "Comunidade desativada" };
+}, "Erro ao desativar comunidade"));
 
 export default router;

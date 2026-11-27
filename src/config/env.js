@@ -17,9 +17,11 @@ const config = {
   hostapi: process.env.HOST || 'localhost:3000',
   nodeEnv: process.env.NODE_ENV || 'development',
   logLevel: process.env.LOG_LEVEL || 'info',
-  baileysLogLevel: process.env.BAILEYS_LOG_LEVEL || process.env.LOG_LEVEL || 'info',
+  // Nível de log da zapo (aceita também o antigo BAILEYS_LOG_LEVEL)
+  waLogLevel: process.env.WA_LOG_LEVEL || process.env.BAILEYS_LOG_LEVEL || process.env.LOG_LEVEL || 'info',
   protocol: process.env.PROTOCOLO || 'http',
   versao: process.env.VERSION_ZAP || '[2, 3000, 1043914743]',
+
 
   origins: process.env.CORS_ORIGINS || '*',
 
@@ -30,6 +32,17 @@ const config = {
   enableGlobalWebhook: process.env.ENABLE_GLOBAL_WEBHOOK == 'true',
   globalWebhookUrl: process.env.GLOBAL_WEBHOOK_URL || null,
   globalWebsocketTentativas: process.env.GLOBAL_WEBHOOK_ATTEMPTS || 4,
+
+  // Fila de reenvio de webhooks (Redis): guarda eventos cujo envio falhou e tenta de novo depois
+  webhookQueueEnabled: process.env.WEBHOOK_QUEUE_ENABLED !== 'false',
+  webhookQueueMaxAttempts: parseInt(process.env.WEBHOOK_QUEUE_MAX_ATTEMPTS, 10) || 12,
+  webhookQueueMaxSize: parseInt(process.env.WEBHOOK_QUEUE_MAX_SIZE, 10) || 10000,
+
+  // Chamadas de voz (plugin @zapo-js/voip): ligar e tocar um áudio. Desligado por padrão.
+  enableCalls: process.env.ENABLE_CALLS === 'true',
+  callRingTimeoutSeconds: parseInt(process.env.CALL_RING_TIMEOUT_SECONDS, 10) || 45,
+  callMaxDurationSeconds: parseInt(process.env.CALL_MAX_DURATION_SECONDS, 10) || 300,
+  callLiveMaxDurationSeconds: parseInt(process.env.CALL_LIVE_MAX_DURATION_SECONDS, 10) || 3600,
 
 
   // Configuração de sessão
@@ -91,8 +104,9 @@ const config = {
   //Temp message
   apiversao: process.env.VERSAO || '1.0.4',
   sync_sessions: process.env.SYNC_SESSIONS == 'false' ? false : true,
+  // false = não reconecta as sessões salvas ao iniciar (use em ambiente local que compartilha o banco com a produção)
+  auto_iniciar_sessoes: process.env.AUTO_INICIAR_SESSOES == 'false' ? false : true,
 
-  batch_size: toPositiveInt(process.env.BATCH_SIZE, 500),
 
   ignore_boadcast: process.env.IGNORE_BROADCAST == 'false' ? false : true,
 };
@@ -103,14 +117,5 @@ function getRandomPort(min = 10000, max = 20000) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-// Validate required configurations
-if (config.enableGlobalWebhook && !config.globalWebhookUrl) {
-  console.warn('⚠️  GLOBAL_WEBHOOK_URL não configurada, mas webhook global está habilitado');
-}
-
-if (config.globalApiKey === 'default-api-key-change-me' && config.isProduction) {
-  console.error('❌ GLOBAL_API_KEY deve ser alterada em produção!');
-  process.exit(1);
-}
 
 export default config;

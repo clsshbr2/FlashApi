@@ -1275,15 +1275,39 @@
                         "method": "GET",
                         "header": [],
                         "url": {
-                            "raw": "{{baseUrl}}/contact/list",
+                            "raw": "{{baseUrl}}/contact/list?filter=conversas&search=&page=1&limit=100",
                             "host": [
                                 "{{baseUrl}}"
                             ],
                             "path": [
                                 "contact",
                                 "list"
+                            ],
+                            "query": [
+                                {
+                                    "key": "filter",
+                                    "value": "conversas",
+                                    "description": "conversas | agenda | todos"
+                                },
+                                {
+                                    "key": "search",
+                                    "value": "",
+                                    "description": "nome, número ou username",
+                                    "disabled": true
+                                },
+                                {
+                                    "key": "page",
+                                    "value": "1",
+                                    "description": "opcional; sem page devolve tudo"
+                                },
+                                {
+                                    "key": "limit",
+                                    "value": "100",
+                                    "description": "1 a 1000"
+                                }
                             ]
-                        }
+                        },
+                        "description": "filter: conversas (padrão, só quem tem conversa) | agenda (salvos no celular) | todos (tudo que a zapo guardou, inclui membros de grupos). search e page/limit são opcionais."
                     },
                     "response": []
                 },
@@ -1485,6 +1509,58 @@
                         }
                     },
                     "response": []
+                },
+                {
+                    "name": "Refazer sessão de criptografia (Aguardando mensagem)",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"jid\": \"5511999999999\",\n  \"mode\": \"force\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/contact/resync-session",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "contact",
+                                "resync-session"
+                            ]
+                        }
+                    }
                 }
             ]
         },
@@ -2448,6 +2524,1690 @@
                         }
                     },
                     "response": []
+                },
+                {
+                    "name": "Prévia de convite de grupo",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"link\": \"https://chat.whatsapp.com/CODIGO_DO_CONVITE\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/group/invite-info",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "group",
+                                "invite-info"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Entrar em grupo por convite",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"link\": \"https://chat.whatsapp.com/CODIGO_DO_CONVITE\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/group/join",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "group",
+                                "join"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Listar pedidos de entrada",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"groupJid\": \"120363410719501700@g.us\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/group/requests",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "group",
+                                "requests"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Aprovar/recusar pedidos de entrada",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"groupJid\": \"120363410719501700@g.us\",\n  \"participants\": [\n    \"5511999999999\"\n  ],\n  \"action\": \"approve\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/group/requests-update",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "group",
+                                "requests-update"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Mensagens temporárias do grupo",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"groupJid\": \"120363410719501700@g.us\",\n  \"expiration\": 604800\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/group/ephemeral",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "group",
+                                "ephemeral"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Quem pode adicionar membros",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"groupJid\": \"120363410719501700@g.us\",\n  \"mode\": \"admin_add\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/group/member-add-mode",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "group",
+                                "member-add-mode"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Criar comunidade",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"subject\": \"Minha comunidade\",\n  \"description\": \"Descrição\",\n  \"membershipApprovalMode\": \"open\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/group/community/create",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "group",
+                                "community",
+                                "create"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Listar subgrupos da comunidade",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"communityJid\": \"120363000000000000@g.us\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/group/community/subgroups",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "group",
+                                "community",
+                                "subgroups"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Vincular/desvincular grupos da comunidade",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"communityJid\": \"120363000000000000@g.us\",\n  \"groups\": [\n    \"120363410719501700@g.us\"\n  ],\n  \"action\": \"link\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/group/community/link",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "group",
+                                "community",
+                                "link"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Desativar comunidade",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"communityJid\": \"120363000000000000@g.us\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/group/community/deactivate",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "group",
+                                "community",
+                                "deactivate"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "profile",
+            "item": [
+                {
+                    "name": "Dados do perfil da conta",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/profile/me",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "profile",
+                                "me"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Alterar nome exibido",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"name\": \"Flash API\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/profile/name",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "profile",
+                                "name"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Alterar recado",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"status\": \"Atendimento das 8h às 18h\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/profile/status",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "profile",
+                                "status"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Alterar foto de perfil (ou de grupo)",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"image\": \"https://exemplo.com/foto.jpg\",\n  \"groupJid\": \"\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/profile/picture",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "profile",
+                                "picture"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Remover foto de perfil (ou de grupo)",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"groupJid\": \"\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/profile/picture",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "profile",
+                                "picture"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Recado de um contato",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"jid\": \"5511999999999\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/profile/contact-status",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "profile",
+                                "contact-status"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Username da conta",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/profile/username",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "profile",
+                                "username"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Verificar username disponível",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"username\": \"minhaempresa\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/profile/username/check",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "profile",
+                                "username",
+                                "check"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Definir username",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"username\": \"minhaempresa\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/profile/username",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "profile",
+                                "username"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Remover username",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/profile/username",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "profile",
+                                "username"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Buscar conta por username",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"username\": \"minhaempresa\",\n  \"usernameKey\": \"\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/profile/username/resolve",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "profile",
+                                "username",
+                                "resolve"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Perfil comercial",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"jid\": \"5511999999999\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/profile/business",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "profile",
+                                "business"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Editar perfil comercial",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"description\": \"Loja de exemplo\",\n  \"email\": \"contato@exemplo.com\",\n  \"address\": \"Rua Exemplo, 123\",\n  \"websites\": [\n    \"https://exemplo.com\"\n  ]\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/profile/business",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "profile",
+                                "business"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "privacy",
+            "item": [
+                {
+                    "name": "Configurações de privacidade",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/privacy",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "privacy"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Alterar privacidade",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"lastSeen\": \"contacts\",\n  \"online\": \"match_last_seen\",\n  \"profilePicture\": \"contacts\",\n  \"about\": \"contacts\",\n  \"readReceipts\": \"all\",\n  \"groupAdd\": \"contacts\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/privacy",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "privacy"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Lista de exceções de uma categoria",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/privacy/disallowed/lastSeen",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "privacy",
+                                "disallowed",
+                                "lastSeen"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Alterar lista de exceções",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"setting\": \"lastSeen\",\n  \"add\": [\n    \"5511999999999\"\n  ],\n  \"remove\": []\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/privacy/disallowed",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "privacy",
+                                "disallowed"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Contatos bloqueados",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/privacy/blocklist",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "privacy",
+                                "blocklist"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "call",
+            "item": [
+                {
+                    "name": "Ligar e tocar áudio",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"jid\": \"5511999999999\",\n  \"audio\": \"https://exemplo.com/mensagem.mp3\",\n  \"ringTimeoutSeconds\": 45,\n  \"hangupAfterAudio\": true\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/call/start",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "call",
+                                "start"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Encerrar chamada",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"callId\": \"ID_DA_CHAMADA\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/call/end",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "call",
+                                "end"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Listar chamadas",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/call/list",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "call",
+                                "list"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Status de uma chamada",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/call/ID_DA_CHAMADA",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "call",
+                                "ID_DA_CHAMADA"
+                            ]
+                        }
+                    }
                 }
             ]
         },
