@@ -5,6 +5,8 @@ import logger from "../utils/logger.js";
 import config from "../config/env.js";
 import Session from "../models/Session.js";
 import axios from "axios";
+import fs from "fs";
+import path from "path";
 
 const router = express.Router();
 
@@ -104,6 +106,40 @@ router.get("/logout", (req, res) => {
     res.clearCookie("connect.sid");
     res.redirect("/manager/login");
   });
+});
+
+// ---------------------------------------------------------------- Testador de endpoints
+
+const CAMINHO_COLECAO = path.resolve("postman_collection.json");
+
+// Página estilo Postman. As requisições vêm da coleção do Postman (fonte única).
+router.get("/api-tester", checkAuth, async (req, res) => {
+  const modo = req.session.modo;
+  try {
+    if (modo === "admin") {
+      const sessoes = (await Session.findAllSessao()).map((s) => ({ apikey: s.apikey, nome: s.nome_sessao || s.apikey }));
+      return res.render("api-tester", { modo, apikey: sessoes[0]?.apikey || "", apikeyGlobal: config.globalApiKey, sessoes });
+    }
+    return res.render("api-tester", { modo, apikey: req.session.userId, apikeyGlobal: "", sessoes: [] });
+  } catch (error) {
+    logger.error("Erro ao abrir o testador de endpoints:", error);
+    return res.status(500).send("Erro ao abrir o testador de endpoints");
+  }
+});
+
+// Coleção servida SEM os valores das variáveis: o arquivo guarda chaves (ex.: apikey global)
+// que um cliente comum logado no painel não pode ver.
+router.get("/api-tester/collection.json", checkAuth, async (req, res) => {
+  try {
+    const colecao = JSON.parse(await fs.promises.readFile(CAMINHO_COLECAO, "utf8"));
+    delete colecao.variable;
+    delete colecao.auth;
+    res.set("Cache-Control", "no-store");
+    return res.json(colecao);
+  } catch (error) {
+    logger.error("Erro ao ler a coleção do Postman:", error);
+    return res.status(500).json({ success: false, message: "Não foi possível ler postman_collection.json" });
+  }
 });
 
 //Verificar se ta logado
