@@ -192,15 +192,47 @@ export async function listarChats(sessionId, { page = 1, limit = 50, search = ""
   return { page, limit, total: totalChats, pages: Math.ceil(totalChats / limit), data: rows };
 }
 
-/** Todos os contatos da sessão, por nome. */
-export async function listarContatos(sessionId) {
-  const { rows } = await execute(
-    `SELECT jid, display_name, push_name, lid, phone_number, username
-       FROM ${T("contacts")} WHERE session_id = $1
-      ORDER BY COALESCE(display_name, push_name, jid)`,
-    [sessionId],
-  );
-  return rows;
+/**
+ * Filtros de contatos. A zapo guarda TODO contato que ela vê (membros de grupos, agenda
+ * sincronizada...), então "todos" costuma trazer milhares de pessoas com quem nunca se falou.
+ *  - conversas: só quem tem conversa privada com a conta (padrão)
+ *  - agenda:    só quem está salvo na agenda do celular (tem nome da agenda)
+ *  - todos:     tudo o que a zapo guardou
+ */
+export const FILTROS_CONTATOS = {
+  // a conversa pode estar guardada pelo LID ou pelo número
+  conversas: `AND EXISTS (SELECT 1 FROM ${T("threads")} t
+                WHERE t.session_id = c.session_id
+                  AND t.jid IN (c.jid, c.lid, c.phone_number, c.phone_number || '@s.whatsapp.net'))`,
+  agenda: "AND c.display_name IS NOT NULL",
+  todos: "",
+};
+
+/** Contatos da sessão por nome, com filtro, busca e paginação opcional. */
+export async function listarContatos(sessionId, { filtro = "conversas", busca = "", page, limit } = {}) {
+  const params = [sessionId];
+  let where = `WHERE c.session_id = $1 ${FILTROS_CONTATOS[filtro] ?? FILTROS_CONTATOS.conversas}`;
+  if (busca) {
+    params.push(`%${busca}%`);
+    where += ` AND (c.display_name ILIKE $2 OR c.push_name ILIKE $2 OR c.phone_number ILIKE $2 OR c.jid ILIKE $2 OR c.username ILIKE $2)`;
+  }
+
+  let paginacao = "";
+  if (page) {
+    params.push(limit, (page - 1) * limit);
+    paginacao = `LIMIT $${params.length - 1} OFFSET $${params.length}`;
+  }
+
+  const [{ rows }, { rows: total }] = await Promise.all([
+    execute(
+      `SELECT c.jid, c.display_name, c.push_name, c.lid, c.phone_number, c.username
+         FROM ${T("contacts")} c ${where}
+        ORDER BY COALESCE(c.display_name, c.push_name, c.jid) ${paginacao}`,
+      params,
+    ),
+    page ? execute(`SELECT COUNT(*) AS total FROM ${T("contacts")} c ${where}`, params.slice(0, busca ? 2 : 1)) : Promise.resolve({ rows: null }),
+  ]);
+  return { contatos: rows, total: total ? Number(total[0]?.total) || 0 : rows.length };
 }
 
 /** Totais usados na tela de configuração da sessão. */

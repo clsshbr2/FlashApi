@@ -1,7 +1,7 @@
 import express from "express";
 import authenticateApiKey from "../middleware/auth.js";
 import WhatsAppService from "../services/WhatsAppService.js";
-import { listarContatos } from "../whatsapp/store.js";
+import { FILTROS_CONTATOS, listarContatos } from "../whatsapp/store.js";
 import logger from "../utils/logger.js";
 import fs from "fs";
 import util from "util";
@@ -16,11 +16,23 @@ router.get("/list", authenticateApiKey, async (req, res) => {
   try {
     const sessionId = req.headers["apikey"];
 
-    const SoJids = await listarContatos(sessionId);
+    // filter: conversas (padrão) | agenda | todos — ver FILTROS_CONTATOS
+    const filtro = String(req.query.filter || "conversas").toLowerCase();
+    if (!(filtro in FILTROS_CONTATOS)) {
+      return res.status(400).json({ success: false, message: `filter deve ser: ${Object.keys(FILTROS_CONTATOS).join(", ")}` });
+    }
+    const busca = String(req.query.search || "").trim();
+    // Paginação só quando "page" é informado (sem ela, devolve tudo como antes)
+    const page = req.query.page ? Math.max(1, parseInt(req.query.page, 10) || 1) : undefined;
+    const limit = Math.min(1000, Math.max(1, parseInt(req.query.limit, 10) || 100));
+
+    const { contatos, total } = await listarContatos(sessionId, { filtro, busca, page, limit });
     res.json({
       success: true,
-      total: SoJids.length,
-      contacts: SoJids,
+      filter: filtro,
+      total,
+      ...(page ? { page, limit, pages: Math.ceil(total / limit) } : {}),
+      contacts: contatos,
     });
   } catch (error) {
     logger.error("Erro ao listar contatos:", error);
