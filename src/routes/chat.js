@@ -3,7 +3,9 @@ import authenticateApiKey from "../middleware/auth.js";
 import WhatsAppService from "../services/WhatsAppService.js";
 
 import logger from "../utils/logger.js";
-import { listarChats, listarMensagens, obterMensagem } from "../whatsapp/store.js";
+import { listarChats, listarMensagens, obterMensagem, TIPOS_CHATS } from "../whatsapp/store.js";
+import { extrairMidia } from "../whatsapp/utils.js";
+import { rotaSessao } from "./rotaSessao.js";
 import { sendMessage } from "../services/messageService.js";
 import { sendButton, sendCarousel, sendinteractiveMessage, sendList } from "../services/buttonsService.js";
 
@@ -405,7 +407,14 @@ router.get("/chats", authenticateApiKey, async (req, res) => {
       });
     }
 
-    const result = await listarChats(sessionId, { page, limit, search });
+    // type: todos (padrão) | privados | grupos ; archived: true | false (sem o parâmetro, traz todas)
+    const tipo = String(req.query.type || "todos").toLowerCase();
+    if (!TIPOS_CHATS.includes(tipo)) {
+      return res.status(400).json({ success: false, message: `type deve ser: ${TIPOS_CHATS.join(", ")}` });
+    }
+    const arquivadas = req.query.archived === undefined ? undefined : req.query.archived === "true";
+
+    const result = await listarChats(sessionId, { page, limit, search, tipo, arquivadas });
 
     res.json(result);
 
@@ -419,6 +428,21 @@ router.get("/chats", authenticateApiKey, async (req, res) => {
     });
   }
 });
+
+// Edita o texto de uma mensagem enviada por esta conta (o WhatsApp aceita até ~15 min após o envio)
+router.post("/edit", authenticateApiKey, rotaSessao(async ({ req, sock, erroValidacao }) => {
+  const { jid, messageId, text } = req.body || {};
+  if (!jid) return erroValidacao("jid é obrigatório");
+  if (!messageId) return erroValidacao("messageId é obrigatório");
+  if (typeof text !== "string" || !text.trim()) return erroValidacao("text é obrigatório");
+
+  // Só dá para editar mensagem própria: confere no histórico quando ela estiver guardado
+  const original = await obterMensagem(req.sessao.apikey, messageId);
+  if (original && !original.key?.fromMe) return erroValidacao("Só é possível editar mensagens enviadas por esta conta");
+
+  const resultado = await sock.editarMensagem(jid, messageId, text);
+  return { message: "Mensagem editada", ...resultado };
+}, "Erro ao editar a mensagem"));
 
 router.delete("/delete/:id_message", authenticateApiKey, async (req, res) => {
   try {
@@ -479,10 +503,71 @@ router.delete("/delete/:id_message", authenticateApiKey, async (req, res) => {
   }
 });
 
-//Converter midia em base64
+// ---------------------------------------------------------------- Mídia recebida
+
+/**
+ * Envia a mídia de uma mensagem como ARQUIVO (stream), com o tipo e o nome certos.
+ * `?download=1` força o download (attachment); sem ele, o navegador exibe (inline).
+ */
+async function responderMidia(req, res, { message, key }) {
+  const info = extrairMidia(message);
+  if (!info) return res.status(400).json({ success: false, message: "A mensagem não tem mídia (imagem, vídeo, áudio, documento ou figurinha)" });
+
+  const sock = WhatsAppService.sockets.get(req.sessao.apikey);
+  if (!sock) return res.status(400).json({ success: false, message: "Sessão desconectada" });
+
+  let stream;
+  try {
+    stream = await sock.abrirMidia(message, { chave: key });
+  } catch (error) {
+    if (error?.midiaIndisponivel) return res.status(410).json({ success: false, message: error.message });
+    logger.warn(`Falha ao baixar mídia (${key?.id || "sem id"}): ${error?.message || error}`);
+    return res.status(502).json({ success: false, message: `Não foi possível baixar a mídia: ${error?.message || error}` });
+  }
+
+  const disposicao = req.query.download === "1" || req.query.download === "true" ? "attachment" : "inline";
+  res.setHeader("Content-Type", info.mimetype);
+  res.setHeader("Content-Disposition", `${disposicao}; filename*=UTF-8''${encodeURIComponent(info.fileName)}`);
+  // A mídia de uma mensagem nunca muda: o navegador pode guardar por 1 dia
+  res.setHeader("Cache-Control", "private, max-age=86400");
+
+  // Cliente desistiu no meio: libera a conexão com o servidor de mídia do WhatsApp
+  res.on("close", () => stream.destroy());
+  stream.on("error", (erro) => {
+    logger.warn(`Erro no meio do download da mídia (${key?.id || "sem id"}): ${erro?.message || erro}`);
+    res.destroy(erro);
+  });
+  stream.pipe(res);
+}
+
+// Mídia de uma mensagem guardada (pelo ID). Use direto em <img>/<audio>/<video> do seu backend.
+router.get("/media/:messageId", authenticateApiKey, async (req, res) => {
+  try {
+    const mensagem = await obterMensagem(req.sessao.apikey, req.params.messageId);
+    if (!mensagem) return res.status(404).json({ success: false, message: "Mensagem não encontrada" });
+    if (!mensagem.message) return res.status(422).json({ success: false, message: "Conteúdo da mensagem indisponível" });
+    return await responderMidia(req, res, mensagem);
+  } catch (error) {
+    logger.error("Erro ao baixar mídia:", error);
+    if (!res.headersSent) res.status(500).json({ success: false, message: error.message || "Erro interno do servidor" });
+  }
+});
+
+// Mídia a partir do objeto da mensagem (como chegou no webhook): { message, key? }
+router.post("/media", authenticateApiKey, async (req, res) => {
+  try {
+    const { message, key } = req.body || {};
+    if (!message) return res.status(400).json({ success: false, message: "message é obrigatório" });
+    return await responderMidia(req, res, { message, key });
+  } catch (error) {
+    logger.error("Erro ao baixar mídia:", error);
+    if (!res.headersSent) res.status(500).json({ success: false, message: error.message || "Erro interno do servidor" });
+  }
+});
+
+//Converter midia em base64 (prefira GET /media/:messageId para arquivos grandes)
 router.post("/midiaToBase64", authenticateApiKey, async (req, res) => {
   try {
-    const sessionId = req.headers["apikey"];
     const { message } = req.body;
 
     if (!message) {
@@ -491,7 +576,10 @@ router.post("/midiaToBase64", authenticateApiKey, async (req, res) => {
         message: "message é obrigatório",
       });
     }
-    if (!message?.imageMessage && !message?.videoMessage && !message?.audioMessage) {
+    // Aceita qualquer mídia (imagem, vídeo, áudio, documento, figurinha), inclusive dentro de
+    // mensagem temporária / visualização única
+    const info = extrairMidia(message);
+    if (!info) {
       return res.status(400).json({
         success: false,
         message: "Tipo de mídia inválido",
@@ -504,9 +592,7 @@ router.post("/midiaToBase64", authenticateApiKey, async (req, res) => {
     const buffer = await sock.baixarMidia(message);
 
     const base64 = buffer.toString("base64");
-    const mime = message.imageMessage?.mimetype || message.videoMessage?.mimetype || message.audioMessage?.mimetype;
-
-    const dataUrl = `data:${mime};base64,${base64}`;
+    const dataUrl = `data:${info.mimetype};base64,${base64}`;
 
     res.json({
       success: true,

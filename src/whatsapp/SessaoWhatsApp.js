@@ -22,7 +22,7 @@ import { criarLoggerZapo } from "./utils.js";
 import { iniciarLimpezaStore, pararLimpezaStore } from "./store.js";
 import { converterConteudo } from "./conteudo.js";
 import { criarErroConexao, CODIGO_DESCONECTADO, CODIGO_DESLOGADO, MENSAGEM_LOGOUT_INTENCIONAL, ligarEventosZapo, registrarMapaLid } from "./eventos.js";
-import { base64ParaBinario, gerarIdMensagem, normalizarJid, paraJsonApi, resolverMidia, somenteDigitos } from "./utils.js";
+import { base64ParaBinario, desembrulharMensagem, extrairMidia, gerarIdMensagem, normalizarJid, paraJsonApi, resolverMidia, somenteDigitos } from "./utils.js";
 import { criarPluginVoip, GerenciadorChamadas } from "./chamadas.js";
 
 const WS_ABERTO = 1; // WebSocket.OPEN
@@ -332,10 +332,54 @@ export class SessaoWhatsApp {
    * webhooks: chaves e hashes em base64). Retorna um Buffer.
    * @param {object} mensagem  ex.: { imageMessage: { url, mediaKey, ... } }
    */
+  /**
+   * Edita o texto de uma mensagem que ESTA conta enviou (o WhatsApp aceita até ~15 minutos após o envio).
+   * Mensagens com mídia: o texto novo vira a legenda.
+   */
+  async editarMensagem(jid, idMensagem, texto) {
+    this.#garantirConectado();
+    const resultado = await this.client.message.send(normalizarJid(jid), texto, { editKey: { id: idMensagem } });
+    return { id: resultado?.id, editedId: idMensagem };
+  }
+
   async baixarMidia(mensagem) {
     this.#garantirConectado();
     const bytes = await this.client.message.downloadBytes(base64ParaBinario(mensagem));
     return Buffer.from(bytes);
+  }
+
+  /**
+   * Abre a mídia de uma mensagem como stream (já decifrada), sem carregar o arquivo inteiro na memória.
+   * Quem chama é dono do stream: precisa consumir (pipe) ou destruir.
+   */
+  async abrirMidia(mensagem, { chave, timeoutMs = 60000 } = {}) {
+    this.#garantirConectado();
+    const conteudo = base64ParaBinario(mensagem);
+    try {
+      return await this.client.message.download(conteudo, { timeoutMs });
+    } catch (erro) {
+      // Mídia antiga some do servidor do WhatsApp. Com a chave da mensagem, pede ao aparelho
+      // que enviou para subir o arquivo de novo e tenta outra vez com o caminho novo.
+      const info = extrairMidia(conteudo);
+      const midia = info && desembrulharMensagem(conteudo)[info.chave];
+      if (!chave?.id || !chave?.remoteJid || !midia?.mediaKey) throw erro;
+
+      const reenvio = await this.client.message.requestMediaReupload({
+        messageId: chave.id,
+        chatJid: chave.remoteJid,
+        fromMe: Boolean(chave.fromMe),
+        participant: chave.participant || undefined,
+        mediaKey: midia.mediaKey,
+        timeoutMs: 30000,
+      });
+      if (reenvio.result !== "success" || !reenvio.directPath) {
+        const motivo = reenvio.result === "not_found" ? "o arquivo não existe mais no aparelho de origem" : reenvio.result;
+        throw Object.assign(new Error(`Mídia indisponível: ${motivo}`), { midiaIndisponivel: true });
+      }
+      midia.directPath = reenvio.directPath;
+      delete midia.url; // a URL antiga aponta para o arquivo expirado
+      return this.client.message.download(conteudo, { timeoutMs });
+    }
   }
 
   /** Marca mensagens como lidas. `chaves` = [{ remoteJid, id, participant? }]. */

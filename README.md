@@ -95,6 +95,7 @@ O projeto foi pensado para cenários de **multi-tenant/multi-atendimento**, ofer
 | 📞 **Chamadas de voz**   | Ligar e **tocar um áudio** quando atenderem, e **chamadas ao vivo pelo painel** com o microfone do navegador. Opcional (`ENABLE_CALLS=true`).                       |
 | 🧪 **Testador**          | Página estilo Postman no painel (`/manager/api-tester`) com **todas** as rotas, gerada a partir da coleção Postman.                                                |
 | 🛠️ **Suporte**           | `POST /api/contact/resync-session` refaz a criptografia com um contato e corrige o **"Aguardando mensagem"**.                                                      |
+| 💬 **Chat / atendimento** | Conversas da mais recente para a mais antiga, com prévia, nome e foto; download de **qualquer** mídia como arquivo (com reenvio de mídia expirada); editar mensagem; histórico de mensagens corrigido (o conteúdo voltava vazio). |
 | 🧹 **Limpeza**           | Dependências sem uso removidas e todos os `console.log` trocados pelo logger.                                                                                     |
 
 > ⚠️ **Mudança de comportamento:** `GET /api/contact/list` agora traz **só quem tem conversa com a conta** (antes vinham milhares de membros de grupos). Para a lista completa, use `?filter=todos`. Veja [Contatos](#contatos).
@@ -629,9 +630,32 @@ Rotas em `src/routes/chat.js` — todas exigem o header `apikey` da sessão.
 | `POST`   | `/api/chat/typing`                  | Simula "digitando…" / "gravando áudio…"                |
 | `POST`   | `/api/chat/mark-read`               | Marca mensagens como lidas                             |
 | `GET`    | `/api/chat/messages`                | Lista mensagens de uma conversa (`jid`, `limit`, `before` em ms) |
-| `GET`    | `/api/chat/chats`                   | Lista conversas da sessão                              |
+| `GET`    | `/api/chat/chats`                   | Lista conversas **da mais recente para a mais antiga**, com prévia da última mensagem (ver abaixo) |
+| `POST`   | `/api/chat/edit`                    | Edita o texto de uma mensagem enviada (`{ jid, messageId, text }`; até ~15 min após o envio) |
 | `DELETE` | `/api/chat/delete/:id_message`      | Apaga uma mensagem                                     |
-| `POST`   | `/api/chat/midiaToBase64`           | Converte mídia de uma mensagem recebida em base64      |
+| `GET`    | `/api/chat/media/:messageId`        | Baixa a mídia de uma mensagem como **arquivo** (imagem, vídeo, áudio, documento, figurinha). `?download=1` força o download |
+| `POST`   | `/api/chat/media`                   | Igual, a partir do objeto que chegou no webhook (`{ message, key }`) |
+| `POST`   | `/api/chat/midiaToBase64`           | Converte a mídia em base64 (prefira `/chat/media` para arquivos grandes) |
+
+**`GET /api/chat/chats`** — parâmetros opcionais: `page`, `limit` (até 100), `search` (nome, número ou jid), `type` (`todos` · `privados` · `grupos`) e `archived` (`true` · `false`). Cada conversa traz:
+
+```json
+{
+  "jid": "123456789012345@lid",
+  "name": "Maria Souza",
+  "phoneNumber": "5511999999999@s.whatsapp.net",
+  "isGroup": false,
+  "unread_count": 2,
+  "archived": false,
+  "pinned": null,
+  "lastMessage": { "id": "3EB0…", "timestamp": 1764200000, "fromMe": false, "type": "image", "text": "📷 Foto" },
+  "avatar": "/api/contact/avatar/APIKEY/123456789012345@lid"
+}
+```
+
+`lastMessage.type`: `text` · `image` · `video` · `audio` · `document` · `sticker` · `location` · `contact` · `poll` · `reaction` · `deleted` · `other`. Mensagens editadas mostram o texto novo (`edited: true`).
+
+**Mídia recebida:** `/api/chat/media` entrega o arquivo em fluxo (sem carregar tudo na memória), com o tipo e o nome certos. Se a mídia for antiga e já tiver expirado no servidor do WhatsApp, a API pede ao aparelho de origem que a envie de novo, automaticamente; se não for mais possível, responde **410**.
 
 ### Contatos
 

@@ -150,6 +150,51 @@ export async function imagemParaFotoPerfil(buffer, lado = 640) {
   });
 }
 
+// Envelopes que guardam a mensagem "de verdade" dentro (temporária, visualização única, documento com legenda...)
+const ENVELOPES = ["ephemeralMessage", "viewOnceMessage", "viewOnceMessageV2", "viewOnceMessageV2Extension", "documentWithCaptionMessage", "editedMessage", "associatedChildMessage"];
+
+/** Tira os envelopes e devolve o conteúdo interno da mensagem. */
+export function desembrulharMensagem(mensagem) {
+  let atual = mensagem;
+  for (let i = 0; i < 5 && atual && typeof atual === "object"; i++) {
+    const envelope = ENVELOPES.find((chave) => atual[chave]?.message);
+    if (!envelope) break;
+    atual = atual[envelope].message;
+  }
+  return atual;
+}
+
+const TIPOS_MIDIA = {
+  imageMessage: { tipo: "image", extensao: "jpg" },
+  videoMessage: { tipo: "video", extensao: "mp4" },
+  audioMessage: { tipo: "audio", extensao: "ogg" },
+  documentMessage: { tipo: "document", extensao: "bin" },
+  stickerMessage: { tipo: "sticker", extensao: "webp" },
+  ptvMessage: { tipo: "video", extensao: "mp4" },
+};
+
+/**
+ * Dados da mídia de uma mensagem (qualquer tipo, atravessando envelopes), ou null se não houver.
+ * @returns {{ chave, tipo, mimetype, fileName, fileLength }}
+ */
+export function extrairMidia(mensagem) {
+  const interna = desembrulharMensagem(mensagem);
+  if (!interna || typeof interna !== "object") return null;
+  const chave = Object.keys(TIPOS_MIDIA).find((k) => interna[k]);
+  if (!chave) return null;
+  const midia = interna[chave];
+  const { tipo, extensao } = TIPOS_MIDIA[chave];
+  const mimetype = midia.mimetype || "application/octet-stream";
+  const extensaoMime = mimetype.split("/")[1]?.split(";")[0];
+  return {
+    chave,
+    tipo,
+    mimetype,
+    fileName: midia.fileName || `${tipo}.${chave === "documentMessage" ? extensaoMime || extensao : extensao}`,
+    fileLength: Number(midia.fileLength) || undefined,
+  };
+}
+
 /** Extrai o tipo de conteúdo principal de uma mensagem (ex.: "imageMessage"). */
 export function tipoDaMensagem(mensagem) {
   if (!mensagem || typeof mensagem !== "object") return null;

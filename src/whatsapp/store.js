@@ -18,7 +18,7 @@ import { createPostgresStore } from "@zapo-js/store-postgres";
 import config from "../config/env.js";
 import logger from "../utils/logger.js";
 import { execute } from "../config/database.js";
-import { paraJsonApi } from "./utils.js";
+import { desembrulharMensagem, extrairMidia, paraJsonApi } from "./utils.js";
 
 /** Prefixo das tabelas da zapo (evita colisão com as tabelas da API). */
 export const PREFIXO_TABELAS = "zapo_";
@@ -141,15 +141,22 @@ export async function encerrarStoreZapo() {
 
 const T = (nome) => `${PREFIXO_TABELAS}mailbox_${nome}`;
 
-function paraMensagemApi(registro) {
-  let conteudo = null;
-  if (registro.messageBytes) {
-    try {
-      conteudo = paraJsonApi(proto.Message.toObject(proto.Message.decode(registro.messageBytes), { defaults: false }));
-    } catch {
-      // bytes inválidos: devolve só os metadados
-    }
+/**
+ * Bytes guardados pela zapo -> mensagem no formato da API (JSON, binários em base64).
+ * O decode da zapo já devolve um objeto comum ({ conversation, imageMessage, ... });
+ * o antigo proto.Message.toObject (da Baileys) não existe aqui. Bytes inválidos -> null.
+ */
+function decodificarMensagem(bytes) {
+  if (!bytes) return null;
+  try {
+    return paraJsonApi(proto.Message.decode(bytes));
+  } catch {
+    return null;
   }
+}
+
+function paraMensagemApi(registro) {
+  const conteudo = decodificarMensagem(registro.messageBytes);
   return {
     key: { id: registro.id, remoteJid: registro.threadJid, fromMe: registro.fromMe, participant: registro.participantJid || undefined },
     message: conteudo,
@@ -169,27 +176,116 @@ export async function obterMensagem(sessionId, id) {
   return registro ? paraMensagemApi(registro) : null;
 }
 
-/** Chats paginados, com busca opcional por nome ou jid. */
-export async function listarChats(sessionId, { page = 1, limit = 50, search = "" } = {}) {
+/**
+ * Prévia de uma mensagem para a lista de conversas: { type, text }.
+ * `type` = text | image | video | audio | document | sticker | location | contact | poll | reaction | deleted | other
+ */
+export function previaMensagem(mensagem) {
+  const m = desembrulharMensagem(mensagem);
+  if (!m || typeof m !== "object") return { type: "other", text: "" };
+  if (m.conversation) return { type: "text", text: m.conversation };
+  if (m.extendedTextMessage) return { type: "text", text: m.extendedTextMessage.text || "" };
+  const midia = extrairMidia(m);
+  if (midia) {
+    const interna = m[midia.chave];
+    const rotulos = { image: "📷 Foto", video: "🎥 Vídeo", audio: interna.ptt ? "🎤 Áudio" : "🎵 Áudio", sticker: "Figurinha", document: `📄 ${midia.fileName}` };
+    return { type: midia.tipo, text: interna.caption || rotulos[midia.tipo] };
+  }
+  if (m.locationMessage || m.liveLocationMessage) return { type: "location", text: "📍 Localização" };
+  if (m.contactMessage || m.contactsArrayMessage) return { type: "contact", text: `👤 ${m.contactMessage?.displayName || "Contato"}` };
+  const enquete = m.pollCreationMessage || m.pollCreationMessageV2 || m.pollCreationMessageV3;
+  if (enquete) return { type: "poll", text: `📊 ${enquete.name || "Enquete"}` };
+  if (m.reactionMessage) return { type: "reaction", text: `Reagiu ${m.reactionMessage.text || ""}`.trim() };
+  if (m.protocolMessage?.type === "REVOKE" || m.protocolMessage?.type === 0) return { type: "deleted", text: "🚫 Mensagem apagada" };
+  // Edição (protocolMessage tipo 14 = MESSAGE_EDIT): mostra o conteúdo novo
+  if (m.protocolMessage?.editedMessage) return { ...previaMensagem(m.protocolMessage.editedMessage), edited: true };
+  const corpo = m.buttonsMessage?.contentText || m.listMessage?.description || m.interactiveMessage?.body?.text
+    || m.interactiveMessage?.header?.title || m.templateMessage?.hydratedTemplate?.hydratedContentText
+    || m.templateMessage?.hydratedFourRowTemplate?.hydratedContentText;
+  if (corpo) return { type: "text", text: corpo };
+  return { type: "other", text: "" };
+}
+
+/** Filtros da lista de conversas: por tipo e arquivadas. */
+const FILTROS_CHATS_TIPO = {
+  todos: "",
+  privados: `AND t.jid NOT LIKE '%@g.us' AND t.jid NOT LIKE '%@newsletter' AND t.jid NOT LIKE '%@broadcast'`,
+  grupos: `AND t.jid LIKE '%@g.us'`,
+};
+export const TIPOS_CHATS = Object.keys(FILTROS_CHATS_TIPO);
+
+/**
+ * Conversas paginadas, **da mais recente para a mais antiga** (fixadas primeiro), com a última
+ * mensagem (prévia), o nome do contato e o link da foto — o que uma tela de atendimento precisa.
+ * Usa o índice (session_id, thread_jid, timestamp_ms) da zapo para achar a última mensagem.
+ */
+export async function listarChats(sessionId, { page = 1, limit = 50, search = "", tipo = "todos", arquivadas } = {}) {
   const params = [sessionId];
-  let filtro = "";
+  let filtro = FILTROS_CHATS_TIPO[tipo] ?? "";
+  if (arquivadas === true) filtro += " AND t.archived = TRUE";
+  if (arquivadas === false) filtro += " AND t.archived IS NOT TRUE";
   if (search) {
     params.push(`%${search}%`);
-    filtro = `AND (name ILIKE $2 OR jid ILIKE $2)`;
+    filtro += ` AND (t.name ILIKE $2 OR t.jid ILIKE $2 OR ct.display_name ILIKE $2 OR ct.push_name ILIKE $2 OR ct.phone_number ILIKE $2)`;
   }
-  const where = `WHERE session_id = $1 ${filtro}`;
+
+  // Contato da conversa: pelo JID (LID, chave primária) ou pelo número (índice de phone_number)
+  const contato = `LEFT JOIN LATERAL (
+        SELECT c.display_name, c.push_name, c.phone_number FROM ${T("contacts")} c
+         WHERE c.session_id = t.session_id AND c.jid = t.jid
+        UNION ALL
+        SELECT c.display_name, c.push_name, c.phone_number FROM ${T("contacts")} c
+         WHERE c.session_id = t.session_id AND c.phone_number = t.jid
+        LIMIT 1
+      ) ct ON t.jid NOT LIKE '%@g.us'`;
+  const where = `WHERE t.session_id = $1 ${filtro}`;
+
   const [{ rows }, { rows: total }] = await Promise.all([
     execute(
-      `SELECT jid, name, unread_count, archived, pinned, mute_end_ms, marked_as_unread
-         FROM ${T("threads")} ${where}
-        ORDER BY pinned DESC NULLS LAST, jid
+      `SELECT t.jid, t.name, t.unread_count, t.archived, t.pinned, t.mute_end_ms, t.marked_as_unread,
+              ct.display_name, ct.push_name, ct.phone_number,
+              ult.message_id AS ultimo_id, ult.timestamp_ms AS ultimo_ms, ult.from_me AS ultimo_meu, ult.message_bytes AS ultimo_bytes
+         FROM ${T("threads")} t
+         ${contato}
+         LEFT JOIN LATERAL (
+              SELECT m.message_id, m.timestamp_ms, m.from_me, m.message_bytes FROM ${T("messages")} m
+               WHERE m.session_id = t.session_id AND m.thread_jid = t.jid
+               ORDER BY m.timestamp_ms DESC, m.message_id DESC
+               LIMIT 1
+         ) ult ON TRUE
+        ${where}
+        ORDER BY t.pinned DESC NULLS LAST, ult.timestamp_ms DESC NULLS LAST, t.jid
         LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
       [...params, limit, (page - 1) * limit],
     ),
-    execute(`SELECT COUNT(*) AS total FROM ${T("threads")} ${where}`, params),
+    execute(`SELECT COUNT(*) AS total FROM ${T("threads")} t ${search ? contato : ""} ${where}`, params),
   ]);
+
+  const data = rows.map((r) => {
+    let previa = null;
+    if (r.ultimo_id) {
+      const conteudo = decodificarMensagem(r.ultimo_bytes);
+      previa = { id: r.ultimo_id, timestamp: Math.floor(Number(r.ultimo_ms) / 1000), fromMe: r.ultimo_meu, ...previaMensagem(conteudo) };
+    }
+    const isGroup = r.jid.endsWith("@g.us");
+    return {
+      jid: r.jid,
+      // nome para exibir: o da conversa (grupos), o da agenda, o pushName ou o número
+      name: r.name || r.display_name || r.push_name || (r.phone_number || r.jid).split("@")[0],
+      phoneNumber: r.phone_number || (r.jid.endsWith("@s.whatsapp.net") ? r.jid : null),
+      isGroup,
+      unread_count: r.unread_count,
+      archived: r.archived,
+      pinned: r.pinned,
+      mute_end_ms: r.mute_end_ms,
+      marked_as_unread: r.marked_as_unread,
+      lastMessage: previa,
+      avatar: `/api/contact/avatar/${encodeURIComponent(sessionId)}/${encodeURIComponent(r.jid)}`,
+    };
+  });
+
   const totalChats = Number(total[0]?.total) || 0;
-  return { page, limit, total: totalChats, pages: Math.ceil(totalChats / limit), data: rows };
+  return { page, limit, total: totalChats, pages: Math.ceil(totalChats / limit), data };
 }
 
 /**

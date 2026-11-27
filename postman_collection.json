@@ -984,7 +984,7 @@
                     "response": []
                 },
                 {
-                    "name": "Obter lista de chats",
+                    "name": "Obter lista de chats (mais recentes primeiro)",
                     "request": {
                         "auth": {
                             "type": "apikey",
@@ -1009,7 +1009,7 @@
                         "method": "GET",
                         "header": [],
                         "url": {
-                            "raw": "{{baseUrl}}/chat/chats?page=64/",
+                            "raw": "{{baseUrl}}/chat/chats?page=1&limit=50&type=todos&search=&archived=false",
                             "host": [
                                 "{{baseUrl}}"
                             ],
@@ -1019,24 +1019,200 @@
                             ],
                             "query": [
                                 {
-                                    "key": "remoteJid",
-                                    "value": "@s.whatsapp.net",
-                                    "type": "text",
-                                    "disabled": true
+                                    "key": "page",
+                                    "value": "1"
                                 },
                                 {
                                     "key": "limit",
-                                    "value": "500",
+                                    "value": "50",
+                                    "description": "até 100"
+                                },
+                                {
+                                    "key": "type",
+                                    "value": "todos",
+                                    "description": "todos | privados | grupos"
+                                },
+                                {
+                                    "key": "search",
+                                    "value": "",
+                                    "description": "nome, número ou jid",
                                     "disabled": true
                                 },
                                 {
-                                    "key": "page",
-                                    "value": "64/"
+                                    "key": "archived",
+                                    "value": "false",
+                                    "description": "true | false (sem o parâmetro traz todas)",
+                                    "disabled": true
+                                }
+                            ]
+                        },
+                        "description": "Ordenada pela última mensagem (fixadas primeiro), com prévia (lastMessage), nome do contato e link da foto (avatar). type: todos | privados | grupos. archived: true | false."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Baixar mídia de uma mensagem (arquivo)",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/chat/media/:messageId",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "chat",
+                                "media",
+                                ":messageId"
+                            ],
+                            "variable": [
+                                {
+                                    "key": "messageId",
+                                    "value": "ID_DA_MENSAGEM",
+                                    "description": "Use ?download=1 para baixar como anexo"
                                 }
                             ]
                         }
-                    },
-                    "response": []
+                    }
+                },
+                {
+                    "name": "Baixar mídia a partir do webhook (arquivo)",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"message\": {\n    \"imageMessage\": {\n      \"...\": \"objeto message como chegou no webhook\"\n    }\n  },\n  \"key\": {\n    \"id\": \"ID_DA_MENSAGEM\",\n    \"remoteJid\": \"{{RemoteJid}}\",\n    \"fromMe\": false\n  }\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/chat/media",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "chat",
+                                "media"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Editar mensagem enviada",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"jid\": \"{{RemoteJid}}\",\n  \"messageId\": \"ID_DA_MENSAGEM\",\n  \"text\": \"Texto corrigido\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/chat/edit",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "chat",
+                                "edit"
+                            ]
+                        }
+                    }
                 }
             ]
         },
