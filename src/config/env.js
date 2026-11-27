@@ -42,6 +42,7 @@ const config = {
   enableCalls: process.env.ENABLE_CALLS === 'true',
   callRingTimeoutSeconds: parseInt(process.env.CALL_RING_TIMEOUT_SECONDS, 10) || 45,
   callMaxDurationSeconds: parseInt(process.env.CALL_MAX_DURATION_SECONDS, 10) || 300,
+  callLiveMaxDurationSeconds: parseInt(process.env.CALL_LIVE_MAX_DURATION_SECONDS, 10) || 3600,
 
 
   // Configuração de sessão

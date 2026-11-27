@@ -127,6 +127,20 @@ router.get("/api-tester", checkAuth, async (req, res) => {
   }
 });
 
+// Painel de chamadas ao vivo (atendente fala pelo microfone do navegador)
+router.get("/call", checkAuth, async (req, res) => {
+  try {
+    const modo = req.session.modo;
+    const sessoes = modo === "admin"
+      ? (await Session.findAllSessao()).map((s) => ({ apikey: s.apikey, nome: s.nome_sessao || s.apikey }))
+      : [];
+    return res.render("call", { modo, sessoes, chamadasAtivas: config.enableCalls });
+  } catch (error) {
+    logger.error("Erro ao abrir o painel de chamadas:", error);
+    return res.status(500).send("Erro ao abrir o painel de chamadas");
+  }
+});
+
 // Coleção servida SEM os valores das variáveis: o arquivo guarda chaves (ex.: apikey global)
 // que um cliente comum logado no painel não pode ver.
 router.get("/api-tester/collection.json", checkAuth, async (req, res) => {
