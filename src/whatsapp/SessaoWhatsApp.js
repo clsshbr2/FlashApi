@@ -518,4 +518,88 @@ export class SessaoWhatsApp {
     const resultado = await this.client.group.revokeInvite(jid);
     return resultado?.code ?? resultado;
   }
+
+  // ------------------------------------------------------ Convites e pedidos de entrada
+
+  /** Prévia do grupo de um convite (sem entrar). `codigo` = parte final de chat.whatsapp.com/<codigo>. */
+  async groupGetInviteInfo(codigo) {
+    this.#garantirConectado();
+    const info = await this.client.group.queryGroupInviteInfo(codigo);
+    return {
+      id: info.jid,
+      subject: info.subject,
+      desc: info.desc,
+      size: info.size,
+      creation: info.creation,
+      owner: info.subjectOwnerPhoneNumber || info.subjectOwner,
+      linkedParent: info.linkedParentJid,
+      membershipApprovalEnabled: Boolean(info.membershipApprovalEnabled),
+      hasPendingMembershipRequest: Boolean(info.hasPendingMembershipRequest),
+      participants: (info.participants || []).map((p) => ({ id: p.jid, phoneNumber: p.phoneNumber, admin: p.type || null })),
+    };
+  }
+
+  /** Entra pelo código do convite. Retorna { status: "joined" | "pending", groupJid }. */
+  async groupAcceptInvite(codigo) {
+    this.#garantirConectado();
+    return this.client.group.joinGroupViaLink(codigo);
+  }
+
+  async groupRequestParticipantsList(jid) {
+    this.#garantirConectado();
+    const pedidos = await this.client.group.queryMembershipApprovalRequests(jid);
+    return pedidos.map((p) => ({
+      jid: p.jid,
+      phoneNumber: p.requestorPhone,
+      requestor: p.requestor,
+      requestTime: p.requestTime,
+      requestMethod: p.requestMethod,
+    }));
+  }
+
+  /** `acao`: "approve" | "reject". */
+  async groupRequestParticipantsUpdate(jid, participantes, acao) {
+    this.#garantirConectado();
+    const metodos = { approve: "approveMembershipRequests", reject: "rejectMembershipRequests" };
+    const metodo = metodos[acao];
+    if (!metodo) throw new Error(`Ação inválida para pedidos de entrada: ${acao}`);
+    await this.client.group[metodo](jid, participantes.map(normalizarJid));
+  }
+
+  /** Mensagens temporárias do grupo: 0 (desliga), 86400 (24h), 604800 (7 dias) ou 7776000 (90 dias). */
+  async groupToggleEphemeral(jid, segundos) {
+    this.#garantirConectado();
+    await this.client.group.setEphemeralDuration(jid, segundos);
+  }
+
+  /** Quem pode adicionar membros: "admin_add" | "all_member_add". */
+  async groupMemberAddMode(jid, modo) {
+    this.#garantirConectado();
+    await this.client.group.setMemberAddMode(jid, modo);
+  }
+
+  // ------------------------------------------------------------------ Comunidades
+
+  async communityCreate(assunto, opcoes = {}) {
+    this.#garantirConectado();
+    return this.#metadadosGrupo(await this.client.group.createCommunity(assunto, opcoes));
+  }
+
+  async communityDeactivate(jid) {
+    this.#garantirConectado();
+    await this.client.group.deactivateCommunity(jid);
+  }
+
+  async communitySubGroups(jid) {
+    this.#garantirConectado();
+    return this.client.group.fetchSubGroups(jid);
+  }
+
+  /** `acao`: "link" | "unlink". */
+  async communityLinkGroups(jid, grupos, acao, opcoes = {}) {
+    this.#garantirConectado();
+    if (acao === "link") return this.client.group.linkSubGroups(jid, grupos);
+    if (acao === "unlink") return this.client.group.unlinkSubGroups(jid, grupos, opcoes);
+    throw new Error(`Ação inválida para subgrupos: ${acao}`);
+  }
 }

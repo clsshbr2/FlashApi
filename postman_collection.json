@@ -2448,6 +2448,530 @@
                         }
                     },
                     "response": []
+                },
+                {
+                    "name": "Prévia de convite de grupo",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"link\": \"https://chat.whatsapp.com/CODIGO_DO_CONVITE\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/group/invite-info",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "group",
+                                "invite-info"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Entrar em grupo por convite",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"link\": \"https://chat.whatsapp.com/CODIGO_DO_CONVITE\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/group/join",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "group",
+                                "join"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Listar pedidos de entrada",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"groupJid\": \"120363410719501700@g.us\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/group/requests",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "group",
+                                "requests"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Aprovar/recusar pedidos de entrada",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"groupJid\": \"120363410719501700@g.us\",\n  \"participants\": [\n    \"5511999999999\"\n  ],\n  \"action\": \"approve\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/group/requests-update",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "group",
+                                "requests-update"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Mensagens temporárias do grupo",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"groupJid\": \"120363410719501700@g.us\",\n  \"expiration\": 604800\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/group/ephemeral",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "group",
+                                "ephemeral"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Quem pode adicionar membros",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"groupJid\": \"120363410719501700@g.us\",\n  \"mode\": \"admin_add\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/group/member-add-mode",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "group",
+                                "member-add-mode"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Criar comunidade",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"subject\": \"Minha comunidade\",\n  \"description\": \"Descrição\",\n  \"membershipApprovalMode\": \"open\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/group/community/create",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "group",
+                                "community",
+                                "create"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Listar subgrupos da comunidade",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"communityJid\": \"120363000000000000@g.us\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/group/community/subgroups",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "group",
+                                "community",
+                                "subgroups"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Vincular/desvincular grupos da comunidade",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"communityJid\": \"120363000000000000@g.us\",\n  \"groups\": [\n    \"120363410719501700@g.us\"\n  ],\n  \"action\": \"link\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/group/community/link",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "group",
+                                "community",
+                                "link"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Desativar comunidade",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"communityJid\": \"120363000000000000@g.us\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/group/community/deactivate",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "group",
+                                "community",
+                                "deactivate"
+                            ]
+                        }
+                    }
                 }
             ]
         },
