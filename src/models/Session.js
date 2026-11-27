@@ -60,7 +60,7 @@ class Session {
 
         const sqlProxy = `INSERT INTO proxy (${proxyColunas.join(", ")}) VALUES (${placeholdersProxy})`
         await execute(sqlProxy, proxyValues);
-      } catch (error) { console.log(error) }
+      } catch (error) { logger.error("Erro ao salvar o proxy da sessão:", error) }
       return addsessao;
 
     } catch (error) {

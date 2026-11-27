@@ -86,7 +86,7 @@ class WebSocketService {
         }));
 
       } catch (error) {
-        console.log(error)
+        logger.error("Erro ao autenticar cliente WebSocket:", error);
         return ws.send(JSON.stringify({
           type: 'error',
           message: 'Erro ao autenticar com usuario',
@@ -96,8 +96,8 @@ class WebSocketService {
 
     });
 
-    this.wss.on('close', (teste) => {
-      console.log(teste)
+    this.wss.on('close', () => {
+      logger.info('Servidor WebSocket encerrado')
     })
 
   }

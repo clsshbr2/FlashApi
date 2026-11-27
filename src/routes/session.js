@@ -239,7 +239,7 @@ router.post("/creds", authenticateApiKey, async (req, res) => {
       message: setcreds.message || "Erro ao injeta sessão"
     });
   } catch (error) {
-    console.log(error)
+    logger.error("Erro ao importar as credenciais da sessão:", error);
     return res.status(500).json({
       success: false,
       message: "Erro interno do servidor",

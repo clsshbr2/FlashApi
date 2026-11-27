@@ -93,7 +93,6 @@ router.put("/webhook", authenticateApiKey, async (req, res) => {
     sessao.webhook_url = webhookUrl;
     sessao.events = events;
     sessao.webhook_status = status;
-    console.log(sessao)
     const success = await Session.saveConfig(sessao.apikey, sessao);
     WhatsAppService.salvarSessao(sessao.apikey, sessao);
 

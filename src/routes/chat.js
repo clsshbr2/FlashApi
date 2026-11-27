@@ -232,7 +232,6 @@ router.post("/send-buttons", authenticateApiKey, async (req, res) => {
     logger.info(`Button Enviado: ${sessionId} -> ${req.body.jid}`);
 
   } catch (error) {
-    console.log(error);
     logger.error("Erro ao enviar botões:", error);
     res.status(500).json({
       success: false,

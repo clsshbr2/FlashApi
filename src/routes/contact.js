@@ -22,7 +22,6 @@ router.get("/list", authenticateApiKey, async (req, res) => {
       contacts: SoJids,
     });
   } catch (error) {
-    console.log(error);
     logger.error("Erro ao listar contatos:", error);
     res.status(500).json({
       success: false,
@@ -71,7 +70,6 @@ router.get("/avatar/:apikey/:jid", async (req, res) => {
     res.setHeader("Content-Type", "image/jpeg");
     response.data.pipe(res);
   } catch (error) {
-    console.log(error)
     // Sem foto (ou privacidade) é comum; mostra a imagem padrão e registra o motivo.
     logger.debug(`Avatar indisponível (${req.params.jid}): ${error?.message || error}`);
     return res.sendFile(path.resolve("public/images/image.png"));

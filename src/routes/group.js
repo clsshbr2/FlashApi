@@ -364,7 +364,7 @@ router.post("/up-setting", authenticateApiKey, getignorarGrupo, async (req, res)
       });
     }
     const result = await sock.groupSettingUpdate(groupJid, setting)
-    console.log(result)
+    logger.debug(`Configuração do grupo ${groupJid} alterada (${setting})`, { result });
     await redis.del(KEYS().grupos_cache(sessao.apikey));
 
     res.json({

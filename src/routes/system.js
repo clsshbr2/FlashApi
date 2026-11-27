@@ -220,7 +220,6 @@ router.get('/status', globalAuth.authenticateGlobalApiKey, async (req, res) => {
 
     res.json(response);
   } catch (error) {
-    console.log(error)
     logger.error('Erro ao obter status do sistema:', error);
     res.status(500).json({
       success: false,
