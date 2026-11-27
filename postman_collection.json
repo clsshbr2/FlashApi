@@ -1485,6 +1485,58 @@
                         }
                     },
                     "response": []
+                },
+                {
+                    "name": "Refazer sessão de criptografia (Aguardando mensagem)",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"jid\": \"5511999999999\",\n  \"mode\": \"force\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/contact/resync-session",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "contact",
+                                "resync-session"
+                            ]
+                        }
+                    }
                 }
             ]
         },
@@ -3652,6 +3704,483 @@
                             "path": [
                                 "profile",
                                 "business"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "privacy",
+            "item": [
+                {
+                    "name": "Configurações de privacidade",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/privacy",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "privacy"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Alterar privacidade",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"lastSeen\": \"contacts\",\n  \"online\": \"match_last_seen\",\n  \"profilePicture\": \"contacts\",\n  \"about\": \"contacts\",\n  \"readReceipts\": \"all\",\n  \"groupAdd\": \"contacts\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/privacy",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "privacy"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Lista de exceções de uma categoria",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/privacy/disallowed/lastSeen",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "privacy",
+                                "disallowed",
+                                "lastSeen"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Alterar lista de exceções",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"setting\": \"lastSeen\",\n  \"add\": [\n    \"5511999999999\"\n  ],\n  \"remove\": []\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/privacy/disallowed",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "privacy",
+                                "disallowed"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Contatos bloqueados",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/privacy/blocklist",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "privacy",
+                                "blocklist"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "call",
+            "item": [
+                {
+                    "name": "Ligar e tocar áudio",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"jid\": \"5511999999999\",\n  \"audio\": \"https://exemplo.com/mensagem.mp3\",\n  \"ringTimeoutSeconds\": 45,\n  \"hangupAfterAudio\": true\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/call/start",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "call",
+                                "start"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Encerrar chamada",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"callId\": \"ID_DA_CHAMADA\"\n}",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/call/end",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "call",
+                                "end"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Listar chamadas",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/call/list",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "call",
+                                "list"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Status de uma chamada",
+                    "request": {
+                        "auth": {
+                            "type": "apikey",
+                            "apikey": [
+                                {
+                                    "key": "value",
+                                    "value": "{{apikey}}",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "key",
+                                    "value": "apikey",
+                                    "type": "string"
+                                },
+                                {
+                                    "key": "in",
+                                    "value": "header",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "",
+                            "options": {
+                                "raw": {
+                                    "headerFamily": "json",
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/call/ID_DA_CHAMADA",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "call",
+                                "ID_DA_CHAMADA"
                             ]
                         }
                     }

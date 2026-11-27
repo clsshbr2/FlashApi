@@ -4,8 +4,7 @@
  */
 import express from "express";
 import authenticateApiKey from "../middleware/auth.js";
-import WhatsAppService from "../services/WhatsAppService.js";
-import logger from "../utils/logger.js";
+import { rotaSessao } from "./rotaSessao.js";
 import { imagemParaFotoPerfil, resolverMidia } from "../whatsapp/utils.js";
 
 const router = express.Router();
@@ -13,29 +12,6 @@ const router = express.Router();
 const LIMITE_NOME = 25; // limite do WhatsApp para o nome exibido
 const LIMITE_RECADO = 139; // limite do WhatsApp para o recado ("About")
 const CAMPOS_COMERCIAIS = ["address", "description", "email", "websites", "categories", "businessHours", "latitude", "longitude"];
-
-/** Monta a rota com sessão conectada e trata erros num lugar só. */
-function rotaPerfil(acao, mensagemErro) {
-  return async (req, res) => {
-    try {
-      const sock = WhatsAppService.sockets.get(req.sessao.apikey);
-      if (!sock) {
-        return res.status(400).json({ success: false, message: "Sessão não foi iniciada ainda" });
-      }
-      const erroValidacao = (message) => res.status(400).json({ success: false, message });
-      const resultado = await acao({ req, sock, erroValidacao });
-      if (resultado === res) return;
-      // A ação pode recusar sem erro (ex.: username indisponível): responde 409 com success: false
-      return res.status(resultado?.success === false ? 409 : 200).json({ success: true, ...resultado });
-    } catch (error) {
-      if (error?.imagemInvalida) {
-        return res.status(400).json({ success: false, message: error.message });
-      }
-      logger.error(`${mensagemErro}:`, error);
-      return res.status(500).json({ success: false, message: error.message || "Erro interno do servidor" });
-    }
-  };
-}
 
 /** Não deixa uma consulta opcional derrubar a rota inteira (ex.: privacidade, conta sem username). */
 async function opcional(promessa) {
@@ -60,7 +36,7 @@ const textoValido = (valor) => typeof valor === "string";
 
 // --------------------------------------------------------------- Dados da conta
 
-router.get("/me", authenticateApiKey, rotaPerfil(async ({ sock }) => {
+router.get("/me", authenticateApiKey, rotaSessao(async ({ sock }) => {
   const user = sock.user;
   if (!user?.id) return { profile: null, message: "Sessão ainda não conectada" };
   const [about, picture, username] = await Promise.all([
@@ -80,7 +56,7 @@ router.get("/me", authenticateApiKey, rotaPerfil(async ({ sock }) => {
   };
 }, "Erro ao buscar o perfil"));
 
-router.put("/name", authenticateApiKey, rotaPerfil(async ({ req, sock, erroValidacao }) => {
+router.put("/name", authenticateApiKey, rotaSessao(async ({ req, sock, erroValidacao }) => {
   const nome = req.body?.name;
   if (!textoValido(nome) || !nome.trim()) return erroValidacao("name é obrigatório");
   if (nome.length > LIMITE_NOME) return erroValidacao(`name pode ter no máximo ${LIMITE_NOME} caracteres`);
@@ -88,7 +64,7 @@ router.put("/name", authenticateApiKey, rotaPerfil(async ({ req, sock, erroValid
   return { message: "Nome atualizado" };
 }, "Erro ao atualizar o nome"));
 
-router.put("/status", authenticateApiKey, rotaPerfil(async ({ req, sock, erroValidacao }) => {
+router.put("/status", authenticateApiKey, rotaSessao(async ({ req, sock, erroValidacao }) => {
   const recado = req.body?.status;
   if (!textoValido(recado)) return erroValidacao("status é obrigatório (texto)");
   if (recado.length > LIMITE_RECADO) return erroValidacao(`status pode ter no máximo ${LIMITE_RECADO} caracteres`);
@@ -97,7 +73,7 @@ router.put("/status", authenticateApiKey, rotaPerfil(async ({ req, sock, erroVal
 }, "Erro ao atualizar o recado"));
 
 // Foto da conta, ou de um grupo quando groupJid for informado (a conta precisa ser admin)
-router.put("/picture", authenticateApiKey, rotaPerfil(async ({ req, sock, erroValidacao }) => {
+router.put("/picture", authenticateApiKey, rotaSessao(async ({ req, sock, erroValidacao }) => {
   const { image, groupJid } = req.body || {};
   if (!image) return erroValidacao("image é obrigatório (URL, data URI ou base64)");
   const original = await lerImagem(image);
@@ -106,14 +82,14 @@ router.put("/picture", authenticateApiKey, rotaPerfil(async ({ req, sock, erroVa
   return { message: groupJid ? "Foto do grupo atualizada" : "Foto de perfil atualizada", pictureId };
 }, "Erro ao atualizar a foto"));
 
-router.delete("/picture", authenticateApiKey, rotaPerfil(async ({ req, sock }) => {
+router.delete("/picture", authenticateApiKey, rotaSessao(async ({ req, sock }) => {
   const groupJid = req.body?.groupJid || req.query.groupJid;
   await sock.removeProfilePicture(groupJid);
   return { message: groupJid ? "Foto do grupo removida" : "Foto de perfil removida" };
 }, "Erro ao remover a foto"));
 
 // Recado ("About") de um contato
-router.post("/contact-status", authenticateApiKey, rotaPerfil(async ({ req, sock, erroValidacao }) => {
+router.post("/contact-status", authenticateApiKey, rotaSessao(async ({ req, sock, erroValidacao }) => {
   const { jid } = req.body || {};
   if (!jid) return erroValidacao("jid é obrigatório");
   const status = await sock.fetchStatus(jid);
@@ -122,18 +98,18 @@ router.post("/contact-status", authenticateApiKey, rotaPerfil(async ({ req, sock
 
 // --------------------------------------------------------------- @username
 
-router.get("/username", authenticateApiKey, rotaPerfil(async ({ sock }) => {
+router.get("/username", authenticateApiKey, rotaSessao(async ({ sock }) => {
   const { username, state } = await sock.getOwnUsername();
   return { username, state };
 }, "Erro ao buscar o username"));
 
-router.post("/username/check", authenticateApiKey, rotaPerfil(async ({ req, sock, erroValidacao }) => {
+router.post("/username/check", authenticateApiKey, rotaSessao(async ({ req, sock, erroValidacao }) => {
   const { username } = req.body || {};
   if (!textoValido(username) || !username.trim()) return erroValidacao("username é obrigatório");
   return await sock.checkUsername(username.trim().replace(/^@/, ""));
 }, "Erro ao verificar o username"));
 
-router.put("/username", authenticateApiKey, rotaPerfil(async ({ req, sock, erroValidacao }) => {
+router.put("/username", authenticateApiKey, rotaSessao(async ({ req, sock, erroValidacao }) => {
   const { username } = req.body || {};
   if (!textoValido(username) || !username.trim()) return erroValidacao("username é obrigatório");
   const nome = username.trim().replace(/^@/, "");
@@ -145,13 +121,13 @@ router.put("/username", authenticateApiKey, rotaPerfil(async ({ req, sock, erroV
   return { username: nome, message: "Username definido" };
 }, "Erro ao definir o username"));
 
-router.delete("/username", authenticateApiKey, rotaPerfil(async ({ sock }) => {
+router.delete("/username", authenticateApiKey, rotaSessao(async ({ sock }) => {
   const removido = await sock.deleteUsername();
   return { success: Boolean(removido), message: removido ? "Username removido" : "Não foi possível remover o username" };
 }, "Erro ao remover o username"));
 
 // Descobre a conta de um @username. "key-required" = o dono exige a chave (PIN) para ser encontrado.
-router.post("/username/resolve", authenticateApiKey, rotaPerfil(async ({ req, sock, erroValidacao }) => {
+router.post("/username/resolve", authenticateApiKey, rotaSessao(async ({ req, sock, erroValidacao }) => {
   const { username, usernameKey } = req.body || {};
   if (!textoValido(username) || !username.trim()) return erroValidacao("username é obrigatório");
   return await sock.resolveUsername(username.trim().replace(/^@/, ""), usernameKey);
@@ -160,14 +136,14 @@ router.post("/username/resolve", authenticateApiKey, rotaPerfil(async ({ req, so
 // --------------------------------------------------------------- Perfil comercial
 
 // Perfil comercial de um contato; sem jid, o da própria conta
-router.post("/business", authenticateApiKey, rotaPerfil(async ({ req, sock }) => {
+router.post("/business", authenticateApiKey, rotaSessao(async ({ req, sock }) => {
   const jid = req.body?.jid || sock.user?.id;
   const business = await sock.getBusinessProfile(jid);
   return { business, message: business ? undefined : "Não é uma conta comercial" };
 }, "Erro ao buscar o perfil comercial"));
 
 // Editar o perfil comercial da conta (somente WhatsApp Business)
-router.put("/business", authenticateApiKey, rotaPerfil(async ({ req, sock, erroValidacao }) => {
+router.put("/business", authenticateApiKey, rotaSessao(async ({ req, sock, erroValidacao }) => {
   const corpo = req.body || {};
   const dados = Object.fromEntries(CAMPOS_COMERCIAIS.filter((campo) => corpo[campo] !== undefined).map((campo) => [campo, corpo[campo]]));
   if (Object.keys(dados).length === 0) return erroValidacao(`Informe ao menos um destes campos: ${CAMPOS_COMERCIAIS.join(", ")}`);

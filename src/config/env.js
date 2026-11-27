@@ -38,6 +38,11 @@ const config = {
   webhookQueueMaxAttempts: parseInt(process.env.WEBHOOK_QUEUE_MAX_ATTEMPTS, 10) || 12,
   webhookQueueMaxSize: parseInt(process.env.WEBHOOK_QUEUE_MAX_SIZE, 10) || 10000,
 
+  // Chamadas de voz (plugin @zapo-js/voip): ligar e tocar um áudio. Desligado por padrão.
+  enableCalls: process.env.ENABLE_CALLS === 'true',
+  callRingTimeoutSeconds: parseInt(process.env.CALL_RING_TIMEOUT_SECONDS, 10) || 45,
+  callMaxDurationSeconds: parseInt(process.env.CALL_MAX_DURATION_SECONDS, 10) || 300,
+
 
   // Configuração de sessão
   sessao_phone: process.env.SESSION_PHONE_CLIENT || 'Flash_api',
