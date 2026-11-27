@@ -116,6 +116,40 @@ export async function resolverMidia(entrada, timeoutMs = 30000) {
   throw new Error("Formato de mídia inválido (use URL, base64 data URI ou buffer)");
 }
 
+/**
+ * Converte qualquer imagem para o formato da foto de perfil do WhatsApp:
+ * JPEG quadrado de até 640x640 (corta o centro). A zapo envia os bytes como vierem.
+ */
+export async function imagemParaFotoPerfil(buffer, lado = 640) {
+  const { spawn } = await import("node:child_process");
+  const { default: ffmpegInstaller } = await import("@ffmpeg-installer/ffmpeg");
+  const filtro = `crop='min(iw,ih)':'min(iw,ih)',scale='min(${lado},iw)':'min(${lado},ih)'`;
+
+  return new Promise((resolve, reject) => {
+    const processo = spawn(ffmpegInstaller.path, [
+      "-hide_banner", "-loglevel", "error",
+      "-i", "pipe:0",
+      "-vf", filtro, "-frames:v", "1",
+      "-f", "image2", "-c:v", "mjpeg", "-pix_fmt", "yuvj420p", "-q:v", "3",
+      "pipe:1",
+    ]);
+    const saida = [];
+    let erro = "";
+    processo.stdout.on("data", (parte) => saida.push(parte));
+    processo.stderr.on("data", (parte) => (erro += parte));
+    processo.on("error", reject);
+    processo.on("close", (codigo) => {
+      const jpeg = Buffer.concat(saida);
+      if (codigo === 0 && jpeg.length > 0) return resolve(jpeg);
+      const falha = new Error(`Imagem inválida ou formato não suportado: ${erro.trim() || `ffmpeg saiu com código ${codigo}`}`);
+      falha.imagemInvalida = true;
+      reject(falha);
+    });
+    processo.stdin.on("error", () => {}); // ffmpeg pode fechar a entrada antes do fim em imagens inválidas
+    processo.stdin.end(buffer);
+  });
+}
+
 /** Extrai o tipo de conteúdo principal de uma mensagem (ex.: "imageMessage"). */
 export function tipoDaMensagem(mensagem) {
   if (!mensagem || typeof mensagem !== "object") return null;

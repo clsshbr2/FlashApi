@@ -379,6 +379,77 @@ export class SessaoWhatsApp {
     return undefined;
   }
 
+  // ------------------------------------------------------ Perfil da conta conectada
+
+  /** Troca a foto da conta (ou de um grupo, se `jid` for informado e a conta for admin). `jpeg` já quadrado. */
+  async updateProfilePicture(jpeg, jid) {
+    this.#garantirConectado();
+    return this.client.profile.setProfilePicture(jpeg, jid ? normalizarJid(jid) : undefined);
+  }
+
+  async removeProfilePicture(jid) {
+    this.#garantirConectado();
+    await this.client.profile.deleteProfilePicture(jid ? normalizarJid(jid) : undefined);
+  }
+
+  /** Nome exibido para os outros usuários (pushName). */
+  async updateProfileName(nome) {
+    this.#garantirConectado();
+    await this.client.profile.setPushName(nome);
+  }
+
+  /** Recado ("About") da conta. */
+  async updateProfileStatus(texto) {
+    this.#garantirConectado();
+    await this.client.profile.setStatus(texto);
+  }
+
+  /** Recado ("About") de um contato; null quando oculto pela privacidade. */
+  async fetchStatus(jid) {
+    this.#garantirConectado();
+    return this.client.profile.getAboutStatus(normalizarJid(jid));
+  }
+
+  async getOwnUsername() {
+    this.#garantirConectado();
+    return this.client.profile.getOwnUsername();
+  }
+
+  async checkUsername(username) {
+    this.#garantirConectado();
+    return this.client.profile.checkUsernameAvailability(username);
+  }
+
+  /** Retorna true só quando o servidor aceitou (nome livre e válido). */
+  async setUsername(username) {
+    this.#garantirConectado();
+    return this.client.profile.setUsername({ username, source: "USER_INPUT" });
+  }
+
+  async deleteUsername() {
+    this.#garantirConectado();
+    return this.client.profile.deleteUsername();
+  }
+
+  /** Busca a conta de um @username. `status`: "found" | "key-required" | "not-found". */
+  async resolveUsername(username, usernameKey) {
+    this.#garantirConectado();
+    return this.client.profile.resolveUsername({ username, usernameKey: usernameKey || undefined });
+  }
+
+  /** Perfil comercial de um contato (ou da própria conta). null se não for conta comercial. */
+  async getBusinessProfile(jid) {
+    this.#garantirConectado();
+    const [perfil] = await this.client.business.getBusinessProfile([normalizarJid(jid)]);
+    return perfil || null;
+  }
+
+  /** Edita o perfil comercial da conta (só contas WhatsApp Business). */
+  async updateBusinessProfile(dados) {
+    this.#garantirConectado();
+    await this.client.business.editBusinessProfile(dados);
+  }
+
   /** Verifica se números existem no WhatsApp. Retorna [{ jid, exists, lid }]. */
   async onWhatsApp(...numeros) {
     this.#garantirConectado();
