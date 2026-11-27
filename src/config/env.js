@@ -33,6 +33,11 @@ const config = {
   globalWebhookUrl: process.env.GLOBAL_WEBHOOK_URL || null,
   globalWebsocketTentativas: process.env.GLOBAL_WEBHOOK_ATTEMPTS || 4,
 
+  // Fila de reenvio de webhooks (Redis): guarda eventos cujo envio falhou e tenta de novo depois
+  webhookQueueEnabled: process.env.WEBHOOK_QUEUE_ENABLED !== 'false',
+  webhookQueueMaxAttempts: parseInt(process.env.WEBHOOK_QUEUE_MAX_ATTEMPTS, 10) || 12,
+  webhookQueueMaxSize: parseInt(process.env.WEBHOOK_QUEUE_MAX_SIZE, 10) || 10000,
+
 
   // Configuração de sessão
   sessao_phone: process.env.SESSION_PHONE_CLIENT || 'Flash_api',
@@ -106,14 +111,5 @@ function getRandomPort(min = 10000, max = 20000) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-// Validate required configurations
-if (config.enableGlobalWebhook && !config.globalWebhookUrl) {
-  console.warn('⚠️  GLOBAL_WEBHOOK_URL não configurada, mas webhook global está habilitado');
-}
-
-if (config.globalApiKey === 'default-api-key-change-me' && config.isProduction) {
-  console.error('❌ GLOBAL_API_KEY deve ser alterada em produção!');
-  process.exit(1);
-}
 
 export default config;

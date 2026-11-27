@@ -38,7 +38,11 @@ const EVENTOS_GRUPO = [
 // Razões de fechamento em que a zapo orienta NÃO reconectar (docs: guides/errors e guides/reconnection).
 const RAZOES_FATAIS = /stream_error_device_removed|stream_error_force_logout|failure_banned|failure_locked|failure_client_too_old|failure_bad_user_agent|primary_identity_key_change/;
 
-const nomePublicado = (evento) => evento.replace(/[.-]/g, "_");
+// Reconexão: até 10 tentativas rápidas (3s, 6s... máx. 30s); depois, uma tentativa a cada 5 minutos.
+const LIMITE_RECONEXAO_RAPIDA = 10;
+const INTERVALO_RECONEXAO_LENTA_MS = 5 * 60 * 1000;
+
+const nomePublicado =(evento) => evento.replace(/[.-]/g, "_");
 
 /** Tipo principal da mensagem, atravessando efêmera / visualização única. */
 const tipoMensagem = (message) => {
@@ -185,17 +189,10 @@ async function connection(sessionId, update) {
             return;
         }
 
-        // Proteção contra loop de reconexão. Só desiste de reconectar: NUNCA apaga as credenciais, senão uma
-        // falha passageira (rede, DNS ou proxy ainda indisponíveis logo após o deploy) forçaria novo QR Code.
+        // Contador de tentativas de reconexão (zerado quando a sessão conecta). NUNCA apaga as credenciais por
+        // isso, senão uma falha passageira (rede, DNS ou proxy fora do ar após o deploy) forçaria novo QR Code.
         const tentativas = (WhatsAppService.limitReconnect.get(sessionId) || 0) + 1;
         WhatsAppService.limitReconnect.set(sessionId, tentativas);
-        if (tentativas > 10) {
-            logger.warn(`Sessão ${sessionId}: limite de tentativas de reconexão atingido (credenciais mantidas)`);
-            WhatsAppService.sockets.delete(sessionId);
-            const sessaoParada = await WhatsAppService.GetSessao(sessionId);
-            if (sessaoParada) { sessaoParada.status = "disconnected"; void updateSessao(sessionId, sessaoParada); }
-            return;
-        }
 
         const erro = new Boom(lastDisconnect?.error).output;
         logger.info("sessão desconectado motivo: ", erro?.payload);
@@ -222,11 +219,33 @@ async function connection(sessionId, update) {
             return;
         }
 
-        logger.info(erro.statusCode == 515 ? `Status 515 Reiniciando sessão: ${sessionId}` : `Reconectando sessão: ${sessionId}`);
-        getsessao.status = "connecting";
-        void updateSessao(sessionId, getsessao);
-        // Espera crescente: 3s, 6s, 9s... (máx. 30s) para dar tempo da rede/proxy voltarem.
-        await WhatsAppService.delay(Math.min(3000 * tentativas, 30000));
+        let espera;
+        if (tentativas > LIMITE_RECONEXAO_RAPIDA) {
+            // Passou do limite de tentativas rápidas: continua tentando, mas só a cada 5 minutos,
+            // e avisa no WebSocket/webhook (evento connection_update) a cada nova tentativa agendada.
+            espera = INTERVALO_RECONEXAO_LENTA_MS;
+            logger.warn(`Sessão ${sessionId}: ${tentativas - 1} tentativas sem sucesso — nova tentativa em ${espera / 60000} min (credenciais mantidas)`);
+            getsessao.status = "disconnected";
+            void updateSessao(sessionId, getsessao);
+            WebSocketService.emitEvents(sessionId, "connection_update", {
+                connection: "close",
+                reconnect: {
+                    mode: "slow",
+                    attempts: tentativas - 1,
+                    nextAttemptInMs: espera,
+                    nextAttemptAt: new Date(Date.now() + espera).toISOString(),
+                    reason: motivoFechamento,
+                    message: `Falha ao reconectar após ${tentativas - 1} tentativas. Nova tentativa a cada ${espera / 60000} minutos.`,
+                },
+            });
+        } else {
+            logger.info(erro.statusCode == 515 ? `Status 515 Reiniciando sessão: ${sessionId}` : `Reconectando sessão: ${sessionId}`);
+            getsessao.status = "connecting";
+            void updateSessao(sessionId, getsessao);
+            // Espera crescente: 3s, 6s, 9s... (máx. 30s) para dar tempo da rede/proxy voltarem.
+            espera = Math.min(3000 * tentativas, 30000);
+        }
+        await WhatsAppService.delay(espera);
         if (WhatsAppService.desligando) return;
         // Alguém (ex.: o usuário via API) já recriou a conexão enquanto esperávamos: não cria outra.
         if (WhatsAppService.sockets.get(sessionId) !== sock) return;

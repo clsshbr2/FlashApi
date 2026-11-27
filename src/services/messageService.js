@@ -266,7 +266,7 @@ async function createSticker(input) {
 
         return await sticker.toBuffer();
     } catch (error) {
-        console.error("Erro ao criar sticker:", error);
+        logger.error("Erro ao criar sticker:", error);
         return false;
     }
 }

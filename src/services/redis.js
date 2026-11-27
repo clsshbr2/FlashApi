@@ -56,7 +56,6 @@ class RedisClient {
       });
 
       this.client.on("error", (err) => {
-        console.log(err);
         this.wasDisconnected = true;
         logger.error("❌ Erro no Redis:", err.message);
         // Não encerra o processo, deixa o retryStrategy lidar com reconexão
@@ -93,7 +92,7 @@ class RedisClient {
 
       return foundKeys;
     } catch (err) {
-      console.error(`Erro ao varrer chaves com padrão ${pattern}:`, err);
+      logger.error(`Erro ao varrer chaves com padrão ${pattern}:`, err);
       return [];
     }
   }
@@ -112,7 +111,7 @@ class RedisClient {
         await this.client.set(key, data);
       }
     } catch (err) {
-      console.error(`Erro ao definir chave ${key}:`, err);
+      logger.error(`Erro ao definir chave ${key}:`, err);
     }
   }
 
@@ -132,7 +131,7 @@ class RedisClient {
 
       return sessions;
     } catch (err) {
-      console.error("Erro ao buscar sessões:", err);
+      logger.error("Erro ao buscar sessões:", err);
       return [];
     }
   }
@@ -143,7 +142,7 @@ class RedisClient {
       const data = await this.client.get(key);
       return data ? JSON.parse(data) : null;
     } catch (err) {
-      console.error(`Erro ao buscar chave ${key}:`, err);
+      logger.error(`Erro ao buscar chave ${key}:`, err);
       return null;
     }
   }
@@ -153,7 +152,7 @@ class RedisClient {
     try {
       await this.client.del(key);
     } catch (err) {
-      console.error(`Erro ao deletar chave ${key}:`, err);
+      logger.error(`Erro ao deletar chave ${key}:`, err);
     }
   }
 
@@ -162,7 +161,7 @@ class RedisClient {
     try {
       return await this.client.exists(key);
     } catch (err) {
-      console.error(`Erro ao verificar chave ${key}:`, err);
+      logger.error(`Erro ao verificar chave ${key}:`, err);
       return false;
     }
   }
@@ -172,7 +171,7 @@ class RedisClient {
     try {
       return await this.scanKeys(pattern);
     } catch (err) {
-      console.error(`Erro ao buscar chaves com padrão ${pattern}:`, err);
+      logger.error(`Erro ao buscar chaves com padrão ${pattern}:`, err);
       return [];
     }
   }
@@ -184,7 +183,7 @@ class RedisClient {
         await this.client.del(...keys);
       }
     } catch (err) {
-      console.error(`Erro ao deletar chaves:`, err);
+      logger.error(`Erro ao deletar chaves:`, err);
     }
   }
 

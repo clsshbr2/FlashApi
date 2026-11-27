@@ -1,13 +1,8 @@
 process.on("uncaughtException", (err) => {
-  console.error("❌ Erro global:", err.message);
-
-  if (err.stack) {
-    const lines = err.stack.split("\n");
-    console.error("📍 Origem provável:", lines);
-  }
+  logger.error("❌ Erro global (uncaughtException):", err);
 });
-process.on("unhandledRejection", (reason, promise) => {
-  console.error("❌ Rejeição não tratada (unhandledRejection):", reason);
+process.on("unhandledRejection", (reason) => {
+  logger.error("❌ Rejeição não tratada (unhandledRejection):", reason instanceof Error ? reason : { motivo: String(reason) });
 });
 
 import express from "express";
@@ -24,6 +19,7 @@ import redis from "./src/services/redis.js";
 
 import config from "./src/config/env.js";
 import { sincronizarStatusSessoes } from "./src/services/EventService.js";
+import WebhookService from "./src/services/WebhookService.js";
 import WebSocketService from "./src/services/WebSocketService.js";
 
 import logger from "./src/utils/logger.js";
@@ -122,8 +118,7 @@ app.use((err, req, res, next) => {
 });
 
 app.post("/teste", (req, res) => {
-  console.log("Webhook recebido:");
-  console.log(req.body);
+  logger.info("Webhook de teste recebido", { body: req.body });
 
   res.json({
     success: true,
@@ -140,12 +135,23 @@ app.get("/", (req, res) => {
 // Initialize database and start server
 async function startServer() {
   try {
+    if (config.enableGlobalWebhook && !config.globalWebhookUrl) {
+      logger.warn("⚠️ GLOBAL_WEBHOOK_URL não configurada, mas webhook global está habilitado");
+    }
+    if (config.globalApiKey === "default-api-key-change-me" && config.isProduction) {
+      logger.error("❌ GLOBAL_API_KEY deve ser alterada em produção!");
+      process.exit(1);
+    }
+
     server.listen(PORT, "0.0.0.0", async () => {
       logger.info(`🚀 Flash API rodando na porta ${PORT}`);
       //Criar banco de dados
       await checkAndInitDatabase();
 
       logger.info("✅ Iniciando Flash API - WhatsApp Multi-Session");
+
+      // Reenvio dos webhooks que falharam (fila no Redis)
+      WebhookService.iniciarWorker();
 
       //iniciando as sessões de WhatsApp
       if (config.auto_iniciar_sessoes) {
