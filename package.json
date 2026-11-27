@@ -14,7 +14,9 @@
   "dependencies": {
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@hapi/boom": "^9.1.4",
+    "@roamhq/wrtc": "^0.10.0",
     "@zapo-js/store-postgres": "1.2.0",
+    "@zapo-js/voip": "1.4.0",
     "axios": "^1.6.2",
     "bcrypt": "^5.1.1",
     "connect-redis": "^9.0.0",
@@ -27,6 +29,7 @@
     "https-proxy-agent": "^9.0.0",
     "ioredis": "^5.8.2",
     "joi": "^17.11.0",
+    "libmlow-wasm-fork": "^0.2.0",
     "moment-timezone": "^0.6.0",
     "p-limit": "^7.3.0",
     "pg": "^8.16.3",

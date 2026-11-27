@@ -27,6 +27,7 @@ const EVENTOS_SIMPLES = [
     "newsletter.reaction", "newsletter.view", "newsletter-participants.update", "newsletter-settings.update",
     "message-capping.update",
     "settings.update",
+    "call.update", // andamento das chamadas de voz (só com ENABLE_CALLS=true)
 ];
 
 // Eventos de grupo: respeitam a opção "ignorar grupos" da sessão.

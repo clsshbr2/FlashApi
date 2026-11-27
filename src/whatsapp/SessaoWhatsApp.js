@@ -23,6 +23,7 @@ import { iniciarLimpezaStore, pararLimpezaStore } from "./store.js";
 import { converterConteudo } from "./conteudo.js";
 import { criarErroConexao, CODIGO_DESCONECTADO, CODIGO_DESLOGADO, MENSAGEM_LOGOUT_INTENCIONAL, ligarEventosZapo, registrarMapaLid } from "./eventos.js";
 import { base64ParaBinario, gerarIdMensagem, normalizarJid, paraJsonApi, resolverMidia, somenteDigitos } from "./utils.js";
+import { criarPluginVoip, GerenciadorChamadas } from "./chamadas.js";
 
 const WS_ABERTO = 1; // WebSocket.OPEN
 const WS_FECHADO = 3; // WebSocket.CLOSED
@@ -61,6 +62,7 @@ export class SessaoWhatsApp {
     this.fechadoEmitido = false; // evita emitir "close" duas vezes no mesmo ciclo
     this.logoutSolicitado = false; // logout() foi chamado pela API
     this.enviadas = new Map(); // id -> proto enviado (para devolver a mensagem completa ao enviar)
+    this.chamadas = null; // GerenciadorChamadas, só com ENABLE_CALLS=true
 
     // `sock.ws.socket.readyState` é lido por createSession() para saber se está conectado.
     const self = this;
@@ -125,6 +127,8 @@ export class SessaoWhatsApp {
    */
   async iniciar() {
     const proxy = this.proxyUrl ? this.#criarProxy(this.proxyUrl) : undefined;
+    // Chamadas de voz: o plugin só é carregado quando habilitado (ENABLE_CALLS=true)
+    const plugins = config.enableCalls ? [await criarPluginVoip()] : [];
 
     this.client = new WaClient(
       {
@@ -141,6 +145,7 @@ export class SessaoWhatsApp {
         // A zapo guarda mensagens, chats e contatos sozinha; o histórico completo vem se SYNC_SESSIONS=true.
         history: { enabled: true, requireFullSync: config.sync_sessions },
         keepAliveIntervalMs: 10000,
+        plugins,
       },
       criarLoggerZapo({ sessionId: this.sessionId }),
     );
@@ -155,6 +160,10 @@ export class SessaoWhatsApp {
     });
 
     ligarEventosZapo(this);
+    if (this.client.voip) {
+      this.chamadas = new GerenciadorChamadas(this);
+      this.chamadas.ligarEventos();
+    }
     iniciarLimpezaStore(this.sessionId);
 
     this.emitir("connection.update", { connection: "connecting" });
@@ -195,6 +204,7 @@ export class SessaoWhatsApp {
     if (this.encerrado) return;
     this.encerrado = true;
     pararLimpezaStore(this.sessionId);
+    this.chamadas?.limparTudo();
     try {
       await this.client?.disconnect();
     } catch {
@@ -437,6 +447,48 @@ export class SessaoWhatsApp {
     return this.client.profile.resolveUsername({ username, usernameKey: usernameKey || undefined });
   }
 
+  /**
+   * Refaz a sessão de criptografia (Signal) com um contato. Corrige "Aguardando mensagem" e falhas
+   * de decifração. `modo`: "force" (recria mantendo a identidade) | "identity" (trata como troca de
+   * aparelho e reemite o token de contato confiável). Um JID de usuário corresponde ao aparelho 0 (celular).
+   */
+  async resyncSignalSession(jid, modo = "force") {
+    this.#garantirConectado();
+    const opcoes = modo === "identity" ? { reasonIdentity: true } : { force: true };
+    await this.client.message.syncSignalSession(normalizarJid(jid), opcoes);
+  }
+
+  // ------------------------------------------------------------------ Privacidade
+
+  /** Valor atual de cada categoria (lastSeen, online, profilePicture, about, readReceipts...). */
+  async fetchPrivacySettings() {
+    this.#garantirConectado();
+    return this.client.privacy.getPrivacySettings();
+  }
+
+  /** Altera uma categoria. Retorna o dhash da lista de exceções (só em "contact_blacklist"). */
+  async updatePrivacySetting(configuracao, valor) {
+    this.#garantirConectado();
+    return this.client.privacy.setPrivacySetting(configuracao, valor);
+  }
+
+  /** Contatos excluídos de uma categoria ("meus contatos, exceto..."). */
+  async fetchPrivacyDisallowedList(configuracao) {
+    this.#garantirConectado();
+    return this.client.privacy.getDisallowedList(configuracao);
+  }
+
+  /** Adiciona/remove contatos da lista de exceções (passa a categoria para "contact_blacklist"). */
+  async updatePrivacyDisallowedList(configuracao, { add = [], remove = [] } = {}) {
+    this.#garantirConectado();
+    return this.client.privacy.setDisallowedList(configuracao, { add: add.map(normalizarJid), remove: remove.map(normalizarJid) });
+  }
+
+  async fetchBlocklist() {
+    this.#garantirConectado();
+    return this.client.privacy.getBlocklist();
+  }
+
   /** Perfil comercial de um contato (ou da própria conta). null se não for conta comercial. */
   async getBusinessProfile(jid) {
     this.#garantirConectado();
@@ -476,6 +528,8 @@ export class SessaoWhatsApp {
    */
   async rejectCall(idChamada, deQuem) {
     this.#garantirConectado();
+    // Com o plugin de chamadas ativo, ele controla a ligação: rejeitar por fora deixaria o estado dele preso.
+    if (this.chamadas) return this.chamadas.rejeitar(idChamada);
     const eu = this.user?.id ? normalizarJid(this.user.id) : undefined;
     await this.client.lowlevel.sendNode({
       tag: "call",

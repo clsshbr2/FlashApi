@@ -8,6 +8,7 @@ import util from "util";
 import Session from "../models/Session.js";
 import path from "path";
 import axios from "axios";
+import { rotaSessao } from "./rotaSessao.js";
 
 const router = express.Router();
 
@@ -193,5 +194,16 @@ router.post("/lid-to-jid", authenticateApiKey, async (req, res) => {
     });
   }
 });
+
+// Suporte: refaz a sessão de criptografia com um contato (corrige "Aguardando mensagem" / falha ao decifrar).
+// mode: "force" (padrão, recria mantendo a identidade) | "identity" (contato trocou de aparelho/reinstalou).
+router.post("/resync-session", authenticateApiKey, rotaSessao(async ({ req, sock, erroValidacao }) => {
+  const { jid, mode = "force" } = req.body || {};
+  if (!jid) return erroValidacao("jid é obrigatório");
+  if (String(jid).endsWith("@g.us")) return erroValidacao("Informe o contato, não o grupo (a sessão é por pessoa)");
+  if (!["force", "identity"].includes(mode)) return erroValidacao('mode deve ser "force" ou "identity"');
+  await sock.resyncSignalSession(jid, mode);
+  return { message: "Sessão de criptografia refeita. As próximas mensagens com este contato usam a sessão nova." };
+}, "Erro ao refazer a sessão de criptografia"));
 
 export default router;

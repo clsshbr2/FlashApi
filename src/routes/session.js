@@ -111,6 +111,7 @@ async function tiposCreate(dados) {
         "group_participants_update",
         "presence_update",
         "call",
+        "call_update",
         "messaging_history_set"
       ]
     }

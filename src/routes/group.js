@@ -3,6 +3,7 @@ import authenticateApiKey from "../middleware/auth.js";
 import WhatsAppService from "../services/WhatsAppService.js";
 import logger from "../utils/logger.js";
 import redis, { KEYS } from "../services/redis.js";
+import { rotaSessao } from "./rotaSessao.js";
 
 const router = express.Router();
 const GROUP_LIST_CACHE_TTL_SECONDS = 6 * 60;
@@ -479,36 +480,17 @@ function extrairCodigoConvite({ code, link } = {}) {
   return /^[A-Za-z0-9_-]{10,}$/.test(codigo) ? codigo : null;
 }
 
-/** Validações comuns: monta a rota com sessão conectada e trata erros num lugar só. */
-function rotaGrupo(acao, mensagemErro) {
-  return async (req, res) => {
-    try {
-      const sock = WhatsAppService.sockets.get(req.sessao.apikey);
-      if (!sock) {
-        return res.status(400).json({ success: false, message: "Sessão não foi iniciada ainda" });
-      }
-      const erroValidacao = (message) => res.status(400).json({ success: false, message });
-      const resultado = await acao({ req, sock, erroValidacao });
-      if (resultado === res) return;
-      return res.json({ success: true, ...resultado });
-    } catch (error) {
-      logger.error(`${mensagemErro}:`, error);
-      return res.status(500).json({ success: false, message: error.message || "Erro interno do servidor" });
-    }
-  };
-}
-
 const limparCacheGrupos = (apikey) => redis.del(KEYS().grupos_cache(apikey));
 
 // Prévia de um convite (nome, tamanho, se exige aprovação) sem entrar no grupo
-router.post("/invite-info", authenticateApiKey, getignorarGrupo, rotaGrupo(async ({ req, sock, erroValidacao }) => {
+router.post("/invite-info", authenticateApiKey, getignorarGrupo, rotaSessao(async ({ req, sock, erroValidacao }) => {
   const codigo = extrairCodigoConvite(req.body);
   if (!codigo) return erroValidacao("Informe code ou link do convite válido");
   return { group: await sock.groupGetInviteInfo(codigo) };
 }, "Erro ao consultar convite"));
 
 // Entrar em um grupo pelo link/código de convite
-router.post("/join", authenticateApiKey, getignorarGrupo, rotaGrupo(async ({ req, sock, erroValidacao }) => {
+router.post("/join", authenticateApiKey, getignorarGrupo, rotaSessao(async ({ req, sock, erroValidacao }) => {
   const codigo = extrairCodigoConvite(req.body);
   if (!codigo) return erroValidacao("Informe code ou link do convite válido");
   const { status, groupJid } = await sock.groupAcceptInvite(codigo);
@@ -521,7 +503,7 @@ router.post("/join", authenticateApiKey, getignorarGrupo, rotaGrupo(async ({ req
 }, "Erro ao entrar no grupo"));
 
 // Listar pedidos de entrada pendentes (grupos com aprovação de admin)
-router.post("/requests", authenticateApiKey, getignorarGrupo, rotaGrupo(async ({ req, sock, erroValidacao }) => {
+router.post("/requests", authenticateApiKey, getignorarGrupo, rotaSessao(async ({ req, sock, erroValidacao }) => {
   const { groupJid } = req.body || {};
   if (!groupJid) return erroValidacao("groupJid é obrigatório");
   const requests = await sock.groupRequestParticipantsList(groupJid);
@@ -529,7 +511,7 @@ router.post("/requests", authenticateApiKey, getignorarGrupo, rotaGrupo(async ({
 }, "Erro ao listar pedidos de entrada"));
 
 // Aprovar ou recusar pedidos de entrada
-router.post("/requests-update", authenticateApiKey, getignorarGrupo, rotaGrupo(async ({ req, sock, erroValidacao }) => {
+router.post("/requests-update", authenticateApiKey, getignorarGrupo, rotaSessao(async ({ req, sock, erroValidacao }) => {
   const { groupJid, participants, action } = req.body || {};
   if (!groupJid) return erroValidacao("groupJid é obrigatório");
   if (!Array.isArray(participants) || participants.length === 0) return erroValidacao("participants deve ser um array com ao menos um número/jid");
@@ -540,7 +522,7 @@ router.post("/requests-update", authenticateApiKey, getignorarGrupo, rotaGrupo(a
 }, "Erro ao atualizar pedidos de entrada"));
 
 // Mensagens temporárias do grupo
-router.post("/ephemeral", authenticateApiKey, getignorarGrupo, rotaGrupo(async ({ req, sock, erroValidacao }) => {
+router.post("/ephemeral", authenticateApiKey, getignorarGrupo, rotaSessao(async ({ req, sock, erroValidacao }) => {
   const { groupJid } = req.body || {};
   const expiration = Number(req.body?.expiration);
   if (!groupJid) return erroValidacao("groupJid é obrigatório");
@@ -552,7 +534,7 @@ router.post("/ephemeral", authenticateApiKey, getignorarGrupo, rotaGrupo(async (
 }, "Erro ao alterar mensagens temporárias"));
 
 // Quem pode adicionar membros
-router.post("/member-add-mode", authenticateApiKey, getignorarGrupo, rotaGrupo(async ({ req, sock, erroValidacao }) => {
+router.post("/member-add-mode", authenticateApiKey, getignorarGrupo, rotaSessao(async ({ req, sock, erroValidacao }) => {
   const { groupJid, mode } = req.body || {};
   if (!groupJid) return erroValidacao("groupJid é obrigatório");
   if (!["admin_add", "all_member_add"].includes(mode)) return erroValidacao('mode deve ser "admin_add" ou "all_member_add"');
@@ -562,7 +544,7 @@ router.post("/member-add-mode", authenticateApiKey, getignorarGrupo, rotaGrupo(a
 
 // --------------------------------------------------------------- Comunidades
 
-router.post("/community/create", authenticateApiKey, getignorarGrupo, rotaGrupo(async ({ req, sock, erroValidacao }) => {
+router.post("/community/create", authenticateApiKey, getignorarGrupo, rotaSessao(async ({ req, sock, erroValidacao }) => {
   const { subject, description, membershipApprovalMode, allowNonAdminSubGroupCreation } = req.body || {};
   if (!subject) return erroValidacao("subject é obrigatório");
   if (membershipApprovalMode && !["open", "request_required"].includes(membershipApprovalMode)) {
@@ -577,14 +559,14 @@ router.post("/community/create", authenticateApiKey, getignorarGrupo, rotaGrupo(
   return { community };
 }, "Erro ao criar comunidade"));
 
-router.post("/community/subgroups", authenticateApiKey, getignorarGrupo, rotaGrupo(async ({ req, sock, erroValidacao }) => {
+router.post("/community/subgroups", authenticateApiKey, getignorarGrupo, rotaSessao(async ({ req, sock, erroValidacao }) => {
   const { communityJid } = req.body || {};
   if (!communityJid) return erroValidacao("communityJid é obrigatório");
   return await sock.communitySubGroups(communityJid);
 }, "Erro ao listar subgrupos da comunidade"));
 
 // Vincular ou desvincular grupos existentes de uma comunidade
-router.post("/community/link", authenticateApiKey, getignorarGrupo, rotaGrupo(async ({ req, sock, erroValidacao }) => {
+router.post("/community/link", authenticateApiKey, getignorarGrupo, rotaSessao(async ({ req, sock, erroValidacao }) => {
   const { communityJid, groups, action = "link", removeOrphanedMembers } = req.body || {};
   if (!communityJid) return erroValidacao("communityJid é obrigatório");
   if (!Array.isArray(groups) || groups.length === 0) return erroValidacao("groups deve ser um array com ao menos um groupJid");
@@ -594,7 +576,7 @@ router.post("/community/link", authenticateApiKey, getignorarGrupo, rotaGrupo(as
   return resultado;
 }, "Erro ao vincular grupos à comunidade"));
 
-router.post("/community/deactivate", authenticateApiKey, getignorarGrupo, rotaGrupo(async ({ req, sock, erroValidacao }) => {
+router.post("/community/deactivate", authenticateApiKey, getignorarGrupo, rotaSessao(async ({ req, sock, erroValidacao }) => {
   const { communityJid } = req.body || {};
   if (!communityJid) return erroValidacao("communityJid é obrigatório");
   await sock.communityDeactivate(communityJid);
